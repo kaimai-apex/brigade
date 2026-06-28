@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Brigade design language — "upscale French-American brasserie."
+ * Reference feeling: Parc at Rittenhouse / a refined steakhouse-omakase.
+ *   • Deep bottle green (the awning / banquette leather)
+ *   • Warm ivory & aged paper (tablecloth / menu card)
+ *   • Antique brass (rail, sconce, gilded lettering)
+ *   • Oxblood (a restrained accent)
+ *   • Playfair Display — high-contrast Parisian signage serif (headings)
+ *   • EB Garamond — classic menu body serif (prose)
+ *   • Letter-spaced uppercase sans — menu section labels (UI / buttons)
+ * ------------------------------------------------------------------ */
+
+@theme {
+  --color-ink: #211d17;          /* warm near-black */
+  --color-cream: #f4efe3;        /* warm ivory ground */
+  --color-paper: #fbf8f1;        /* menu-card surface */
+  --color-forest: #1f3b2d;       /* bottle green */
+  --color-forest-deep: #15291f;  /* deeper green (footer / shadow) */
+  --color-brass: #8a6d34;        /* antique gold — accent on light */
+  --color-brass-bright: #c9aa6a; /* gilded gold — accent on dark green */
+  --color-brass-soft: #ece1c9;   /* parchment badge ground */
+  --color-oxblood: #7b2e2a;      /* restrained red accent */
+
+  /* Back-compat aliases: legacy `copper` accents now read as antique brass. */
+  --color-copper: var(--color-brass);
+  --color-copper-soft: var(--color-brass-soft);
+
+  --font-display: var(--font-playfair), Georgia, "Times New Roman", serif;
+  --font-serif: var(--font-eb-garamond), Georgia, serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --background: var(--color-cream);
+  --foreground: var(--color-ink);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Parisian signage serif for headings */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+}
+
+/* Controls & small UI stay in the clean sans for legibility */
+input, select, textarea {
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-brass-bright);
+  color: var(--color-forest-deep);
+}
+
+/* ---- Menu-style component classes ---- */
+
+.eyebrow {
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-brass);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.8rem 1.6rem;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  cursor: pointer;
+}
+.btn:disabled { opacity: 0.55; cursor: default; }
+
+.btn-primary { background: var(--color-forest); color: var(--color-cream); }
+.btn-primary:hover:not(:disabled) { background: var(--color-forest-deep); }
+
+.btn-accent { background: var(--color-brass-bright); color: var(--color-forest-deep); }
+.btn-accent:hover:not(:disabled) { background: #d8bd82; }
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-forest);
+  border-color: var(--color-forest);
+}
+.btn-outline:hover:not(:disabled) { background: var(--color-forest); color: var(--color-cream); }
+
+/* Gilded hairline divider */
+.rule-gold {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-brass-bright),
+    transparent
+  );
+}
+
+/* Deterministic, offline gallery tiles (no remote image deps) */
+.tile-grad {
+  background-image: linear-gradient(135deg, var(--tw-grad-a), var(--tw-grad-b));
+}
