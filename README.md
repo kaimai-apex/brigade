@@ -2,7 +2,18 @@
 
 > **Working name:** "Brigade" (after the kitchen brigade system — a team/network connotation that extends naturally to all hospitality roles). Placeholder only — validate trademark + `.com` availability before committing. Alternatives to test: *Mise, Toque, Covers, Pass, ChefStack*.
 
-> **What this is:** The full game plan for a pivot away from a private-chef *booking marketplace* toward a *professional platform for private chefs* — think **LinkedIn × Google Workspace, built for the private/independent hospitality world.**
+> **What this is:** The full game plan for a pivot away from a private-chef *booking marketplace* toward a *professional platform for private chefs* — think **LinkedIn × Google Workspace, built for the private/independent hospitality world.** This repo holds both the **written plan** (the numbered docs below) and a **working prototype** of the product.
+
+---
+
+## 👋 Start here (Jordan)
+
+1. **Read the pitch** — [`01-vision-positioning.md`](01-vision-positioning.md) (what we're building) and [`03-business-model.md`](03-business-model.md) (how it makes money).
+2. **See the build order** — [`06-roadmap-phases-0-20.md`](06-roadmap-phases-0-20.md), the core deliverable.
+3. **Click around the actual product** — there's a runnable prototype of the Phase-3 MVP in [`brigade-app/`](brigade-app/): the chef directory, public profiles, the inquiry inbox + tools, and the upscale-brasserie look & feel. See [`brigade-app/README.md`](brigade-app/README.md) to run it locally or deploy it.
+4. **Read the honest risks** — [`09-risks-open-questions.md`](09-risks-open-questions.md). The part most founders skip and shouldn't.
+
+> The prototype runs on built-in sample data — no setup or accounts needed. It exists to make the plan tangible, not to be the finished product.
 
 ---
 
@@ -35,6 +46,7 @@ Booking marketplaces for private chefs have a structural flaw: once a client and
 | 07 | `07-go-to-market-seo.md` | Supply-first GTM, SEO engine, chef acquisition, demand |
 | 08 | `08-team-equity.md` | Roles, equity frameworks, vesting (not legal advice) |
 | 09 | `09-risks-open-questions.md` | Honest risks of *this* model, kill-criteria, open questions |
+| 🖥️ | `brigade-app/` | **Runnable prototype** of the Phase-3 MVP (Next.js) — directory, profiles, inbox, tools |
 
 ## How to read this (for Jordan)
 
