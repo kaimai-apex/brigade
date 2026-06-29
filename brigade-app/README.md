@@ -18,6 +18,17 @@ npm run dev      # http://localhost:3009  (launch.json) or :3000 default
 npm run build    # production build (34 routes, type-checked)
 ```
 
+## Deploy (Vercel)
+
+Live: **https://brigade-nine-xi.vercel.app**
+
+The app lives in this `brigade-app/` subfolder while the plan docs sit at the repo
+root, so the Vercel project's **Root Directory must be set to `brigade-app`**
+(Project → Settings → Build & Deployment → Root Directory). This is already
+configured for the connected project; if you fork/re-import the repo, set it again
+or Vercel will build the repo root, find no app, and serve a 404. No environment
+variables are required — the prototype runs on built-in sample data.
+
 ## Design language — "upscale French-American brasserie"
 
 The look is modelled on a Parc-at-Rittenhouse / refined-steakhouse-omakase feel,
