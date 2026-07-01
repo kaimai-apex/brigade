@@ -1,57 +1,50 @@
-# Brigade — Project Master Plan
+# Brigade — Landing Page
 
-> **Working name:** "Brigade" (after the kitchen brigade system — a team/network connotation that extends naturally to all hospitality roles). Placeholder only — validate trademark + `.com` availability before committing. Alternatives to test: *Mise, Toque, Covers, Pass, ChefStack*.
+Static landing page for Brigade, a professional network for hospitality workers.
 
-> **What this is:** The full game plan for a pivot away from a private-chef *booking marketplace* toward a *professional platform for private chefs* — think **LinkedIn × Google Workspace, built for the private/independent hospitality world.** This repo holds both the **written plan** (the numbered docs below) and a **working prototype** of the product.
+## Structure
 
----
+- `index.html` — the entire site (single-file, self-contained; illustrations are embedded as base64 so there are no external image assets to manage)
+- `vercel.json` — minimal Vercel config (clean URLs, no trailing slash)
+- `package.json` — project metadata; there's no real build step since this is static HTML
 
-## 👋 Start here (Jordan)
+## Local preview
 
-1. **Read the pitch** — [`01-vision-positioning.md`](01-vision-positioning.md) (what we're building) and [`03-business-model.md`](03-business-model.md) (how it makes money).
-2. **See the build order** — [`06-roadmap-phases-0-20.md`](06-roadmap-phases-0-20.md), the core deliverable.
-3. **Click around the actual product** — there's a runnable prototype of the Phase-3 MVP in [`brigade-app/`](brigade-app/): the chef directory, public profiles, the inquiry inbox + tools, and the upscale-brasserie look & feel. See [`brigade-app/README.md`](brigade-app/README.md) to run it locally or deploy it.
-4. **Read the honest risks** — [`09-risks-open-questions.md`](09-risks-open-questions.md). The part most founders skip and shouldn't.
+```bash
+npm run dev
+```
+This just runs `npx serve .` and opens the site at a local port. You can also just double-click `index.html` to open it directly in a browser.
 
-> The prototype runs on built-in sample data — no setup or accounts needed. It exists to make the plan tangible, not to be the finished product.
+## Deploying to Vercel
 
----
+1. Install the Vercel CLI if you don't have it: `npm i -g vercel`
+2. From inside this folder, run:
+   ```bash
+   vercel
+   ```
+   Follow the prompts (link or create a project). Vercel will auto-detect this as a static site — no framework, no build command needed.
+3. For production: `vercel --prod`
 
-## The one-paragraph version
+Or skip the CLI entirely: push this folder to a GitHub repo and import it at vercel.com/new — Vercel will detect it as static automatically.
 
-Booking marketplaces for private chefs have a structural flaw: once a client and chef connect, they cut out the platform to avoid commission (disintermediation). Multiple well-funded companies died on exactly this (Kitchit, Kitchensurfing, Dinner Lab). Brigade sidesteps it entirely by **not taking commission on the meal.** Instead it sells chefs a professional home — a verified, SEO-discoverable profile (the *credibility* layer) plus the software to run their business (the *tools* layer) — and sells access to that vetted talent pool to the people who hire it (estates, agencies, family offices, high-net-worth households). Revenue comes from subscriptions and hiring access, neither of which the user has an incentive to route around. It starts as private chefs only (simpler legally, single-sided to bootstrap) and expands to the broader private-hospitality world (sommeliers, private servers, butlers, event staff).
+## Wiring up the waitlist forms (Supabase, later)
 
-## Why this model beats the marketplace
+There are two email capture forms on the page, both with class `.waitlist-form`:
+- Hero section: `#waitlistForm`
+- Bottom CTA section: `#waitlistFormBottom`
 
-| | Booking marketplace (old) | Brigade (new) |
-|---|---|---|
-| **Revenue** | 10% client + 10% chef per booking | Chef subscription + employer/hiring access + featured placement |
-| **Leakage risk** | Severe — both sides cut you out after first match | Low — you charge for presence + tools, not the transaction |
-| **Cold start** | Two-sided (need chefs *and* clients simultaneously) | Single-sided to start (win chefs first) |
-| **Legal exposure** | High — merchant of record, food liability, payment disputes | Lower — you're a directory + software vendor, not the caterer |
-| **Defensibility** | Weak — easy to replicate, nothing retains users | Profile history + reviews + tools + network = switching cost |
-| **Expandable** | Hard | Easy — same playbook for any hospitality role |
+Right now the shared submit handler (bottom of `index.html`, inside the `<script>` tag) just intercepts submission, shows a "you're on the list" message, and resets the field — no data is actually sent anywhere yet.
 
-## Document index
-
-| # | File | What it covers |
-|---|------|----------------|
-| — | `README.md` | This file — exec summary, pivot rationale, index |
-| 01 | `01-vision-positioning.md` | Mission, positioning, ICP, the wedge, naming |
-| 02 | `02-market-competition.md` | Market size, competitor teardown, the graveyard, white space |
-| 03 | `03-business-model.md` | Revenue streams, pricing, unit economics, why it doesn't leak |
-| 04 | `04-product-spec.md` | Feature breakdown by layer, MVP scope, data model |
-| 05 | `05-tech-architecture.md` | Stack, architecture, build-vs-buy, SEO-critical decisions |
-| 06 | `06-roadmap-phases-0-20.md` | **The core deliverable** — phases 0→20 with exit criteria |
-| 07 | `07-go-to-market-seo.md` | Supply-first GTM, SEO engine, chef acquisition, demand |
-| 08 | `08-team-equity.md` | Roles, equity frameworks, vesting (not legal advice) |
-| 09 | `09-risks-open-questions.md` | Honest risks of *this* model, kill-criteria, open questions |
-| 🖥️ | `brigade-app/` | **Runnable prototype** of the Phase-3 MVP (Next.js) — directory, profiles, inbox, tools |
-
-## How to read this (for Jordan)
-
-Kai is the technical cofounder; this plan is written so you can hand it back and forth. The fastest path: read **01** (what we're building), **03** (how it makes money), and **06** (the build order). **09** is the part most founders skip and shouldn't — it's the list of things that could still kill this. Everything in here is a v1 draft meant to be argued with, not a finished bible.
-
----
-
-*Last updated: initial draft. Owner: Kai (technical) + Jordan (vision/GTM).*
+When you're ready to wire in Supabase:
+1. Create a table (e.g. `waitlist`) with an `email` column.
+2. Add the Supabase JS client via CDN in `index.html`:
+   ```html
+   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+   ```
+3. In the submit handler, replace the `form.reset()` block with an insert call, e.g.:
+   ```js
+   const { error } = await supabaseClient
+     .from('waitlist')
+     .insert({ email: form.querySelector('.waitlist-input').value });
+   ```
+4. Use a public **anon** key with row-level security scoped to insert-only on that table — never expose a service role key in frontend code.

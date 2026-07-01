@@ -1,0 +1,11 @@
+{
+  "name": "brigade-landing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Brigade landing page — waitlist site for the hospitality professional network.",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site — nothing to build'",
+    "start": "npx serve ."
+  }
+}
