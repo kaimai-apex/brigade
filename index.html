@@ -93,10 +93,28 @@
 
   @media(max-width:980px){
     .hero-grid{ grid-template-columns:1fr; }
-    .hero-art{ height:400px; margin-top:20px; }
+    /* Below the 2-col breakpoint the absolute collage overlaps (fixed-height
+       container + width-percentage images). Switch to a clean 2x2 grid so the
+       pieces never collide, and pin each blob behind its quadrant. */
+    .hero-art{
+      height:auto; margin-top:24px;
+      display:grid; grid-template-columns:repeat(2,1fr);
+      gap:20px 28px; align-items:center; justify-items:center;
+    }
+    .art-piece{
+      position:relative; z-index:1;
+      top:auto; left:auto; right:auto; bottom:auto;
+      width:100%; max-width:260px; height:auto;
+    }
+    .art-blob{ z-index:0; }
+    .blob-cobalt{ width:120px; height:120px; top:2%;  left:4%;  }
+    .blob-forest{ width:130px; height:130px; top:2%;  right:4%; }
+    .blob-gold{   width:110px; height:110px; bottom:6%; left:6%;  }
+    .blob-rust{   width:80px;  height:80px;  bottom:8%; right:14%; }
   }
   @media(max-width:560px){
-    .hero-art{ height:320px; }
+    .hero-art{ gap:14px 16px; }
+    .art-piece{ max-width:190px; }
   }
   .hero-eyebrow{
     font-family:var(--marker); font-size:26px; color:var(--rust);
