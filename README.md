@@ -27,24 +27,49 @@ This just runs `npx serve .` and opens the site at a local port. You can also ju
 
 Or skip the CLI entirely: push this folder to a GitHub repo and import it at vercel.com/new — Vercel will detect it as static automatically.
 
-## Wiring up the waitlist forms (Supabase, later)
+## Collecting emails with Supabase
 
-There are two email capture forms on the page, both with class `.waitlist-form`:
-- Hero section: `#waitlistForm`
-- Bottom CTA section: `#waitlistFormBottom`
+The Supabase client is already wired into `index.html` (CDN script + submit
+handler at the bottom of the file). It's **inert until you add your keys** —
+until then the forms just show the confirmation note without sending anything,
+so the site is safe to ship as-is.
 
-Right now the shared submit handler (bottom of `index.html`, inside the `<script>` tag) just intercepts submission, shows a "you're on the list" message, and resets the field — no data is actually sent anywhere yet.
+Both email-capture forms share class `.waitlist-form` (`#waitlistForm` in the
+hero, `#waitlistFormBottom` in the closer) and write to a `waitlist` table.
 
-When you're ready to wire in Supabase:
-1. Create a table (e.g. `waitlist`) with an `email` column.
-2. Add the Supabase JS client via CDN in `index.html`:
-   ```html
-   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-   ```
-3. In the submit handler, replace the `form.reset()` block with an insert call, e.g.:
-   ```js
-   const { error } = await supabaseClient
-     .from('waitlist')
-     .insert({ email: form.querySelector('.waitlist-input').value });
-   ```
-4. Use a public **anon** key with row-level security scoped to insert-only on that table — never expose a service role key in frontend code.
+### 1. Create the table + security policy
+In the Supabase dashboard → **SQL Editor**, run:
+
+```sql
+create table if not exists public.waitlist (
+  id         uuid primary key default gen_random_uuid(),
+  email      text not null unique,
+  created_at timestamptz not null default now()
+);
+
+alter table public.waitlist enable row level security;
+
+-- Let the public (anon key) INSERT only. No one can read/update/delete
+-- the list with the frontend key.
+create policy "Public can join waitlist"
+  on public.waitlist for insert to anon
+  with check (true);
+```
+
+### 2. Add your project keys
+In the dashboard → **Project Settings → API**, copy the **Project URL** and the
+**anon / public** key. Paste them into the two constants near the bottom of
+`index.html`:
+
+```js
+const SUPABASE_URL = 'https://xxxxxxxx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGci...'; // the public anon key
+```
+
+The anon key is **safe** to expose in frontend code — that's its purpose. RLS
+(step 1) is what protects the data. **Never** put the `service_role` key here.
+
+### 3. Redeploy
+Commit + push (or `vercel --prod`). Submissions now insert into `waitlist`;
+duplicate emails are silently treated as success. Read the collected emails in
+the dashboard → **Table Editor → waitlist**, or export as CSV.
