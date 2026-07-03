@@ -335,8 +335,11 @@
 <body>
 
 <nav>
-  <div class="logo">brigade</div>
-  <a href="#" class="nav-cta">Join free</a>
+  <a href="/" class="logo" style="text-decoration:none;color:inherit">brigade</a>
+  <div class="nav-links">
+    <a href="/directory">Directory</a>
+    <a href="/signup" class="nav-cta">Join Brigade</a>
+  </div>
 </nav>
 
 <header class="hero">
@@ -346,11 +349,9 @@
       <h1>Find Your<br>Brigade<span class="accent">.</span></h1>
       <p class="hero-copy">The professional home for hospitality — where you find community, grow your career, and unlock new opportunities.</p>
       <div class="hero-sub">
-        <form class="hero-actions waitlist-form" id="waitlistForm">
-          <input type="email" class="waitlist-input" placeholder="you@hospitality.com" required aria-label="Email address">
-          <button type="submit" class="btn-primary">Become a founding member</button>
-        </form>
-        <p class="waitlist-note hidden" id="waitlistNote">You're in — welcome to Brigade.</p>
+        <div class="hero-actions">
+          <a href="/signup" class="btn-primary">Join Brigade</a>
+        </div>
       </div>
     </div>
     <div class="hero-art" aria-hidden="true">
@@ -435,11 +436,9 @@
 
 <section class="closer">
   <h2>Let's<br><span class="script">work.</span></h2>
-  <form class="waitlist-form closer-form" id="waitlistFormBottom">
-    <input type="email" class="waitlist-input" placeholder="you@hospitality.com" required aria-label="Email address">
-    <button type="submit" class="btn-primary">Become a founding member</button>
-  </form>
-  <p class="waitlist-note hidden" id="waitlistNoteBottom">You're in — welcome to Brigade.</p>
+  <div class="hero-actions closer-form">
+    <a href="/signup" class="btn-primary">Join Brigade</a>
+  </div>
 </section>
 
 <footer>
@@ -448,8 +447,8 @@
     <div class="foot-cols">
       <div class="foot-col">
         <h4>Product</h4>
-        <a href="#">For chefs</a>
-        <a href="#">For operators</a>
+        <a href="/directory">Directory</a>
+        <a href="/signup">Join Brigade</a>
         <a href="#">Jobs board</a>
       </div>
       <div class="foot-col">
@@ -471,68 +470,5 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  /* -----------------------------------------------------------------
-     Waitlist -> Supabase (founding-member email capture)
-
-     TO ACTIVATE: paste your Supabase project URL + anon (public) key
-     below, then redeploy. Find both in Supabase:
-        Project Settings -> API  (or "API Keys" / "Data API").
-     The anon key is SAFE to expose in frontend code — it's public.
-     Row Level Security on the `waitlist` table limits it to inserts
-     only, so nobody can read the list with this key. Table + policy
-     SQL is in the README.
-
-     Until these are filled in, the form just shows the confirmation
-     note (no data is sent) — so it's safe to ship as-is.
-  ------------------------------------------------------------------ */
-  const SUPABASE_URL = 'https://tldovunmovsbxqcpxwvs.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_oImfKdkwrt2AHa22VqgtaQ_4r0Mfoxi'; // publishable (public) key
-
-  const supabaseReady =
-    SUPABASE_URL.indexOf('http') === 0 &&
-    SUPABASE_ANON_KEY.indexOf('YOUR_') !== 0 &&
-    typeof window.supabase !== 'undefined';
-  const db = supabaseReady
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
-
-  document.querySelectorAll('.waitlist-form').forEach(function(form){
-    const note = form.nextElementSibling;
-    const defaultNote = note ? note.textContent : '';
-    const btn = form.querySelector('button[type="submit"]');
-    const btnLabel = btn ? btn.textContent : '';
-
-    function showNote(msg){
-      if(note && note.classList.contains('waitlist-note')){
-        note.textContent = msg;
-        note.classList.remove('hidden');
-      }
-    }
-
-    form.addEventListener('submit', async function(e){
-      e.preventDefault();
-      const input = form.querySelector('.waitlist-input');
-      const email = (input ? input.value : '').trim();
-      if(!email) return;
-
-      if(db){
-        if(btn){ btn.disabled = true; btn.textContent = 'Joining…'; }
-        const { error } = await db.from('waitlist').insert({ email: email });
-        if(btn){ btn.disabled = false; btn.textContent = btnLabel; }
-        // 23505 = duplicate email; already a member, so treat as success
-        if(error && error.code !== '23505'){
-          console.error('Waitlist insert failed:', error);
-          showNote('Hmm — that didn’t go through. Please try again.');
-          return;
-        }
-      }
-
-      showNote(defaultNote);
-      form.reset();
-    });
-  });
-</script>
 </body>
 </html>

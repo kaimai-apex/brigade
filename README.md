@@ -1,75 +1,102 @@
-# Brigade — Landing Page
+# Brigade — Hospitality Talent Network
 
-Static landing page for Brigade, a professional network for hospitality workers.
+Professional networking platform for chefs, private chefs, and hospitality operators.
 
-## Structure
+## Stack
 
-- `index.html` — the entire site (single-file, self-contained; illustrations are embedded as base64 so there are no external image assets to manage)
-- `vercel.json` — minimal Vercel config (clean URLs, no trailing slash)
-- `package.json` — project metadata; there's no real build step since this is static HTML
+- **Frontend:** Next.js 15, TypeScript, Tailwind CSS
+- **Backend:** Supabase (Auth, Postgres, Storage, RLS)
 
-## Local preview
+## Local development
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment
+
+Copy `.env.local.example` to `.env.local` and add your Supabase credentials:
+
+```bash
+cp .env.local.example .env.local
+```
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+Find both in Supabase → **Project Settings → API**.
+
+### 3. Run database migration
+
+In Supabase → **SQL Editor**, run the migration:
+
+```
+supabase/migrations/001_initial_schema.sql
+```
+
+This creates `profiles`, `education`, `experiences`, `accolades`, `portfolio_links`, RLS policies, storage buckets (`avatars`, `resumes`), and an auto-profile trigger on signup.
+
+If you already have the waitlist table from the legacy landing page, keep it — the migration does not conflict.
+
+### 4. Configure Supabase Auth
+
+In Supabase → **Authentication → Providers**, enable:
+
+- Email + Password
+- Google OAuth
+
+Set redirect URLs:
+
+```
+http://localhost:3000/auth/callback
+https://yourdomain.com/auth/callback
+```
+
+### 5. Start the dev server
 
 ```bash
 npm run dev
 ```
-This just runs `npx serve .` and opens the site at a local port. You can also just double-click `index.html` to open it directly in a browser.
 
-## Deploying to Vercel
+Open [http://localhost:3000](http://localhost:3000).
 
-1. Install the Vercel CLI if you don't have it: `npm i -g vercel`
-2. From inside this folder, run:
-   ```bash
-   vercel
-   ```
-   Follow the prompts (link or create a project). Vercel will auto-detect this as a static site — no framework, no build command needed.
-3. For production: `vercel --prod`
+## Routes
 
-Or skip the CLI entirely: push this folder to a GitHub repo and import it at vercel.com/new — Vercel will detect it as static automatically.
+| Route | Description |
+|---|---|
+| `/` | Landing page |
+| `/signup` | Account creation (email + Google) |
+| `/login` | Sign in |
+| `/onboarding/*` | 6-step profile setup wizard |
+| `/profile/[id]` | Public professional profile |
+| `/dashboard` | Redirects to onboarding or profile |
 
-## Collecting emails with Supabase
+## Onboarding flow
 
-The Supabase client is already wired into `index.html` (CDN script + submit
-handler at the bottom of the file). It's **inert until you add your keys** —
-until then the forms just show the confirmation note without sending anything,
-so the site is safe to ship as-is.
+1. **Basic info** — photo, headline, location
+2. **Experience** — years, employers, expertise
+3. **Education** — schools and certifications
+4. **Portfolio** — links and resume upload
+5. **Accolades** — awards and recognition
+6. **Availability** — opportunity preferences
+7. **Review** — publish profile
 
-Both email-capture forms share class `.waitlist-form` (`#waitlistForm` in the
-hero, `#waitlistFormBottom` in the closer) and write to a `waitlist` table.
+## Deploy to Vercel
 
-### 1. Create the table + security policy
-In the Supabase dashboard → **SQL Editor**, run:
-
-```sql
-create table if not exists public.waitlist (
-  id         uuid primary key default gen_random_uuid(),
-  email      text not null unique,
-  created_at timestamptz not null default now()
-);
-
-alter table public.waitlist enable row level security;
-
--- Let the public (anon key) INSERT only. No one can read/update/delete
--- the list with the frontend key.
-create policy "Public can join waitlist"
-  on public.waitlist for insert to anon
-  with check (true);
+```bash
+vercel
 ```
 
-### 2. Add your project keys
-In the dashboard → **Project Settings → API**, copy the **Project URL** and the
-**anon / public** key. Paste them into the two constants near the bottom of
-`index.html`:
+Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as environment variables in the Vercel project settings.
 
-```js
-const SUPABASE_URL = 'https://xxxxxxxx.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGci...'; // the public anon key
-```
+## Legacy static landing
 
-The anon key is **safe** to expose in frontend code — that's its purpose. RLS
-(step 1) is what protects the data. **Never** put the `service_role` key here.
+The original single-file waitlist landing page is preserved at `/legacy-landing.html`.
 
-### 3. Redeploy
-Commit + push (or `vercel --prod`). Submissions now insert into `waitlist`;
-duplicate emails are silently treated as success. Read the collected emails in
-the dashboard → **Table Editor → waitlist**, or export as CSV.
+## Project docs
+
+See the full product spec in the project description (MVP scope, user types, roadmap, success metrics).
