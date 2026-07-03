@@ -11,7 +11,7 @@ export default function SignupPage() {
           <CardHeader>
             <CardTitle>Join Brigade</CardTitle>
             <CardDescription>
-              Create your professional hospitality profile in minutes.
+              Sign in with Google to create your professional hospitality profile.
             </CardDescription>
           </CardHeader>
           <SignupForm />
