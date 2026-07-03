@@ -105,15 +105,18 @@ In **Supabase → Authentication → URL Configuration**:
 
 | Field | Value |
 |---|---|
-| **Site URL** | `https://yourdomain.com` (your live site — **not** localhost) |
-| **Redirect URLs** | Add both: |
+| **Site URL** | `https://www.joinbrigade.co` |
+| **Redirect URLs** | Add each of these (include `https://`) |
 
 ```
-https://yourdomain.com/auth/callback
+https://www.joinbrigade.co/auth/callback
+https://joinbrigade.co/auth/callback
 http://localhost:3000/auth/callback
 ```
 
-If Site URL is still `http://localhost:3000`, Google sign-in will redirect users to localhost and fail on other devices.
+**Common mistake:** entering `www.joinbrigade.co` without `https://` causes Supabase to redirect to an invalid URL like `supabase.co/www.joinbrigade.co` and show `{"error":"requested path is invalid"}`.
+
+Set **Vercel → Environment Variables → `NEXT_PUBLIC_SITE_URL`** to `https://www.joinbrigade.co` (with `https://`).
 
 Redeploy Vercel after changing env vars.
 

@@ -1,11 +1,19 @@
 /**
  * Canonical site URL for OAuth redirects.
- * Set NEXT_PUBLIC_SITE_URL in Vercel to your production domain (e.g. https://brigade.vercel.app).
- * Falls back to the current browser origin in client code.
+ * Must include https:// — e.g. https://www.joinbrigade.co
  */
+export function normalizeSiteUrl(url: string) {
+  const trimmed = url.trim().replace(/\/$/, "");
+  if (!trimmed) return trimmed;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
 export function getSiteUrl() {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  if (configured) return configured;
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configured) return normalizeSiteUrl(configured);
 
   if (typeof window !== "undefined") {
     return window.location.origin;
