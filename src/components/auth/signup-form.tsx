@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { authCallbackUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useState } from "react";
@@ -39,7 +40,7 @@ export function SignupForm() {
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/onboarding/basic-info`,
+        redirectTo: authCallbackUrl("/onboarding/basic-info"),
       },
     });
     if (oauthError) {

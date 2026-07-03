@@ -91,7 +91,31 @@ Open [http://localhost:3000](http://localhost:3000).
 vercel
 ```
 
-Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as environment variables in the Vercel project settings.
+Add these environment variables in **Vercel → Project Settings → Environment Variables**:
+
+| Variable | Example |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your anon/publishable key |
+| `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` or `https://brigade.vercel.app` |
+
+### Production auth (required for Google login to work for everyone)
+
+In **Supabase → Authentication → URL Configuration**:
+
+| Field | Value |
+|---|---|
+| **Site URL** | `https://yourdomain.com` (your live site — **not** localhost) |
+| **Redirect URLs** | Add both: |
+
+```
+https://yourdomain.com/auth/callback
+http://localhost:3000/auth/callback
+```
+
+If Site URL is still `http://localhost:3000`, Google sign-in will redirect users to localhost and fail on other devices.
+
+Redeploy Vercel after changing env vars.
 
 ## Legacy static landing
 
