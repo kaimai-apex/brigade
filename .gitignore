@@ -36,3 +36,4 @@ apps/web/public/uploads/
 .cursor/
 claude-skills-main/
 env.local
+.vercel
