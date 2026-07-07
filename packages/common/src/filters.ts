@@ -8,6 +8,9 @@ import {
 import { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { AppError, toErrorEnvelope } from './errors';
+import { createLogger } from './logger';
+
+const log = createLogger('exception-filter');
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -35,6 +38,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       });
     }
 
+    // Unexpected (non-AppError/non-HttpException) errors are real 500s — log
+    // them with the traceId so they aren't silently swallowed.
+    log.error({ traceId, err: exception }, 'Unhandled exception');
     const { status, body } = toErrorEnvelope(exception, traceId);
     response.status(status).json(body);
   }

@@ -59,7 +59,9 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.all('/api/v1/*', (req: Request, res: Response, next: NextFunction) => {
+  // Express 5 / path-to-regexp v8 require a *named* wildcard — bare '*' throws
+  // "Missing parameter name". The splat param is unused; we route off req.path.
+  expressApp.all('/api/v1/*splat', (req: Request, res: Response, next: NextFunction) => {
     proxyRequest(req, res).catch(next);
   });
 

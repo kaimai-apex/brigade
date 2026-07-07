@@ -83,7 +83,12 @@ services:
     image: opensearchproject/opensearch:2.14.0
     environment:
       discovery.type: single-node
-      plugins.security.disabled: "true"
+      # OpenSearch 2.12+ runs a security demo installer that hard-quits demanding
+      # OPENSEARCH_INITIAL_ADMIN_PASSWORD before `plugins.security.disabled` is
+      # read. Skip the installer and disable the plugin so 9200 serves plain HTTP
+      # (matching OPENSEARCH_URL=http://localhost:9200 with no auth).
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
