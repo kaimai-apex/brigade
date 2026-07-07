@@ -1,129 +1,90 @@
-# Brigade — Hospitality Talent Network
+# Brigade (ConnectPro)
 
-Professional networking platform for chefs, private chefs, and hospitality operators.
+Hospitality talent network — LinkedIn-style profiles, feed, connections, jobs, and messaging.
 
-## Stack
+## Quick start (local)
 
-- **Frontend:** Next.js 15, TypeScript, Tailwind CSS
-- **Backend:** Supabase (Auth, Postgres, Storage, RLS)
+### Prerequisites
 
-## Local development
+- Node 20+, pnpm 9+
+- Docker (Postgres, Redis, Kafka)
 
-### 1. Install dependencies
+### 1. Environment
 
-```bash
-npm install
-```
+Copy `.env.example` to `.env` and adjust if needed. Defaults target local Docker infra.
 
-### 2. Configure environment
-
-Copy `.env.local.example` to `.env.local` and add your Supabase credentials:
+### 2. Start infrastructure
 
 ```bash
-cp .env.local.example .env.local
+pnpm infra:up
 ```
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
+### 3. Run migrations
 
-Find both in Supabase → **Project Settings → API**.
+Apply SQL in order (Postgres init runs on first Docker start; for Supabase or existing DB):
 
-### 3. Run database migration
+**Supabase:** use `003_connectpro_schemas_supabase.sql` (not `003_connectpro_schemas.sql` — Supabase owns the `auth` schema). Set `AUTH_SCHEMA=connectpro_auth` in `.env`.
 
-In Supabase → **SQL Editor**, run the migration:
+**Local Docker Postgres:** use `infra/postgres/init.sql` or `003_connectpro_schemas.sql`. Leave `AUTH_SCHEMA` unset (defaults to `auth`).
 
-```
-supabase/migrations/001_initial_schema.sql
-```
+- `supabase/migrations/003_connectpro_schemas_supabase.sql` (Supabase) **or** `003_connectpro_schemas.sql` (local)
+- `supabase/migrations/004_onboarding_updates.sql` (optional — legacy Supabase public schema only)
+- `supabase/migrations/005_brigade_user_fields.sql`
+- `supabase/migrations/006_saved_jobs.sql`
 
-This creates `profiles`, `education`, `experiences`, `accolades`, `portfolio_links`, RLS policies, storage buckets (`avatars`, `resumes`), and an auto-profile trigger on signup.
-
-If you already have the waitlist table from the legacy landing page, keep it — the migration does not conflict.
-
-### 4. Configure Supabase Auth
-
-In Supabase → **Authentication → Providers**, enable:
-
-- Email + Password
-- Google OAuth
-
-Set redirect URLs:
-
-```
-http://localhost:3000/auth/callback
-https://yourdomain.com/auth/callback
-```
-
-### 5. Start the dev server
+Optional seed:
 
 ```bash
-npm run dev
+psql "$DATABASE_URL" -f scripts/seed-local.sql
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
-## Routes
-
-| Route | Description |
-|---|---|
-| `/` | Landing page |
-| `/signup` | Account creation (email + Google) |
-| `/login` | Sign in |
-| `/onboarding/*` | 6-step profile setup wizard |
-| `/profile/[id]` | Public professional profile |
-| `/dashboard` | Redirects to onboarding or profile |
-
-## Onboarding flow
-
-1. **Basic info** — photo, headline, location
-2. **Experience** — years, employers, expertise
-3. **Education** — schools and certifications
-4. **Portfolio** — links and resume upload
-5. **Accolades** — awards and recognition
-6. **Availability** — opportunity preferences
-7. **Review** — publish profile
-
-## Deploy to Vercel
+### 4. Start the stack
 
 ```bash
-vercel
+pnpm dev:stack
 ```
 
-Add these environment variables in **Vercel → Project Settings → Environment Variables**:
+| Service | URL |
+|---------|-----|
+| Web app | http://localhost:3100 |
+| API gateway | http://localhost:3000 |
 
-| Variable | Example |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your anon/publishable key |
-| `NEXT_PUBLIC_SITE_URL` | `https://yourdomain.com` or `https://brigade.vercel.app` |
+### 5. Sign up
 
-### Production auth (required for Google login to work for everyone)
+1. Go to http://localhost:3100/signup
+2. Complete onboarding (basic info → experience → education → portfolio → availability → review)
+3. Use feed, connections, jobs, messages from the nav
 
-In **Supabase → Authentication → URL Configuration**:
+## Architecture
 
-| Field | Value |
-|---|---|
-| **Site URL** | `https://www.joinbrigade.co` |
-| **Redirect URLs** | Add each of these (include `https://`) |
+- **Web:** Next.js 15 (`apps/web`) — BFF routes proxy to ConnectPro via `/api/connectpro/*`
+- **Auth:** ConnectPro JWT in httpOnly cookies + localStorage for client API
+- **Uploads:** Local files in `public/uploads/` via `/api/media/upload` (no S3 required for dev)
+- **Backend:** 14 NestJS microservices behind API gateway on port 3000
 
+## What you still wire up
+
+These are stubbed or need your credentials:
+
+- Supabase (optional — web uses ConnectPro auth by default)
+- Supabase + Google OAuth (Supabase provider → ConnectPro session bridge)
+- SendGrid / Twilio / Firebase push
+- S3 media (media-service returns presigned URLs; dev uses local upload BFF)
+- Real MFA email/SMS (dev accepts `000000`)
+- Password reset email flow
+- OpenSearch (search-service uses in-memory index)
+- WebSocket messaging (REST polling only in UI)
+- Production deploy (Vercel + managed Postgres/Kafka)
+
+## Useful commands
+
+```bash
+pnpm dev:stop          # kill local processes
+pnpm dev:web           # web only
+pnpm build             # production build all packages
+pnpm --filter @connectpro/web build
 ```
-https://www.joinbrigade.co/auth/callback
-https://joinbrigade.co/auth/callback
-http://localhost:3000/auth/callback
-```
-
-**Common mistake:** entering `www.joinbrigade.co` without `https://` causes Supabase to redirect to an invalid URL like `supabase.co/www.joinbrigade.co` and show `{"error":"requested path is invalid"}`.
-
-Set **Vercel → Environment Variables → `NEXT_PUBLIC_SITE_URL`** to `https://www.joinbrigade.co` (with `https://`).
-
-Redeploy Vercel after changing env vars.
-
-## Legacy static landing
-
-The original single-file waitlist landing page is preserved at `/legacy-landing.html`.
 
 ## Project docs
 
-See the full product spec in the project description (MVP scope, user types, roadmap, success metrics).
+See `brigade-build-files/` for full specs: `BUILD_PHASES.md`, `API_SPEC.md`, `MICROSERVICES_SPEC.md`.

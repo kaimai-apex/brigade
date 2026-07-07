@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-cream: #f4efe2;
+  --color-forest: #1c4b3d;
+  --color-cobalt: #2d4a9e;
+  --color-rust: #c8471f;
+  --color-sage: #c7d2b4;
+  --color-ink: #1a1a17;
+  --color-gold: #e8b84b;
+  --color-paper: #fbf8f1;
+
+  --font-display: var(--font-fraunces);
+  --font-body: var(--font-archivo);
+}
+
+@layer base {
+  * {
+    @apply border-ink/10;
+  }
+
+  body {
+    @apply bg-cream text-ink font-body antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+}

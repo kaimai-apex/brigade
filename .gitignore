@@ -1,6 +1,38 @@
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
 .next/
-.vercel/
+out/
+.turbo/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
 .DS_Store
-.env*.local
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Legacy root app (migrated to apps/web)
+/src/
+
+# Misc
+public/-.textClipping
+apps/web/public/uploads/
+.vercel/
+.cursor/
+claude-skills-main/
 env.local
