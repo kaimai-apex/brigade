@@ -26,6 +26,7 @@ export async function GET() {
       const raw = process.env.DATABASE_URL ?? process.env.DATABASE_POOLER_URL ?? "";
       const parsed = parsePostgresUrl(raw);
       host = parsed?.host ?? resolveDatabaseUrl(raw).split("@")[1]?.split(":")[0] ?? "unknown";
+      host = host.replace(/^aws-0-([a-z0-9-]+)\.pooler\.supabase\.com$/i, "aws-1-$1.pooler.supabase.com");
     }
   } catch {
     host = "parse_failed";

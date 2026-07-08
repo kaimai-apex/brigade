@@ -79,6 +79,17 @@ function validateHost(host: string) {
   }
 }
 
+function inferSupabaseProjectRef(): string | null {
+  const envRef = process.env.SUPABASE_PROJECT_REF;
+  if (envRef) return envRef;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '';
+  const urlMatch = supabaseUrl.match(/https?:\/\/([a-z0-9]+)\.supabase\.co/i);
+  if (urlMatch?.[1]) return urlMatch[1];
+
+  return 'tldovunmovsbxqcpxwvs';
+}
+
 /**
  * Supabase direct hosts (db.{ref}.supabase.co) are IPv6-only — Vercel can't resolve them.
  * Rewrite to the Supavisor transaction pooler (IPv4, port 6543) for serverless.
@@ -120,6 +131,11 @@ export function resolveDatabaseUrl(connectionString: string): string {
     /^aws-0-([a-z0-9-]+)\.pooler\.supabase\.com$/i,
     'aws-1-$1.pooler.supabase.com',
   );
+
+  if (parsed.host.includes('pooler.supabase.com') && parsed.user === 'postgres') {
+    const ref = inferSupabaseProjectRef();
+    if (ref) parsed.user = `postgres.${ref}`;
+  }
 
   validateHost(parsed.host);
   return buildPostgresUrl(parsed);
