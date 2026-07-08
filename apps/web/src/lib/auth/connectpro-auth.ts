@@ -8,6 +8,7 @@ import {
   UnauthorizedError,
   NotFoundError,
 } from "@connectpro/common";
+import { ensureAuthSchema } from "@/lib/auth/ensure-auth-schema";
 
 const auth = getAuthSchema();
 
@@ -32,7 +33,7 @@ function hashToken(token: string) {
 }
 
 async function issueTokens(userId: string, email: string, roles: string[]) {
-  const pool = getPool(process.env.DATABASE_URL);
+  const pool = getPool();
   const { secret, expiresIn } = jwtConfig();
   const accessToken = signAccessToken({ sub: userId, email, roles }, secret, expiresIn);
   const refreshToken = randomBytes(48).toString("hex");
@@ -49,7 +50,7 @@ async function issueTokens(userId: string, email: string, roles: string[]) {
 }
 
 async function issueTokensForUserId(userId: string) {
-  const pool = getPool(process.env.DATABASE_URL);
+  const pool = getPool();
   const result = await pool.query(
     `SELECT u.id, u.email, array_agg(r.role) as roles
      FROM ${auth}.users u
@@ -83,7 +84,9 @@ export async function connectProSignup(dto: {
     throw new Error("DATABASE_URL is not configured");
   }
 
-  const pool = getPool(process.env.DATABASE_URL);
+  await ensureAuthSchema();
+
+  const pool = getPool();
   const existing = await pool.query(
     `SELECT id FROM ${auth}.users WHERE email = $1 AND deleted_at IS NULL`,
     [dto.email.toLowerCase()],
@@ -120,7 +123,7 @@ export async function connectProLogin(dto: { email: string; password: string }) 
     throw new Error("DATABASE_URL is not configured");
   }
 
-  const pool = getPool(process.env.DATABASE_URL);
+  const pool = getPool();
   const result = await pool.query(
     `SELECT u.id, u.email, u.password_hash, u.status, u.mfa_enabled,
             array_agg(r.role) as roles
@@ -166,7 +169,9 @@ export async function connectProOAuthSignIn(dto: {
     throw new Error("DATABASE_URL is not configured");
   }
 
-  const pool = getPool(process.env.DATABASE_URL);
+  await ensureAuthSchema();
+
+  const pool = getPool();
   const provider = dto.provider.toLowerCase();
   const email = dto.email.toLowerCase();
 
@@ -233,7 +238,7 @@ export async function connectProRefresh(refreshToken: string) {
     throw new Error("DATABASE_URL is not configured");
   }
 
-  const pool = getPool(process.env.DATABASE_URL);
+  const pool = getPool();
   const tokenHash = hashToken(refreshToken);
   const result = await pool.query(
     `SELECT rt.id, rt.user_id, u.email, array_agg(r.role) as roles
@@ -264,7 +269,7 @@ export async function connectProLogout(refreshToken: string) {
     return { success: true };
   }
 
-  const pool = getPool(process.env.DATABASE_URL);
+  const pool = getPool();
   const tokenHash = hashToken(refreshToken);
   await pool.query(`UPDATE ${auth}.refresh_tokens SET revoked_at = now() WHERE token_hash = $1`, [
     tokenHash,

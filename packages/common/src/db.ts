@@ -158,12 +158,21 @@ function poolOptionsFromEnv(): PoolConfig {
 
 export function getPool(databaseUrl?: string): Pool {
   if (!pool) {
-    if (databaseUrl) {
-      const resolved = resolveDatabaseUrl(databaseUrl);
+    const discreteHost = process.env.POSTGRES_HOST ?? process.env.SUPABASE_DB_HOST;
+    const discretePassword =
+      process.env.POSTGRES_PASSWORD ?? process.env.SUPABASE_DB_PASSWORD;
+
+    if (discreteHost && discretePassword) {
+      pool = new Pool(poolOptionsFromEnv());
+    } else if (databaseUrl || process.env.DATABASE_URL || process.env.DATABASE_POOLER_URL) {
+      const connectionString =
+        databaseUrl ?? process.env.DATABASE_URL ?? process.env.DATABASE_POOLER_URL ?? "";
+      const resolved = resolveDatabaseUrl(connectionString);
       pool = new Pool({
         connectionString: resolved,
         max: process.env.VERCEL ? 1 : 10,
-        ssl: resolved.includes('supabase.co') ? { rejectUnauthorized: false } : undefined,
+        idleTimeoutMillis: process.env.VERCEL ? 5000 : 30000,
+        ssl: resolved.includes("supabase.co") ? { rejectUnauthorized: false } : undefined,
       });
     } else {
       pool = new Pool(poolOptionsFromEnv());
