@@ -19,7 +19,12 @@ function jwtConfig() {
 }
 
 function databaseConfigured() {
-  return Boolean(process.env.DATABASE_URL);
+  return Boolean(
+    process.env.DATABASE_URL ||
+      process.env.DATABASE_POOLER_URL ||
+      ((process.env.POSTGRES_HOST || process.env.SUPABASE_DB_HOST) &&
+        (process.env.POSTGRES_PASSWORD || process.env.SUPABASE_DB_PASSWORD)),
+  );
 }
 
 function hashToken(token: string) {

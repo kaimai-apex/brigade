@@ -2,46 +2,146 @@ import { Pool, PoolClient, PoolConfig } from 'pg';
 
 let pool: Pool | null = null;
 
+function stripQuotes(value: string) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+type ParsedPostgresUrl = {
+  user: string;
+  password: string;
+  host: string;
+  port: number;
+  database: string;
+  search: string;
+};
+
+/** Parse postgres:// URIs without URL(), which breaks on @ in passwords. */
+export function parsePostgresUrl(connectionString: string): ParsedPostgresUrl | null {
+  const trimmed = stripQuotes(connectionString.trim());
+  const match = trimmed.match(/^postgres(?:ql)?:\/\//i);
+  if (!match) return null;
+
+  const withoutProto = trimmed.slice(match[0].length);
+  const atIdx = withoutProto.lastIndexOf('@');
+  if (atIdx <= 0) return null;
+
+  const userInfo = withoutProto.slice(0, atIdx);
+  const colonIdx = userInfo.indexOf(':');
+  if (colonIdx <= 0) return null;
+
+  const user = decodeURIComponent(userInfo.slice(0, colonIdx));
+  const password = decodeURIComponent(userInfo.slice(colonIdx + 1));
+
+  const hostPart = withoutProto.slice(atIdx + 1);
+  const slashIdx = hostPart.indexOf('/');
+  const authority = slashIdx >= 0 ? hostPart.slice(0, slashIdx) : hostPart;
+  const pathAndQuery = slashIdx >= 0 ? hostPart.slice(slashIdx + 1) : 'postgres';
+
+  const queryIdx = pathAndQuery.indexOf('?');
+  const database = decodeURIComponent(
+    queryIdx >= 0 ? pathAndQuery.slice(0, queryIdx) : pathAndQuery || 'postgres',
+  );
+  const search = queryIdx >= 0 ? pathAndQuery.slice(queryIdx) : '';
+
+  const portColonIdx = authority.lastIndexOf(':');
+  const host =
+    portColonIdx >= 0 ? authority.slice(0, portColonIdx) : authority;
+  const port =
+    portColonIdx >= 0 ? parseInt(authority.slice(portColonIdx + 1), 10) : 5432;
+
+  if (!host || Number.isNaN(port)) return null;
+
+  return { user, password, host, port, database, search };
+}
+
+function buildPostgresUrl(parts: ParsedPostgresUrl) {
+  const user = encodeURIComponent(parts.user);
+  const password = encodeURIComponent(parts.password);
+  const database = encodeURIComponent(parts.database);
+  const search = parts.search.startsWith('?') ? parts.search : parts.search ? `?${parts.search}` : '';
+  return `postgresql://${user}:${password}@${parts.host}:${parts.port}/${database}${search}`;
+}
+
+function validateHost(host: string) {
+  if (!host || host === 'base' || !host.includes('.')) {
+    throw new Error(
+      'DATABASE_URL looks malformed (host parsed as "' +
+        host +
+        '"). In Vercel, paste the Supabase Transaction pooler URI only — no quotes, no extra lines. If your DB password contains @ or #, reset it in Supabase or use POSTGRES_PASSWORD instead.',
+    );
+  }
+}
+
 /**
  * Supabase direct hosts (db.{ref}.supabase.co) are IPv6-only — Vercel can't resolve them.
  * Rewrite to the Supavisor transaction pooler (IPv4, port 6543) for serverless.
  */
 export function resolveDatabaseUrl(connectionString: string): string {
   if (process.env.DATABASE_POOLER_URL) {
-    return process.env.DATABASE_POOLER_URL;
+    return stripQuotes(process.env.DATABASE_POOLER_URL);
   }
 
-  try {
-    const url = new URL(connectionString);
-    const directHostMatch = url.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
-    if (!directHostMatch) {
-      return connectionString;
-    }
+  const parsed = parsePostgresUrl(connectionString);
+  if (!parsed) {
+    return stripQuotes(connectionString);
+  }
 
+  validateHost(parsed.host);
+
+  const directHostMatch = parsed.host.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
+  if (directHostMatch) {
     const projectRef = directHostMatch[1];
-    const region = process.env.SUPABASE_REGION ?? 'us-east-1';
+    const region = process.env.SUPABASE_REGION ?? 'us-west-2';
     const poolerPrefix = process.env.SUPABASE_POOLER_PREFIX ?? 'aws-0';
-    const poolerHost =
+    parsed.host =
       process.env.SUPABASE_POOLER_HOST ?? `${poolerPrefix}-${region}.pooler.supabase.com`;
-
-    url.hostname = poolerHost;
-    url.port = process.env.SUPABASE_POOLER_PORT ?? '6543';
-
-    if (url.username === 'postgres' && !url.username.includes('.')) {
-      url.username = `postgres.${projectRef}`;
+    parsed.port = parseInt(process.env.SUPABASE_POOLER_PORT ?? '6543', 10);
+    if (parsed.user === 'postgres' && !parsed.user.includes('.')) {
+      parsed.user = `postgres.${projectRef}`;
     }
-
-    if (!url.searchParams.has('options')) {
-      url.searchParams.set('options', `reference=${projectRef}`);
+    if (!parsed.search.includes('reference=')) {
+      parsed.search = parsed.search
+        ? `${parsed.search}&options=reference%3D${projectRef}`
+        : `?options=reference%3D${projectRef}`;
     }
-
-    return url.toString();
-  } catch {
-    return connectionString;
   }
+
+  validateHost(parsed.host);
+  return buildPostgresUrl(parsed);
 }
 
-function poolOptions(connectionString: string): PoolConfig {
+function poolOptionsFromEnv(): PoolConfig {
+  const host = process.env.POSTGRES_HOST ?? process.env.SUPABASE_DB_HOST;
+  const password = process.env.POSTGRES_PASSWORD ?? process.env.SUPABASE_DB_PASSWORD;
+  const user =
+    process.env.POSTGRES_USER ??
+    process.env.SUPABASE_DB_USER ??
+    `postgres.${process.env.SUPABASE_PROJECT_REF ?? 'tldovunmovsbxqcpxwvs'}`;
+
+  if (host && password) {
+    validateHost(host);
+    return {
+      host,
+      port: parseInt(process.env.POSTGRES_PORT ?? process.env.SUPABASE_DB_PORT ?? '6543', 10),
+      user,
+      password,
+      database: process.env.POSTGRES_DATABASE ?? 'postgres',
+      ssl: { rejectUnauthorized: false },
+      max: process.env.VERCEL ? 1 : 10,
+      idleTimeoutMillis: process.env.VERCEL ? 5000 : 30000,
+    };
+  }
+
+  const connectionString =
+    process.env.DATABASE_URL ??
+    'postgresql://connectpro:connectpro@localhost:5432/connectpro';
   const resolved = resolveDatabaseUrl(connectionString);
   const config: PoolConfig = {
     connectionString: resolved,
@@ -58,11 +158,16 @@ function poolOptions(connectionString: string): PoolConfig {
 
 export function getPool(databaseUrl?: string): Pool {
   if (!pool) {
-    const connectionString =
-      databaseUrl ??
-      process.env.DATABASE_URL ??
-      'postgresql://connectpro:connectpro@localhost:5432/connectpro';
-    pool = new Pool(poolOptions(connectionString));
+    if (databaseUrl) {
+      const resolved = resolveDatabaseUrl(databaseUrl);
+      pool = new Pool({
+        connectionString: resolved,
+        max: process.env.VERCEL ? 1 : 10,
+        ssl: resolved.includes('supabase.co') ? { rejectUnauthorized: false } : undefined,
+      });
+    } else {
+      pool = new Pool(poolOptionsFromEnv());
+    }
   }
   return pool;
 }
