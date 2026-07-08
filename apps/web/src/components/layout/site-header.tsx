@@ -145,13 +145,18 @@ export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
             <>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label="Search" asChild>
-                    <Link href="/search">
-                      <Search className="size-5" />
-                    </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Search"
+                    onClick={() =>
+                      window.dispatchEvent(new Event('open-command-menu'))
+                    }
+                  >
+                    <Search className="size-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Search</TooltipContent>
+                <TooltipContent>Search · ⌘K</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
