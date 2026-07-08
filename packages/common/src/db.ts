@@ -99,7 +99,7 @@ export function resolveDatabaseUrl(connectionString: string): string {
   if (directHostMatch) {
     const projectRef = directHostMatch[1];
     const region = process.env.SUPABASE_REGION ?? 'us-west-2';
-    const poolerPrefix = process.env.SUPABASE_POOLER_PREFIX ?? 'aws-0';
+    const poolerPrefix = process.env.SUPABASE_POOLER_PREFIX ?? 'aws-1';
     parsed.host =
       process.env.SUPABASE_POOLER_HOST ?? `${poolerPrefix}-${region}.pooler.supabase.com`;
     parsed.port = parseInt(process.env.SUPABASE_POOLER_PORT ?? '6543', 10);
@@ -114,11 +114,19 @@ export function resolveDatabaseUrl(connectionString: string): string {
   }
 
   validateHost(parsed.host);
+
+  // Newer Supabase projects use aws-1 pooler; aws-0 returns "tenant not found".
+  parsed.host = parsed.host.replace(
+    /^aws-0-([a-z0-9-]+)\.pooler\.supabase\.com$/i,
+    'aws-1-$1.pooler.supabase.com',
+  );
+
+  validateHost(parsed.host);
   return buildPostgresUrl(parsed);
 }
 
 function poolOptionsFromEnv(): PoolConfig {
-  const host = process.env.POSTGRES_HOST ?? process.env.SUPABASE_DB_HOST;
+  let host = process.env.POSTGRES_HOST ?? process.env.SUPABASE_DB_HOST;
   const password = process.env.POSTGRES_PASSWORD ?? process.env.SUPABASE_DB_PASSWORD;
   const user =
     process.env.POSTGRES_USER ??
@@ -126,6 +134,7 @@ function poolOptionsFromEnv(): PoolConfig {
     `postgres.${process.env.SUPABASE_PROJECT_REF ?? 'tldovunmovsbxqcpxwvs'}`;
 
   if (host && password) {
+    host = host.replace(/^aws-0-([a-z0-9-]+)\.pooler\.supabase\.com$/i, 'aws-1-$1.pooler.supabase.com');
     validateHost(host);
     return {
       host,
