@@ -1,15 +1,22 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool, PoolClient, PoolConfig } from 'pg';
 
 let pool: Pool | null = null;
 
+function poolOptions(connectionString: string): PoolConfig {
+  const config: PoolConfig = { connectionString };
+  if (connectionString.includes('supabase.co')) {
+    config.ssl = { rejectUnauthorized: false };
+  }
+  return config;
+}
+
 export function getPool(databaseUrl?: string): Pool {
   if (!pool) {
-    pool = new Pool({
-      connectionString:
-        databaseUrl ??
-        process.env.DATABASE_URL ??
-        'postgresql://connectpro:connectpro@localhost:5432/connectpro',
-    });
+    const connectionString =
+      databaseUrl ??
+      process.env.DATABASE_URL ??
+      'postgresql://connectpro:connectpro@localhost:5432/connectpro';
+    pool = new Pool(poolOptions(connectionString));
   }
   return pool;
 }

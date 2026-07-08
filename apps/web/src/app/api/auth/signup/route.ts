@@ -1,42 +1,36 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { signup } from "@/lib/auth/auth-api";
+import { setConnectProCookies } from "@/lib/auth/session-cookies";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+function isAuthTokens(
+  data: unknown,
+): data is { userId: string; accessToken: string; refreshToken?: string } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "userId" in data &&
+    "accessToken" in data
+  );
+}
 
 export async function POST(request: Request) {
   const body = await request.json();
+  const { ok, status, data } = await signup(body);
 
-  const res = await fetch(`${API_BASE}/api/v1/auth/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  if (!res.ok) {
-    return NextResponse.json(data, { status: res.status });
+  if (!ok) {
+    return NextResponse.json(data, { status });
   }
 
-  const response = NextResponse.json(data);
-  response.cookies.set('connectpro_access_token', data.accessToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 15,
-  });
-  response.cookies.set('connectpro_user_id', data.userId, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
-  });
-  if (data.refreshToken) {
-    response.cookies.set('connectpro_refresh_token', data.refreshToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-    });
+  if (!isAuthTokens(data)) {
+    return NextResponse.json({ message: "Invalid auth response" }, { status: 500 });
   }
+
+  const response = NextResponse.json(data, { status: 201 });
+  setConnectProCookies(response, {
+    userId: data.userId,
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+  });
 
   return response;
 }

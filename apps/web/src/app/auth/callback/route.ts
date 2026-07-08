@@ -2,15 +2,20 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { namesFromMetadata } from "@/lib/profile/names";
+import { oauthGoogle } from "@/lib/auth/auth-api";
 import { setConnectProCookies } from "@/lib/auth/session-cookies";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 function safeNextPath(next: string | null) {
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
     return "/dashboard";
   }
   return next;
+}
+
+function loginErrorRedirect(origin: string, kind: "auth" | "connectpro", reason: string) {
+  return NextResponse.redirect(
+    `${origin}/login?error=${kind}&reason=${encodeURIComponent(reason)}`,
+  );
 }
 
 export async function GET(request: Request) {
@@ -20,93 +25,101 @@ export async function GET(request: Request) {
   const origin = requestUrl.origin;
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=auth&reason=missing_code`);
+    return loginErrorRedirect(origin, "auth", "missing_code");
   }
 
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL.includes("your-project")
+    process.env.NEXT_PUBLIC_SUPABASE_URL.includes("your-project") ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return NextResponse.redirect(`${origin}/login?error=auth&reason=supabase_not_configured`);
+    return loginErrorRedirect(origin, "auth", "supabase_not_configured");
   }
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+  try {
+    const cookieStore = await cookies();
+    const response = NextResponse.redirect(`${origin}${next}`);
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options);
+            });
+          },
         },
       },
-    },
-  );
-
-  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-  if (exchangeError) {
-    return NextResponse.redirect(
-      `${origin}/login?error=auth&reason=${encodeURIComponent(exchangeError.message)}`,
     );
-  }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError) {
+      return loginErrorRedirect(origin, "auth", exchangeError.message);
+    }
 
-  if (!user?.email) {
-    return NextResponse.redirect(`${origin}/login?error=auth&reason=no_email`);
-  }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const names = namesFromMetadata(user.user_metadata);
-  const googleIdentity = user.identities?.find((identity) => identity.provider === "google");
-  const providerUid = googleIdentity?.id ?? user.id;
+    if (!user?.email) {
+      return loginErrorRedirect(origin, "auth", "no_email");
+    }
 
-  let connectProRes: Response;
-  try {
-    connectProRes = await fetch(`${API_BASE}/api/v1/auth/oauth/google`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: user.email,
-        provider: "google",
-        providerUid,
-        firstName: names.first_name ?? undefined,
-        lastName: names.last_name ?? undefined,
-        avatarUrl:
-          typeof user.user_metadata?.avatar_url === "string"
-            ? user.user_metadata.avatar_url
-            : undefined,
-      }),
+    const names = namesFromMetadata(user.user_metadata);
+    const googleIdentity = user.identities?.find((identity) => identity.provider === "google");
+    const providerUid = googleIdentity?.id ?? user.id;
+
+    const { ok, data } = await oauthGoogle({
+      email: user.email,
+      provider: "google",
+      providerUid,
+      firstName: names.first_name ?? undefined,
+      lastName: names.last_name ?? undefined,
+      avatarUrl:
+        typeof user.user_metadata?.avatar_url === "string"
+          ? user.user_metadata.avatar_url
+          : undefined,
     });
-  } catch {
-    return NextResponse.redirect(`${origin}/login?error=connectpro&reason=auth_service_unreachable`);
-  }
 
-  const data = await connectProRes.json().catch(() => ({}));
-  if (!connectProRes.ok) {
-    const reason =
-      typeof data.message === "string"
-        ? data.message
-        : typeof data.error === "string"
-          ? data.error
+    if (!ok) {
+      const reason =
+        typeof data === "object" &&
+        data !== null &&
+        "message" in data &&
+        typeof data.message === "string"
+          ? data.message
           : "connectpro_oauth_failed";
-    return NextResponse.redirect(
-      `${origin}/login?error=connectpro&reason=${encodeURIComponent(reason)}`,
-    );
+      return loginErrorRedirect(origin, "connectpro", reason);
+    }
+
+    if (
+      typeof data !== "object" ||
+      data === null ||
+      !("userId" in data) ||
+      !("accessToken" in data) ||
+      typeof data.userId !== "string" ||
+      typeof data.accessToken !== "string"
+    ) {
+      return loginErrorRedirect(origin, "connectpro", "invalid_auth_response");
+    }
+
+    setConnectProCookies(response, {
+      userId: data.userId,
+      accessToken: data.accessToken,
+      refreshToken: "refreshToken" in data && typeof data.refreshToken === "string"
+        ? data.refreshToken
+        : undefined,
+    });
+
+    return response;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "callback_failed";
+    console.error("[auth/callback]", error);
+    return loginErrorRedirect(origin, "auth", reason);
   }
-
-  const response = NextResponse.redirect(`${origin}${next}`);
-  setConnectProCookies(response, {
-    userId: data.userId,
-    accessToken: data.accessToken,
-    refreshToken: data.refreshToken,
-  });
-
-  return response;
 }

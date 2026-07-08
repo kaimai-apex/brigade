@@ -3,13 +3,11 @@ import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
+// pnpm hoists Next to the repo root — tracing must include it or Vercel λ routes 500.
+const monorepoRoot = path.join(appDir, "../..");
 
 const nextConfig: NextConfig = {
-  // Scope dev file watching to this app — not the whole monorepo (avoids EMFILE).
-  outputFileTracingRoot: appDir,
-  turbopack: {
-    root: appDir,
-  },
+  outputFileTracingRoot: monorepoRoot,
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {
