@@ -1,4 +1,4 @@
-import { getFullProfile, signOut } from "@/lib/actions/profile";
+import { getFullProfile } from "@/lib/actions/profile";
 import { getConnectProSession } from "@/lib/connectpro/server";
 import {
   formatEducationDates,
@@ -7,12 +7,12 @@ import {
   normalizeInstagramUrl,
   normalizeWebsiteUrl,
 } from "@/lib/profile/links";
-import {
-  displayName,
-  formatLocation,
-  getInitials,
-} from "@/lib/utils";
+import { displayName, formatLocation, getInitials } from "@/lib/utils";
+import { SiteHeader } from "@/components/layout/site-header";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -29,6 +29,13 @@ export default async function ProfilePage({
   if (!profile) notFound();
 
   const isOwner = session?.userId === profile.id;
+
+  const availability = [
+    profile.open_to_opportunities && "Open to opportunities",
+    profile.available_private_events && "Private events",
+    profile.available_contract_work && "Contract work",
+    profile.available_emergency_staffing && "Emergency staffing",
+  ].filter(Boolean) as string[];
 
   const links = [
     profile.instagram_url
@@ -57,54 +64,40 @@ export default async function ProfilePage({
 
   return (
     <div className="min-h-screen bg-cream">
-      <header className="mx-auto flex max-w-4xl items-center justify-between px-6 py-6">
-        <Link href="/" className="font-display text-2xl font-black">
-          Brigade
-        </Link>
-        <div className="flex items-center gap-3">
-          <Link href="/directory" className="text-sm font-semibold opacity-75 hover:opacity-100">
-            Directory
-          </Link>
-          {isOwner && (
-            <>
-              <Link href="/onboarding/basic-info">
-                <Button variant="outline" size="sm">
-                  Edit profile
-                </Button>
-              </Link>
-              <form action={signOut}>
-                <Button type="submit" variant="ghost" size="sm">
-                  Sign out
-                </Button>
-              </form>
-            </>
-          )}
-        </div>
-      </header>
+      <SiteHeader showAuth={false} />
 
-      <main className="mx-auto max-w-4xl px-6 pb-20">
+      <main className="mx-auto max-w-4xl px-6 pb-20 pt-8">
         <section className="rounded-3xl border border-ink/10 bg-paper p-8 md:p-10">
           <div className="flex flex-col gap-6 md:flex-row md:items-start">
-            <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sage/40 text-3xl font-bold text-forest">
-              {profile.profile_image_url ? (
-                <Image
+            <Avatar className="size-28 border border-ink/10">
+              {profile.profile_image_url && (
+                <AvatarImage
                   src={profile.profile_image_url}
                   alt={displayName(profile.first_name, profile.last_name)}
-                  width={112}
-                  height={112}
-                  className="h-full w-full object-cover"
                 />
-              ) : (
-                getInitials(profile.first_name, profile.last_name)
               )}
-            </div>
+              <AvatarFallback className="bg-secondary text-3xl font-bold text-forest">
+                {getInitials(profile.first_name, profile.last_name)}
+              </AvatarFallback>
+            </Avatar>
+
             <div className="flex-1">
-              <p className="text-sm font-semibold uppercase tracking-wide text-forest">
-                {profile.role}
-              </p>
-              <h1 className="font-display text-4xl font-black tracking-tight">
-                {displayName(profile.first_name, profile.last_name)}
-              </h1>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-wide text-forest">
+                    {profile.role}
+                  </p>
+                  <h1 className="font-display text-4xl font-black tracking-tight">
+                    {displayName(profile.first_name, profile.last_name)}
+                  </h1>
+                </div>
+                {isOwner && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/onboarding/basic-info">Edit profile</Link>
+                  </Button>
+                )}
+              </div>
+
               <p className="mt-2 text-lg text-ink/75">{profile.headline}</p>
               <p className="mt-2 text-sm text-ink/60">
                 {formatLocation(profile.city, profile.state, profile.country)}
@@ -112,18 +105,15 @@ export default async function ProfilePage({
                   ` · ${profile.years_experience}+ years experience`}
               </p>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {profile.open_to_opportunities && (
-                  <Badge>Open to opportunities</Badge>
-                )}
-                {profile.available_private_events && (
-                  <Badge>Private events</Badge>
-                )}
-                {profile.available_contract_work && <Badge>Contract work</Badge>}
-                {profile.available_emergency_staffing && (
-                  <Badge>Emergency staffing</Badge>
-                )}
-              </div>
+              {availability.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {availability.map((label) => (
+                    <Badge key={label} variant="secondary">
+                      {label}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -158,7 +148,9 @@ export default async function ProfilePage({
           <Section title="Areas of expertise">
             <div className="flex flex-wrap gap-2">
               {profile.expertise_areas.map((area) => (
-                <Badge key={area}>{area}</Badge>
+                <Badge key={area} variant="secondary">
+                  {area}
+                </Badge>
               ))}
             </div>
           </Section>
@@ -206,8 +198,9 @@ export default async function ProfilePage({
         {links.length > 0 && (
           <Section title="Links">
             <ul className="space-y-2">
-              {links.map((link) => (
+              {links.map((link, i) => (
                 <li key={`${link.label}-${link.url}`}>
+                  {i > 0 && <Separator className="mb-2" />}
                   <a
                     href={link.url}
                     target="_blank"
@@ -250,13 +243,5 @@ function Section({
       <h2 className="mb-4 font-display text-xl font-bold">{title}</h2>
       {children}
     </section>
-  );
-}
-
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-full bg-sage/50 px-3 py-1 text-xs font-semibold text-forest">
-      {children}
-    </span>
   );
 }

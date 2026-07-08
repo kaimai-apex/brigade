@@ -37,3 +37,6 @@ apps/web/public/uploads/
 claude-skills-main/
 env.local
 .vercel
+
+# TS incremental build info
+*.tsbuildinfo

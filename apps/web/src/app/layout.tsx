@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Fraunces, Archivo } from "next/font/google";
 import { ReduxProvider } from "@/lib/store";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -31,7 +33,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${fraunces.variable} ${archivo.variable} min-h-screen`}>
         <ReduxProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <TooltipProvider delayDuration={200}>
+            <AuthProvider>{children}</AuthProvider>
+          </TooltipProvider>
+          <Toaster position="bottom-right" />
         </ReduxProvider>
       </body>
     </html>

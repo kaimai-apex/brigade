@@ -1,11 +1,10 @@
 import { SiteHeader } from "@/components/layout/site-header";
 import { getDirectoryProfiles } from "@/lib/actions/profile";
-import {
-  displayName,
-  formatLocation,
-  getInitials,
-} from "@/lib/utils";
-import Image from "next/image";
+import { displayName, formatLocation, getInitials } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import Link from "next/link";
 
 export default async function DirectoryPage() {
@@ -30,82 +29,78 @@ export default async function DirectoryPage() {
         </div>
 
         {profiles.length === 0 ? (
-          <div className="rounded-2xl border border-ink/10 bg-paper p-12 text-center">
+          <Card className="p-12 text-center">
             <p className="font-display text-2xl font-bold">No profiles yet</p>
             <p className="mt-3 text-ink/65">
               Be the first to join — create your profile and show up here.
             </p>
-            <Link
-              href="/signup"
-              className="mt-6 inline-block rounded-full bg-rust px-6 py-3 text-sm font-bold text-paper transition hover:-translate-y-0.5"
-            >
-              Create your profile
-            </Link>
-          </div>
+            <Button asChild variant="rust" className="mt-6">
+              <Link href="/signup">Create your profile</Link>
+            </Button>
+          </Card>
         ) : (
           <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {profiles.map((profile) => (
               <li key={profile.id}>
-                <Link
-                  href={`/profile/${profile.id}`}
-                  className="group block h-full rounded-2xl border border-ink/10 bg-paper p-6 transition hover:-translate-y-1 hover:shadow-lg"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sage/40 text-lg font-bold text-forest">
-                      {profile.profile_image_url ? (
-                        <Image
-                          src={profile.profile_image_url}
-                          alt={displayName(profile.first_name, profile.last_name)}
-                          width={64}
-                          height={64}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        getInitials(profile.first_name, profile.last_name)
-                      )}
+                <Link href={`/profile/${profile.id}`} className="group block h-full">
+                  <Card className="h-full transition group-hover:-translate-y-1 group-hover:shadow-lg">
+                    <div className="flex items-start gap-4">
+                      <Avatar className="size-14 border border-ink/10">
+                        {profile.profile_image_url && (
+                          <AvatarImage
+                            src={profile.profile_image_url}
+                            alt={displayName(profile.first_name, profile.last_name)}
+                          />
+                        )}
+                        <AvatarFallback className="bg-secondary text-base font-bold text-forest">
+                          {getInitials(profile.first_name, profile.last_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold uppercase tracking-wide text-forest">
+                          {profile.role}
+                        </p>
+                        <h2 className="font-display text-xl font-bold leading-tight group-hover:text-forest">
+                          {displayName(profile.first_name, profile.last_name)}
+                        </h2>
+                        <p className="mt-1 text-sm text-ink/60">
+                          {formatLocation(profile.city, profile.state, profile.country)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold uppercase tracking-wide text-forest">
-                        {profile.role}
+
+                    {profile.headline && (
+                      <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-ink/75">
+                        {profile.headline}
                       </p>
-                      <h2 className="font-display text-xl font-bold leading-tight group-hover:text-forest">
-                        {displayName(profile.first_name, profile.last_name)}
-                      </h2>
-                      <p className="mt-1 text-sm text-ink/60">
-                        {formatLocation(profile.city, profile.state, profile.country)}
-                      </p>
-                    </div>
-                  </div>
+                    )}
 
-                  {profile.headline && (
-                    <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-ink/75">
-                      {profile.headline}
-                    </p>
-                  )}
+                    {profile.expertise_areas && profile.expertise_areas.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-1.5">
+                        {profile.expertise_areas.slice(0, 3).map((area) => (
+                          <Badge key={area} variant="secondary">
+                            {area}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
 
-                  {profile.expertise_areas && profile.expertise_areas.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      {profile.expertise_areas.slice(0, 3).map((area) => (
-                        <span
-                          key={area}
-                          className="rounded-full bg-sage/50 px-2.5 py-0.5 text-xs font-semibold text-forest"
-                        >
-                          {area}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {(profile.open_to_opportunities ||
-                    profile.available_emergency_staffing) && (
-                    <p className="mt-4 text-xs font-semibold text-rust">
-                      {profile.open_to_opportunities && "Open to opportunities"}
-                      {profile.open_to_opportunities &&
-                        profile.available_emergency_staffing &&
-                        " · "}
-                      {profile.available_emergency_staffing && "Emergency staffing"}
-                    </p>
-                  )}
+                    {(profile.open_to_opportunities ||
+                      profile.available_emergency_staffing) && (
+                      <div className="mt-4 flex flex-wrap gap-1.5">
+                        {profile.open_to_opportunities && (
+                          <Badge className="bg-rust text-paper">
+                            Open to opportunities
+                          </Badge>
+                        )}
+                        {profile.available_emergency_staffing && (
+                          <Badge variant="outline" className="border-rust text-rust">
+                            Emergency staffing
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </Card>
                 </Link>
               </li>
             ))}

@@ -1,6 +1,50 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   shadcn/ui semantic tokens, bridged to the Brigade brand palette.
+   These let every shadcn component render in-brand (warm cream/forest/rust,
+   gold focus ring) instead of the default neutral grays. Light-only by design
+   — Brigade is a warm, editorial, single-theme brand.
+--------------------------------------------------------------------------- */
+:root {
+  --radius: 0.75rem;
+
+  --background: #f4efe2; /* cream — page */
+  --foreground: #1a1a17; /* ink */
+
+  --card: #fbf8f1; /* paper — cards/surfaces */
+  --card-foreground: #1a1a17;
+  --popover: #fbf8f1;
+  --popover-foreground: #1a1a17;
+
+  --primary: #1a1a17; /* ink */
+  --primary-foreground: #fbf8f1; /* paper */
+
+  --secondary: #e8ecdd; /* pale sage — soft chips */
+  --secondary-foreground: #1c4b3d; /* forest */
+
+  --muted: #ece6d8; /* warm muted surface */
+  --muted-foreground: #6f6a5e; /* ~ink at 60% on cream */
+
+  --accent: #e8ecdd; /* pale sage — hover/active */
+  --accent-foreground: #1c4b3d; /* forest */
+
+  --destructive: #c8471f; /* rust */
+  --destructive-foreground: #fbf8f1;
+
+  --border: #e3dccb; /* subtle warm border */
+  --input: #e3dccb;
+  --ring: #e8b84b; /* gold — focus */
+
+  --chart-1: #c8471f;
+  --chart-2: #1c4b3d;
+  --chart-3: #2d4a9e;
+  --chart-4: #e8b84b;
+  --chart-5: #c7d2b4;
+}
+
 @theme inline {
+  /* Brigade named colors */
   --color-cream: #f4efe2;
   --color-forest: #1c4b3d;
   --color-cobalt: #2d4a9e;
@@ -12,11 +56,43 @@
 
   --font-display: var(--font-fraunces);
   --font-body: var(--font-archivo);
+
+  /* shadcn semantic color utilities (bg-card, text-muted-foreground, …) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* radius scale derived from --radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 @layer base {
   * {
-    @apply border-ink/10;
+    @apply border-border;
   }
 
   body {
