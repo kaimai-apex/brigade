@@ -1,9 +1,3 @@
-import {
-  ConflictError,
-  NotFoundError,
-  UnauthorizedError,
-} from "@connectpro/common";
-
 export type AuthErrorDetail = {
   message: string;
   detail: string;
@@ -11,6 +5,13 @@ export type AuthErrorDetail = {
   code?: string;
   hint?: string;
 };
+
+/** Duck-type AppError subclasses without importing @connectpro/common (keeps this module client-safe). */
+function appErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
+}
 
 const STEP_LABELS: Record<string, string> = {
   config: "Configuration",
@@ -46,30 +47,14 @@ function inferPgCode(error: unknown, message: string) {
 }
 
 export function formatAuthError(error: unknown, step = "unknown"): AuthErrorDetail {
-  if (error instanceof ConflictError) {
+  const appCode = appErrorCode(error);
+  if (appCode === "CONFLICT" || appCode === "UNAUTHORIZED" || appCode === "NOT_FOUND") {
+    const message = error instanceof Error ? error.message : appCode;
     return {
       step,
-      code: "CONFLICT",
-      message: error.message,
-      detail: error.message,
-    };
-  }
-
-  if (error instanceof UnauthorizedError) {
-    return {
-      step,
-      code: "UNAUTHORIZED",
-      message: error.message,
-      detail: error.message,
-    };
-  }
-
-  if (error instanceof NotFoundError) {
-    return {
-      step,
-      code: "NOT_FOUND",
-      message: error.message,
-      detail: error.message,
+      code: appCode,
+      message,
+      detail: message,
     };
   }
 
