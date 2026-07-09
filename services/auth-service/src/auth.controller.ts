@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Param } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   SignupDto,
@@ -6,7 +6,6 @@ import {
   RefreshTokenDto,
   MfaVerifyDto,
   PasswordResetDto,
-  OAuthSignInDto,
 } from './dto/auth.dto';
 
 @Controller('auth')
@@ -42,10 +41,5 @@ export class AuthController {
   @Post('password/reset')
   passwordReset(@Body() dto: PasswordResetDto) {
     return this.authService.passwordReset(dto.email);
-  }
-
-  @Post('oauth/:provider')
-  oauth(@Param('provider') provider: string, @Body() dto: OAuthSignInDto) {
-    return this.authService.oauthSignIn({ ...dto, provider });
   }
 }

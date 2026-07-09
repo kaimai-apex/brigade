@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthSchema, getPool, parsePostgresUrl, resolveDatabaseUrl } from "@connectpro/common";
+import { formatAuthError } from "@/lib/auth/auth-errors";
 
 export async function GET() {
   const auth = getAuthSchema();
@@ -12,8 +13,9 @@ export async function GET() {
   if (!hasUrl && !hasDiscrete) {
     return NextResponse.json({
       ok: false,
-      step: "config",
-      error: "No DATABASE_URL or SUPABASE_DB_* env vars configured",
+      host: "unknown",
+      authSchema: auth,
+      ...formatAuthError(new Error("No DATABASE_URL or SUPABASE_DB_* env vars configured"), "config"),
     });
   }
 
@@ -36,18 +38,11 @@ export async function GET() {
     const pool = getPool();
     await pool.query("SELECT 1 AS ok");
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({
       ok: false,
-      step: "connect",
       host,
       authSchema: auth,
-      error: message,
-      hint: message.includes("tenant/user")
-        ? "Use aws-1-us-west-2.pooler.supabase.com (not aws-0). Reset DB password in Supabase → Database, then update Vercel DATABASE_URL."
-        : message.includes("password authentication failed")
-          ? "DB password is wrong. Reset it in Supabase → Database → Database password, then update Vercel."
-          : undefined,
+      ...formatAuthError(error, "connect"),
     });
   }
 
@@ -57,11 +52,9 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({
       ok: false,
-      step: "schema",
       host,
       authSchema: auth,
-      error: error instanceof Error ? error.message : String(error),
-      hint: "Run supabase/migrations/003_connectpro_schemas_supabase.sql and 005_brigade_user_fields.sql in Supabase SQL Editor",
+      ...formatAuthError(error, "schema"),
     });
   }
 

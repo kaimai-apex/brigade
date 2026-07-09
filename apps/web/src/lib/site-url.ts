@@ -1,5 +1,5 @@
 /**
- * Canonical site URL for OAuth redirects.
+ * Canonical site URL (absolute origin).
  * Must include https:// — e.g. https://www.joinbrigade.co
  */
 export function normalizeSiteUrl(url: string) {
@@ -24,8 +24,4 @@ export function getSiteUrl() {
   }
 
   return "http://localhost:3100";
-}
-
-export function authCallbackUrl(next = "/dashboard") {
-  return `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
 }

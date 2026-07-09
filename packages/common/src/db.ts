@@ -69,7 +69,18 @@ function buildPostgresUrl(parts: ParsedPostgresUrl) {
   return `postgresql://${user}:${password}@${parts.host}:${parts.port}/${database}${search}`;
 }
 
+function isLocalDbHost(host: string) {
+  const normalized = host.trim().toLowerCase();
+  return (
+    normalized === 'localhost' ||
+    normalized === '127.0.0.1' ||
+    normalized === '::1' ||
+    normalized === 'host.docker.internal'
+  );
+}
+
 function validateHost(host: string) {
+  if (isLocalDbHost(host)) return;
   if (!host || host === 'base' || !host.includes('.')) {
     throw new Error(
       'DATABASE_URL looks malformed (host parsed as "' +

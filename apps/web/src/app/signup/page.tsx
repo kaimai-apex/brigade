@@ -11,7 +11,7 @@ export default function SignupPage() {
           <CardHeader>
             <CardTitle>Join Brigade</CardTitle>
             <CardDescription>
-              Create your account with email or continue with Google.
+              Create your account with email and a password.
             </CardDescription>
           </CardHeader>
           <SignupForm />

@@ -7,7 +7,6 @@ const config = loadConfig('api-gateway', 3000);
 const PUBLIC_ROUTES = [
   '/api/v1/auth/signup',
   '/api/v1/auth/login',
-  '/api/v1/auth/oauth',
   '/api/v1/auth/refresh-token',
   '/api/v1/auth/password/reset',
   '/api/v1/health',

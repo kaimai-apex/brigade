@@ -32,14 +32,14 @@ Brigade/
 ├─ packages/
 │  └─ common/              # @connectpro/common — shared config, db pool, logger, errors, Kafka/Redis
 ├─ infra/                  # docker-compose infra + postgres/init.sql (all schemas)
-└─ supabase/migrations/    # SQL migrations
+└─ supabase/migrations/    # SQL migrations (000 wipe → 001–006)
 ```
 
 ## Tech stack
 
 | Layer | Tech |
 |---|---|
-| Web | Next.js 15, React 19, TypeScript, Tailwind v4, **shadcn/ui**, Redux Toolkit, Supabase auth (SSR) |
+| Web | Next.js 15, React 19, TypeScript, Tailwind v4, **shadcn/ui**, Redux Toolkit, email/password auth (ConnectPro JWT) |
 | Backend | NestJS microservices, Express 5 gateway, `pg`, Kafka (KafkaJS), Redis, OpenSearch |
 | Infra | Docker Compose: Postgres 16, Redis, Kafka + Zookeeper, MongoDB, Cassandra, OpenSearch, Jaeger |
 | Tooling | pnpm workspaces, Turbo, SWC (`@swc-node/register`) for dev, `tsc` for build |
@@ -173,14 +173,17 @@ The **web app** deploys to Vercel and auto-builds on push to `main`.
 
 | Var | Purpose |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (Google OAuth / auth) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase publishable key (browser-safe) |
-| `NEXT_PUBLIC_SITE_URL` | Canonical site URL for OAuth redirects — e.g. `https://www.joinbrigade.co` |
+| `DATABASE_URL` or `SUPABASE_DB_*` | Supabase Transaction pooler (port 6543) for email/password auth |
+| `AUTH_SCHEMA` | Must be `connectpro_auth` on Supabase |
+| `JWT_SECRET` | Signing key for ConnectPro access tokens |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site URL — e.g. `https://www.joinbrigade.co` |
 | `NEXT_PUBLIC_API_URL` | Gateway base URL — only meaningful once the backend is deployed |
+
+Schema rebuild: see `supabase/README.md` (`000` wipe → `001`–`006`).
 
 ### What deploys vs. what's local-only
 
-Vercel serves the **web frontend + Supabase auth**. The **14 microservices + infra are not deployed** — so
+Vercel serves the **web frontend + ConnectPro email/password auth** (Postgres via pooler). The **14 microservices + infra are not deployed** — so
 data-backed pages (feed, jobs, directory via the gateway) only fully work against a running backend. Point
 `NEXT_PUBLIC_API_URL` at a deployed gateway to light those up in production (see Next steps).
 

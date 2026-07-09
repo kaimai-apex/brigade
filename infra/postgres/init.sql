@@ -34,14 +34,6 @@ CREATE TABLE auth.refresh_tokens (
 );
 CREATE INDEX idx_refresh_tokens_user ON auth.refresh_tokens(user_id);
 
-CREATE TABLE auth.oauth_accounts (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id       UUID NOT NULL REFERENCES auth.users(id),
-    provider      TEXT NOT NULL,
-    provider_uid  TEXT NOT NULL,
-    UNIQUE (provider, provider_uid)
-);
-
 -- User Service
 CREATE SCHEMA IF NOT EXISTS users;
 
