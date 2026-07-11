@@ -1,4 +1,4 @@
-import { getAssociations, getSchools } from '@/lib/explore';
+import { loadAssociations, loadSchools } from '@/lib/explore/loader';
 import { ExploreHeader } from '@/components/explore/explore-header';
 import {
   AssociationList,
@@ -9,9 +9,11 @@ export const metadata = {
   title: 'Resources & Schools · Explore · Brigade',
 };
 
-export default function ResourcesPage() {
-  const schools = getSchools();
-  const associations = getAssociations();
+export default async function ResourcesPage() {
+  const [schools, associations] = await Promise.all([
+    loadSchools(),
+    loadAssociations(),
+  ]);
 
   return (
     <div>

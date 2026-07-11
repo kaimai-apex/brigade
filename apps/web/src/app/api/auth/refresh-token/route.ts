@@ -34,12 +34,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Invalid refresh response" }, { status: 500 });
   }
 
-  const response = NextResponse.json(data);
+  const response = NextResponse.json({ ok: true });
   response.cookies.set("connectpro_access_token", data.accessToken, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 15,
+    secure: process.env.NODE_ENV === "production",
   });
   if ("refreshToken" in data && typeof data.refreshToken === "string") {
     response.cookies.set("connectpro_refresh_token", data.refreshToken, {
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
+      secure: process.env.NODE_ENV === "production",
     });
   }
   return response;

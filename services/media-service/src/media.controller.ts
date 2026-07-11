@@ -22,7 +22,7 @@ export class MediaController {
   }
 
   @Get('delivery')
-  getDelivery(@Query('key') key: string) {
-    return this.mediaService.getDeliveryUrl(key);
+  getDelivery(@Query('key') key: string, @Req() req: AuthenticatedRequest) {
+    return this.mediaService.getDeliveryUrl(key, req.user.sub);
   }
 }

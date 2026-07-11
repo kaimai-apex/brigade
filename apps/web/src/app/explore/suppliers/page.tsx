@@ -1,4 +1,4 @@
-import { getSuppliers } from '@/lib/explore';
+import { loadSuppliers } from '@/lib/explore/loader';
 import { ExploreHeader } from '@/components/explore/explore-header';
 import { SupplierList } from '@/components/explore/supplier-list';
 
@@ -6,8 +6,8 @@ export const metadata = {
   title: 'Suppliers · Explore · Brigade',
 };
 
-export default function SuppliersPage() {
-  const suppliers = getSuppliers();
+export default async function SuppliersPage() {
+  const suppliers = await loadSuppliers();
 
   return (
     <div>

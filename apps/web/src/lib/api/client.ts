@@ -4,39 +4,37 @@ export class ApiClient {
   private accessToken: string | null = null;
 
   setToken(token: string | null) {
+    // Tokens are httpOnly cookies; keep an in-memory hint only for rare callers.
     this.accessToken = token;
     if (typeof window !== 'undefined') {
-      if (token) localStorage.setItem('accessToken', token);
-      else localStorage.removeItem('accessToken');
+      localStorage.removeItem('accessToken');
     }
   }
 
   getToken(): string | null {
-    if (this.accessToken) return this.accessToken;
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('accessToken');
-    }
-    return null;
+    return this.accessToken;
   }
 
   private async request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
-    const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    // Prefer cookie auth via /api/connectpro proxy — do not send Bearer from localStorage.
 
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' });
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
 
     if (res.status === 401 && retry) {
-      const refreshed = await fetch('/api/auth/refresh-token', { method: 'POST', credentials: 'include' });
+      const refreshed = await fetch('/api/auth/refresh-token', {
+        method: 'POST',
+        credentials: 'include',
+      });
       if (refreshed.ok) {
-        const data = (await refreshed.json()) as { accessToken?: string };
-        if (data.accessToken) {
-          this.setToken(data.accessToken);
-          return this.request<T>(path, options, false);
-        }
+        return this.request<T>(path, options, false);
       }
     }
 

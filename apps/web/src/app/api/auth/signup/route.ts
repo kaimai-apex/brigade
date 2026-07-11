@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Invalid auth response" }, { status: 500 });
   }
 
-  const response = NextResponse.json(data, { status: 201 });
+  const response = NextResponse.json({ userId: data.userId, ok: true }, { status: 201 });
   setConnectProCookies(response, {
     userId: data.userId,
     accessToken: data.accessToken,

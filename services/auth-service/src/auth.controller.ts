@@ -34,8 +34,8 @@ export class AuthController {
   }
 
   @Post('mfa/verify')
-  verifyMfa(@Body() dto: MfaVerifyDto & { userId: string }) {
-    return this.authService.verifyMfa(dto.userId, dto.code);
+  verifyMfa(@Body() dto: MfaVerifyDto) {
+    return this.authService.verifyMfa(dto.mfaToken, dto.code);
   }
 
   @Post('password/reset')

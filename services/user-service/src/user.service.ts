@@ -178,8 +178,6 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
       instagramUrl: 'instagram_url',
       linkedinUrl: 'linkedin_url',
       yearsExperience: 'years_experience',
-      onboardingStep: 'onboarding_step',
-      onboardingCompleted: 'onboarding_completed',
       openToOpportunities: 'open_to_opportunities',
       availablePrivateEvents: 'available_private_events',
       availableContractWork: 'available_contract_work',

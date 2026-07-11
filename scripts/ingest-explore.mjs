@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Monthly pre-ingest of target markets into explore-service.
+ * Monthly pre-ingest of Explore directory data into explore-service.
  *
- * Runs the "refresh once a month" step of the hybrid model: it POSTs each
- * market bbox to explore-service, which pulls OpenStreetMap, overlays curated
- * accolades, and upserts into Postgres. Un-listed cities still work via the
- * service's live read-through on first browse.
+ * 1. Upserts curated schools / associations / suppliers / news / job-listings /
+ *    neighbourhoods via POST /api/v1/explore/seed.
+ * 2. POSTs each market bbox to /api/v1/restaurants/ingest (OSM + curated
+ *    accolades). Un-listed cities still work via live read-through on browse.
  *
  * Usage:
  *   node scripts/ingest-explore.mjs
@@ -31,10 +31,28 @@ const MARKETS = [
 ];
 
 async function ingest(market) {
+  const headers = { 'content-type': 'application/json' };
+  const key = process.env.EXPLORE_INGEST_KEY;
+  if (key) headers['x-internal-key'] = key;
   const res = await fetch(`${BASE}/api/v1/restaurants/ingest`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify(market),
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  }
+  return res.json();
+}
+
+async function seedDirectory() {
+  const headers = { 'content-type': 'application/json' };
+  const key = process.env.EXPLORE_INGEST_KEY;
+  if (key) headers['x-internal-key'] = key;
+  const res = await fetch(`${BASE}/api/v1/explore/seed`, {
+    method: 'POST',
+    headers,
+    body: '{}',
   });
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}: ${await res.text()}`);
@@ -44,6 +62,16 @@ async function ingest(market) {
 
 async function main() {
   console.log(`[ingest-explore] target: ${BASE} · ${MARKETS.length} markets`);
+
+  try {
+    const seeded = await seedDirectory();
+    console.log(
+      `  ✓ curated directory   schools=${seeded.schools} associations=${seeded.associations} suppliers=${seeded.suppliers} news=${seeded.news} jobs=${seeded.jobListings} neighbourhoods=${seeded.neighbourhoods}`,
+    );
+  } catch (err) {
+    console.error(`  ✗ curated directory   ${err.message}`);
+  }
+
   let total = 0;
   for (const market of MARKETS) {
     try {

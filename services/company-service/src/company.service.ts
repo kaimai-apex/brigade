@@ -1,6 +1,12 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Pool } from 'pg';
-import { loadConfig, getPool, KafkaClient, NotFoundError } from '@connectpro/common';
+import {
+  loadConfig,
+  getPool,
+  KafkaClient,
+  NotFoundError,
+  ForbiddenError,
+} from '@connectpro/common';
 
 const config = loadConfig('company-service', 3011);
 
@@ -31,22 +37,33 @@ export class CompanyService implements OnModuleDestroy {
     return { data: result.rows.map((r) => this.format(r)) };
   }
 
-  async create(data: {
-    name: string;
-    industry?: string;
-    website?: string;
-    size?: string;
-    logoUrl?: string;
-  }) {
+  async create(
+    ownerUserId: string,
+    data: {
+      name: string;
+      industry?: string;
+      website?: string;
+      size?: string;
+      logoUrl?: string;
+    },
+  ) {
     const result = await this.pool.query(
-      `INSERT INTO jobs.companies (name, industry, website, size, logo_url)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [data.name, data.industry ?? null, data.website ?? null, data.size ?? null, data.logoUrl ?? null],
+      `INSERT INTO jobs.companies (name, industry, website, size, logo_url, owner_user_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [
+        data.name,
+        data.industry ?? null,
+        data.website ?? null,
+        data.size ?? null,
+        data.logoUrl ?? null,
+        ownerUserId,
+      ],
     );
     const company = result.rows[0];
     await this.kafka.publish('company-created', 'company.created', {
       companyId: company.id,
       name: company.name,
+      ownerUserId,
     });
     return this.format(company);
   }
@@ -61,7 +78,38 @@ export class CompanyService implements OnModuleDestroy {
     return this.format(result.rows[0]);
   }
 
-  async update(companyId: string, data: { name?: string; industry?: string; website?: string; size?: string; logoUrl?: string }) {
+  private async assertOwner(companyId: string, userId: string) {
+    const result = await this.pool.query(
+      `SELECT owner_user_id FROM jobs.companies WHERE id = $1 AND deleted_at IS NULL`,
+      [companyId],
+    );
+    if (result.rows.length === 0) throw new NotFoundError('Company not found');
+    const owner = result.rows[0].owner_user_id as string | null;
+    if (!owner || owner !== userId) throw new ForbiddenError('Not company owner');
+  }
+
+  /** True when user owns the company (used by job-service affiliation). */
+  async isOwner(companyId: string, userId: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `SELECT 1 FROM jobs.companies
+        WHERE id = $1 AND owner_user_id = $2 AND deleted_at IS NULL`,
+      [companyId, userId],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async update(
+    companyId: string,
+    userId: string,
+    data: {
+      name?: string;
+      industry?: string;
+      website?: string;
+      size?: string;
+      logoUrl?: string;
+    },
+  ) {
+    await this.assertOwner(companyId, userId);
     const result = await this.pool.query(
       `UPDATE jobs.companies SET name = COALESCE($2, name), industry = COALESCE($3, industry),
        website = COALESCE($4, website), size = COALESCE($5, size), logo_url = COALESCE($6, logo_url)
@@ -81,7 +129,8 @@ export class CompanyService implements OnModuleDestroy {
     return { success: true };
   }
 
-  async analytics(companyId: string) {
+  async analytics(companyId: string, userId: string) {
+    await this.assertOwner(companyId, userId);
     const followers = await this.pool.query(
       'SELECT count(*) FROM jobs.company_followers WHERE company_id = $1',
       [companyId],
@@ -105,6 +154,7 @@ export class CompanyService implements OnModuleDestroy {
       website: row.website,
       size: row.size,
       logoUrl: row.logo_url,
+      ownerUserId: row.owner_user_id ?? null,
       followerCount: row.follower_count,
       createdAt: row.created_at,
     };

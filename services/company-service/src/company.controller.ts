@@ -25,8 +25,8 @@ export class CompanyController {
   }
 
   @Post()
-  create(@Body() dto: CompanyDto) {
-    return this.companyService.create(dto);
+  create(@Body() dto: CompanyDto, @Req() req: AuthenticatedRequest) {
+    return this.companyService.create(req.user.sub, dto);
   }
 
   @Get(':id')
@@ -35,8 +35,12 @@ export class CompanyController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: CompanyDto) {
-    return this.companyService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: CompanyDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.companyService.update(id, req.user.sub, dto);
   }
 
   @Post(':id/follow')
@@ -45,7 +49,7 @@ export class CompanyController {
   }
 
   @Get(':id/analytics')
-  analytics(@Param('id') id: string) {
-    return this.companyService.analytics(id);
+  analytics(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.companyService.analytics(id, req.user.sub);
   }
 }

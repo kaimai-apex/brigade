@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { api } from '@/lib/api/client';
-import { clearSession, getSession, saveSession, type AuthSession } from '@/lib/auth/session';
+import { clearSession, saveSession, type AuthSession } from '@/lib/auth/session';
 import { setAuth, clearAuth } from '@/lib/store/slices/authSlice';
 
 type AuthContextValue = {
@@ -24,30 +24,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function hydrate() {
-      const existing = getSession();
-      if (existing) {
-        setSessionState(existing);
-        api.setToken(existing.accessToken);
-        dispatch(setAuth({ userId: existing.userId, accessToken: existing.accessToken }));
-        setLoading(false);
-        return;
-      }
-
       try {
         const res = await fetch('/api/auth/session', { credentials: 'include' });
         const data = (await res.json()) as {
-          session?: { userId: string; accessToken: string; refreshToken?: string };
+          session?: { userId: string; authenticated?: boolean };
         };
-        if (data.session?.accessToken) {
-          const next: AuthSession = {
-            userId: data.session.userId,
-            accessToken: data.session.accessToken,
-            refreshToken: data.session.refreshToken ?? '',
-          };
+        if (data.session?.userId) {
+          const next: AuthSession = { userId: data.session.userId };
           saveSession(next);
-          api.setToken(next.accessToken);
           setSessionState(next);
-          dispatch(setAuth({ userId: next.userId, accessToken: next.accessToken }));
+          dispatch(setAuth({ userId: next.userId, accessToken: '' }));
+        } else {
+          clearSession();
         }
       } catch {
         /* ignore */
@@ -62,22 +50,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setSession = useCallback(
     (next: AuthSession) => {
       saveSession(next);
-      api.setToken(next.accessToken);
-      setSessionState(next);
-      dispatch(setAuth({ userId: next.userId, accessToken: next.accessToken }));
+      setSessionState({ userId: next.userId });
+      dispatch(setAuth({ userId: next.userId, accessToken: '' }));
     },
     [dispatch],
   );
 
   const logout = useCallback(async () => {
-    const current = getSession();
-    if (current?.refreshToken) {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: current.refreshToken }),
-      }).catch(() => null);
-    }
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: '{}',
+    }).catch(() => null);
     clearSession();
     api.setToken(null);
     setSessionState(null);

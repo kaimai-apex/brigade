@@ -51,14 +51,43 @@ async function proxyRequest(req: Request, res: Response) {
     const data = await response.text();
     res.status(response.status).send(data);
   } catch (err) {
-    res.status(502).json({ code: 'BAD_GATEWAY', message: 'Upstream unavailable', details: String(err) });
+    res.status(502).json({ code: 'BAD_GATEWAY', message: 'Upstream unavailable' });
   }
 }
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: true, credentials: true });
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3100,http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  app.enableCors({
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Allow non-browser / same-origin requests with no Origin header.
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
+    credentials: true,
+  });
   app.use(json());
+  // Baseline security headers (helmet-equivalent without extra dependency).
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader('X-DNS-Prefetch-Control', 'off');
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+  });
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
 

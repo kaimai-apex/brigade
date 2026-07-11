@@ -1,13 +1,29 @@
 import type { ExploreLocation, Restaurant } from "./types";
 import { getDefaultLocation, getLocation } from "./locations";
 import { geocodePlace } from "./sources/geocode";
-import { fetchRestaurants, type RestaurantPage } from "./api";
+import {
+  fetchAssociations,
+  fetchJobListings,
+  fetchMapPins,
+  fetchNeighbourhoods,
+  fetchNews,
+  fetchRestaurants,
+  fetchSchools,
+  fetchSuppliers,
+  type RestaurantPage,
+} from "./api";
+import { getAssociations } from "./associations";
+import { getJobs } from "./jobs";
+import { getNeighbourhoods } from "./neighbourhoods";
+import { getNews } from "./news";
+import { getSchools } from "./schools";
+import { getSuppliers } from "./suppliers";
 
 /**
- * Server-side composition for the Explore restaurant loader. Location comes
- * from `?loc=` (preset) or `?q=` (geocoded); restaurants + filtering come from
- * explore-service (Postgres-backed, OSM read-through). Kept out of the
- * client-facing barrel (index.ts) so it never lands in a client bundle.
+ * Server-side composition for Explore loaders. Location comes from `?loc=`
+ * (preset) or `?q=` (geocoded); directory data comes from explore-service.
+ * Kept out of the client-facing barrel (index.ts) so it never lands in a
+ * client bundle. Static getters remain as offline fallbacks.
  */
 
 /** Turn `?loc=` / `?q=` search params into a concrete location to browse. */
@@ -49,6 +65,40 @@ export async function loadRestaurants(
     limit: filters.limit ?? 60,
   });
   return { ...page, location };
+}
+
+export async function loadSchools() {
+  const page = await fetchSchools({ limit: 100 });
+  return page.ok ? page.data : getSchools();
+}
+
+export async function loadAssociations() {
+  const page = await fetchAssociations({ limit: 100 });
+  return page.ok ? page.data : getAssociations();
+}
+
+export async function loadSuppliers() {
+  const page = await fetchSuppliers({ limit: 100 });
+  return page.ok ? page.data : getSuppliers();
+}
+
+export async function loadNews() {
+  const page = await fetchNews({ limit: 100 });
+  return page.ok ? page.data : getNews();
+}
+
+export async function loadJobListings() {
+  const page = await fetchJobListings({ limit: 100 });
+  return page.ok ? page.data : getJobs();
+}
+
+export async function loadNeighbourhoods(bbox?: ExploreLocation["bbox"]) {
+  const page = await fetchNeighbourhoods({ bbox, limit: 100 });
+  return page.ok ? page.data : getNeighbourhoods();
+}
+
+export async function loadDirectoryMapPins(bbox: ExploreLocation["bbox"]) {
+  return fetchMapPins(bbox);
 }
 
 export type { Restaurant };

@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { getFeaturedRestaurants, getRestaurants } from '@/lib/explore';
 import {
-  getFeaturedRestaurants,
-  getNews,
-  getRestaurants,
-  getSchools,
-  getJobs,
-} from '@/lib/explore';
+  loadJobListings,
+  loadNews,
+  loadRestaurants,
+  loadSchools,
+  resolveLocation,
+} from '@/lib/explore/loader';
 import { ExploreHeader } from '@/components/explore/explore-header';
 import { SectionGrid } from '@/components/explore/section-grid';
 import { RestaurantCard } from '@/components/explore/restaurant-card';
@@ -18,15 +19,30 @@ export const metadata = {
     'Discover Toronto’s hospitality world — restaurants, professionals, news, schools, suppliers and jobs.',
 };
 
-export default function ExplorePage() {
-  const featured = getFeaturedRestaurants().slice(0, 3);
-  const news = getNews().slice(0, 4);
+export default async function ExplorePage() {
+  const location = await resolveLocation({});
+  const [restaurantPage, schools, news, jobs] = await Promise.all([
+    loadRestaurants(location, { limit: 60 }),
+    loadSchools(),
+    loadNews(),
+    loadJobListings(),
+  ]);
+
+  const featured =
+    restaurantPage.restaurants.filter((r) => r.featured).slice(0, 3);
+  const featuredFallback = getFeaturedRestaurants().slice(0, 3);
+  const featuredShow = featured.length ? featured : featuredFallback;
+  const newsShow = news.slice(0, 4);
+
+  const venueCount = restaurantPage.ok
+    ? restaurantPage.total
+    : getRestaurants().length;
 
   const stats = [
     { label: 'Cities live', value: '8+' },
-    { label: 'Curated venues', value: getRestaurants().length },
-    { label: 'Schools', value: getSchools().length },
-    { label: 'Live jobs', value: getJobs().length },
+    { label: 'Venues', value: venueCount },
+    { label: 'Schools', value: schools.length },
+    { label: 'Live jobs', value: jobs.length },
   ];
 
   return (
@@ -49,7 +65,6 @@ export default function ExplorePage() {
 
       <SectionGrid />
 
-      {/* Featured restaurants preview */}
       <section className="mt-12">
         <div className="mb-4 flex items-end justify-between">
           <h2 className="font-display text-2xl font-black tracking-tight">
@@ -63,7 +78,7 @@ export default function ExplorePage() {
           </Link>
         </div>
         <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((r) => (
+          {featuredShow.map((r) => (
             <li key={r.id}>
               <RestaurantCard restaurant={r} />
             </li>
@@ -71,7 +86,6 @@ export default function ExplorePage() {
         </ul>
       </section>
 
-      {/* Latest news preview */}
       <section className="mt-12">
         <div className="mb-4 flex items-end justify-between">
           <h2 className="font-display text-2xl font-black tracking-tight">
@@ -85,7 +99,7 @@ export default function ExplorePage() {
           </Link>
         </div>
         <ul className="grid gap-4 sm:grid-cols-2">
-          {news.map((item) => (
+          {newsShow.map((item) => (
             <li key={item.id}>
               <a href={item.url} target="_blank" rel="noopener noreferrer">
                 <Card className="h-full p-4 transition hover:shadow-md">

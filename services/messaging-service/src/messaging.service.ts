@@ -101,6 +101,14 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
   }
 
   async addReaction(messageId: string, userId: string, emoji: string) {
+    const message = await this.db!.collection('messages').findOne({
+      _id: new ObjectId(messageId),
+    });
+    if (!message) throw new NotFoundError('Message not found');
+    await this.getConversationOrThrow(
+      (message.conversationId as ObjectId).toString(),
+      userId,
+    );
     await this.db!.collection('messages').updateOne(
       { _id: new ObjectId(messageId) },
       { $push: { reactions: { userId, emoji } } as never },

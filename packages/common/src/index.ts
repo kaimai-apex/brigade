@@ -2,6 +2,7 @@ export * from './config';
 export * from './logger';
 export * from './errors';
 export * from './jwt';
+export * from './totp';
 export * from './kafka';
 export * from './redis';
 export * from './guards';

@@ -3,6 +3,7 @@ import {
   connectProLogout,
   connectProRefresh,
   connectProSignup,
+  connectProVerifyMfa,
   isConnectProAuthConfigured,
   toAuthErrorResponse,
 } from "@/lib/auth/connectpro-auth";
@@ -18,7 +19,7 @@ type AuthTokens = {
 
 type LoginResult =
   | AuthTokens
-  | { mfaRequired: true; userId: string }
+  | { mfaRequired: true; userId: string; mfaToken: string }
   | AuthErrorDetail;
 
 async function proxyAuth<T>(path: string, init: RequestInit): Promise<{ ok: boolean; status: number; data: T | AuthErrorDetail }> {
@@ -113,5 +114,21 @@ export async function logout(refreshToken: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
+  });
+}
+
+export async function verifyMfa(body: { mfaToken: string; code: string }) {
+  if (isConnectProAuthConfigured()) {
+    try {
+      return { ok: true, status: 200, data: await connectProVerifyMfa(body.mfaToken, body.code) };
+    } catch (error) {
+      const { status, body: errBody } = toAuthErrorResponse(error, "auth");
+      return { ok: false, status, data: errBody };
+    }
+  }
+  return proxyAuth<AuthTokens>("mfa/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 }

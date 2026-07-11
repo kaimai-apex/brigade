@@ -58,11 +58,7 @@ export function SignupForm() {
 
       await offerPasswordSave(payload.email, payload.password);
 
-      setSession({
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-        userId: data.userId,
-      });
+      setSession({ userId: data.userId });
 
       router.push("/onboarding/basic-info");
       router.refresh();

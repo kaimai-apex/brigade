@@ -34,7 +34,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Invalid auth response" }, { status: 500 });
   }
 
-  const response = NextResponse.json(data);
+  // Set httpOnly cookies; do not echo tokens in the JSON body.
+  const response = NextResponse.json({ userId: data.userId, ok: true });
   setConnectProCookies(response, {
     userId: data.userId,
     accessToken: data.accessToken,

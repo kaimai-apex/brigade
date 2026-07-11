@@ -52,18 +52,15 @@ export function LoginForm() {
         return;
       }
 
-      if (data.mfaRequired) {
+      if (data.mfaRequired && data.mfaToken) {
+        sessionStorage.setItem("connectpro_mfa_token", data.mfaToken);
         router.push(`/login/mfa?email=${encodeURIComponent(email)}`);
         return;
       }
 
       await offerPasswordSave(email, password);
 
-      setSession({
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-        userId: data.userId,
-      });
+      setSession({ userId: data.userId });
 
       router.push("/dashboard");
       router.refresh();

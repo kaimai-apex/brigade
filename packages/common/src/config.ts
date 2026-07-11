@@ -26,10 +26,25 @@ function resolvePort(serviceName: string, defaultPort: number): number {
 }
 
 export function loadConfig(serviceName: string, defaultPort: number): ServiceConfig {
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  const jwtSecret = process.env.JWT_SECRET?.trim();
+
+  if (!jwtSecret) {
+    if (nodeEnv === 'production') {
+      throw new Error(
+        `[${serviceName}] JWT_SECRET is required in production. Refusing to start with a default secret.`,
+      );
+    }
+    // Local-only fallback — never use in deployed environments.
+    console.warn(
+      `[${serviceName}] WARNING: JWT_SECRET unset; using insecure local-dev secret. Set JWT_SECRET before any shared/deployed use.`,
+    );
+  }
+
   return {
     port: resolvePort(serviceName, defaultPort),
-    nodeEnv: process.env.NODE_ENV ?? 'development',
-    jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',
+    nodeEnv,
+    jwtSecret: jwtSecret || 'local-dev-only-not-for-deploy',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '15m',
     refreshExpiresIn: process.env.REFRESH_EXPIRES_IN ?? '7d',
     databaseUrl:

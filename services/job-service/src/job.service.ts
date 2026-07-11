@@ -71,6 +71,22 @@ export class JobService implements OnModuleDestroy {
   ) {
     requireRole({ sub: recruiterId, email: '', roles }, 'RECRUITER', 'COMPANY_ADMIN', 'USER');
 
+    const owns = await this.pool.query(
+      `SELECT 1 FROM jobs.companies
+        WHERE id = $1 AND owner_user_id = $2 AND deleted_at IS NULL`,
+      [data.companyId, recruiterId],
+    );
+    if ((owns.rowCount ?? 0) === 0 && !roles.includes('SYSTEM_ADMIN')) {
+      throw new ForbiddenError('You can only post jobs for companies you own');
+    }
+    if ((owns.rowCount ?? 0) === 0) {
+      const exists = await this.pool.query(
+        `SELECT 1 FROM jobs.companies WHERE id = $1 AND deleted_at IS NULL`,
+        [data.companyId],
+      );
+      if ((exists.rowCount ?? 0) === 0) throw new NotFoundError('Company not found');
+    }
+
     const result = await this.pool.query(
       `INSERT INTO jobs.jobs (company_id, recruiter_id, title, description, location, salary_min, salary_max, employment_type)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,

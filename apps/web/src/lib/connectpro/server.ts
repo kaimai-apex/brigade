@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { verifyAccessToken } from '@connectpro/common';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -9,10 +10,22 @@ export type ConnectProSession = {
 
 export async function getConnectProSession(): Promise<ConnectProSession | null> {
   const cookieStore = await cookies();
-  const userId = cookieStore.get('connectpro_user_id')?.value;
   const accessToken = cookieStore.get('connectpro_access_token')?.value;
-  if (!userId || !accessToken) return null;
-  return { userId, accessToken };
+  if (!accessToken) return null;
+
+  const secret = process.env.JWT_SECRET?.trim();
+  if (!secret) return null;
+
+  try {
+    const payload = verifyAccessToken(accessToken, secret);
+    const cookieUserId = cookieStore.get('connectpro_user_id')?.value;
+    if (cookieUserId && cookieUserId !== payload.sub) {
+      return null;
+    }
+    return { userId: payload.sub, accessToken };
+  } catch {
+    return null;
+  }
 }
 
 export async function connectProFetch<T>(

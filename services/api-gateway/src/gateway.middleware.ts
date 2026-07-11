@@ -9,23 +9,32 @@ const PUBLIC_ROUTES = [
   '/api/v1/auth/login',
   '/api/v1/auth/refresh-token',
   '/api/v1/auth/password/reset',
-  '/api/v1/health',
+  '/api/v1/auth/mfa/verify',
 ];
 
+const PUBLIC_EXACT = new Set(['/api/v1/health']);
+
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function isExactOrChild(path: string, prefix: string): boolean {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
 
 @Injectable()
 export class GatewayMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const path = req.path;
-    // The restaurant directory is a public, read-only listing (like Explore on
-    // the marketing site). Writes (POST /restaurants/ingest) still require auth.
-    const isPublicRestaurantRead =
-      req.method === 'GET' && path.startsWith('/api/v1/restaurants');
+    // Explore/restaurant directory: public GET only. Writes still need auth.
+    const isPublicExploreRead =
+      req.method === 'GET' &&
+      (path === '/api/v1/restaurants' ||
+        path.startsWith('/api/v1/restaurants/') ||
+        path === '/api/v1/explore' ||
+        path.startsWith('/api/v1/explore/'));
     const isPublic =
-      PUBLIC_ROUTES.some((r) => path.startsWith(r)) ||
-      path.includes('/health') ||
-      isPublicRestaurantRead;
+      PUBLIC_EXACT.has(path) ||
+      PUBLIC_ROUTES.some((r) => isExactOrChild(path, r)) ||
+      isPublicExploreRead;
 
     if (!isPublic) {
       const auth = req.headers.authorization;

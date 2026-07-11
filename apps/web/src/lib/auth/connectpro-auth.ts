@@ -4,19 +4,31 @@ import {
   getAuthSchema,
   getPool,
   signAccessToken,
+  signMfaChallengeToken,
+  verifyMfaChallengeToken,
+  verifyTotp,
   ConflictError,
   UnauthorizedError,
   NotFoundError,
 } from "@connectpro/common";
 import { ensureAuthSchema } from "@/lib/auth/ensure-auth-schema";
-import { isDebugBackdoorLogin, DEBUG_BACKDOOR_EMAIL, DEBUG_BACKDOOR_PASSWORD } from "@/lib/auth/debug-backdoor";
+import { isDebugBackdoorLogin } from "@/lib/auth/debug-backdoor";
 import { formatAuthError, type AuthErrorDetail } from "@/lib/auth/auth-errors";
 
 const auth = getAuthSchema();
 
 function jwtConfig() {
+  const secret = process.env.JWT_SECRET?.trim();
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("JWT_SECRET is required in production");
+    }
+    console.warn(
+      "[web] WARNING: JWT_SECRET unset; using insecure local-dev secret.",
+    );
+  }
   return {
-    secret: process.env.JWT_SECRET ?? "dev-secret-change-in-production",
+    secret: secret || "local-dev-only-not-for-deploy",
     expiresIn: process.env.JWT_EXPIRES_IN ?? "15m",
   };
 }
@@ -123,6 +135,8 @@ export async function connectProSignup(dto: {
 async function ensureDebugAdministratorUser() {
   await ensureAuthSchema();
   const pool = getPool();
+  const email = process.env.DEBUG_LOGIN_EMAIL!.trim().toLowerCase();
+  const password = process.env.DEBUG_LOGIN_PASSWORD!;
 
   const existing = await pool.query(
     `SELECT u.id, u.email, array_agg(r.role) as roles
@@ -130,25 +144,21 @@ async function ensureDebugAdministratorUser() {
      LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
      WHERE u.email = $1 AND u.deleted_at IS NULL
      GROUP BY u.id, u.email`,
-    [DEBUG_BACKDOOR_EMAIL],
+    [email],
   );
 
   if (existing.rows.length > 0) {
     return existing.rows[0] as { id: string; email: string; roles: string[] };
   }
 
-  const passwordHash = await bcrypt.hash(DEBUG_BACKDOOR_PASSWORD, 12);
+  const passwordHash = await bcrypt.hash(password, 12);
   const created = await pool.query(
     `INSERT INTO ${auth}.users (email, password_hash, email_verified)
      VALUES ($1, $2, true) RETURNING id, email`,
-    [DEBUG_BACKDOOR_EMAIL, passwordHash],
+    [email, passwordHash],
   );
   const user = created.rows[0];
 
-  await pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
-    user.id,
-    "SYSTEM_ADMIN",
-  ]);
   await pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
     user.id,
     "USER",
@@ -159,10 +169,10 @@ async function ensureDebugAdministratorUser() {
        user_id, first_name, last_name, completeness, onboarding_step, onboarding_completed
      ) VALUES ($1, $2, $3, 100, 99, true)
      ON CONFLICT (user_id) DO UPDATE SET onboarding_completed = true, completeness = 100`,
-    [user.id, "Debug", "Administrator"],
+    [user.id, "Debug", "User"],
   );
 
-  return { id: user.id, email: user.email, roles: ["SYSTEM_ADMIN", "USER"] };
+  return { id: user.id, email: user.email, roles: ["USER"] };
 }
 
 export async function connectProLogin(dto: { email: string; password: string }) {
@@ -207,7 +217,9 @@ export async function connectProLogin(dto: { email: string; password: string }) 
   }
 
   if (user.mfa_enabled) {
-    return { mfaRequired: true, userId: user.id };
+    const { secret } = jwtConfig();
+    const mfaToken = signMfaChallengeToken(user.id, user.email, secret);
+    return { mfaRequired: true, userId: user.id, mfaToken };
   }
 
   const roles: string[] = user.roles.filter(Boolean);
@@ -257,6 +269,46 @@ export async function connectProLogout(refreshToken: string) {
     tokenHash,
   ]);
   return { success: true };
+}
+
+export async function connectProVerifyMfa(mfaToken: string, code: string) {
+  if (!databaseConfigured()) {
+    throw new Error("DATABASE_URL is not configured");
+  }
+
+  const { secret } = jwtConfig();
+  let challenge: { sub: string; email: string };
+  try {
+    challenge = verifyMfaChallengeToken(mfaToken, secret);
+  } catch {
+    throw new UnauthorizedError("Invalid or expired MFA challenge");
+  }
+
+  const pool = getPool();
+  const result = await pool.query(
+    `SELECT u.id, u.email, u.mfa_secret, array_agg(r.role) as roles
+     FROM ${auth}.users u
+     LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
+     WHERE u.id = $1 AND u.mfa_enabled = true AND u.deleted_at IS NULL
+     GROUP BY u.id`,
+    [challenge.sub],
+  );
+
+  if (result.rows.length === 0) {
+    throw new NotFoundError("User not found or MFA not enabled");
+  }
+
+  const user = result.rows[0];
+  if (!user.mfa_secret || typeof user.mfa_secret !== "string") {
+    throw new UnauthorizedError("MFA is not configured for this account");
+  }
+  if (!verifyTotp(user.mfa_secret, code)) {
+    throw new UnauthorizedError("Invalid MFA code");
+  }
+
+  const roles: string[] = user.roles.filter(Boolean);
+  const tokens = await issueTokens(user.id, user.email, roles);
+  return { userId: user.id, ...tokens };
 }
 
 export function toAuthErrorResponse(error: unknown, step = "auth"): { status: number; body: AuthErrorDetail } {

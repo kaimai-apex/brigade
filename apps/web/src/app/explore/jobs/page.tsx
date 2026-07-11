@@ -1,4 +1,4 @@
-import { getJobs } from '@/lib/explore';
+import { loadJobListings } from '@/lib/explore/loader';
 import { ExploreHeader } from '@/components/explore/explore-header';
 import { JobsBoard } from '@/components/explore/jobs-board';
 
@@ -6,8 +6,8 @@ export const metadata = {
   title: 'Jobs · Explore · Brigade',
 };
 
-export default function JobsPage() {
-  const jobs = getJobs();
+export default async function JobsPage() {
+  const jobs = await loadJobListings();
 
   return (
     <div>

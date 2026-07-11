@@ -67,6 +67,10 @@ export class PostService implements OnModuleDestroy {
        FROM posts.posts p
        LEFT JOIN posts.comments c ON c.post_id = p.id
        WHERE p.id = $1 AND p.deleted_at IS NULL
+         AND (
+           COALESCE(p.visibility, 'public') = 'public'
+           OR p.author_id = $2
+         )
        GROUP BY p.id`,
       [postId, viewerId ?? null],
     );
@@ -90,6 +94,10 @@ export class PostService implements OnModuleDestroy {
             WHERE o.id = p.reposted_post_id AND o.deleted_at IS NULL) as reposted_post
        FROM posts.posts p
        WHERE p.deleted_at IS NULL AND p.content ILIKE '%#' || $1 || '%'
+         AND (
+           COALESCE(p.visibility, 'public') = 'public'
+           OR p.author_id = $2
+         )
        ORDER BY p.created_at DESC LIMIT 50`,
       [tag, viewerId ?? null],
     );
@@ -224,7 +232,7 @@ export class PostService implements OnModuleDestroy {
     const repost = await this.createPost(userId, quote, undefined, 'repost', 'public', postId);
     await this.kafka.publish('post-shared', 'post.shared', { postId, userId, repostId: repost.id });
     // return the repost with its embedded original
-    return this.getPost(repost.id, userId);
+    return this.getPost(String(repost.id), userId);
   }
 
   private formatPost(row: Record<string, unknown>) {

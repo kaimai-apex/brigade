@@ -1,4 +1,4 @@
-import { getNews } from '@/lib/explore';
+import { loadNews } from '@/lib/explore/loader';
 import { ExploreHeader } from '@/components/explore/explore-header';
 import { NewsFeed } from '@/components/explore/news-feed';
 
@@ -6,8 +6,8 @@ export const metadata = {
   title: 'Industry News · Explore · Brigade',
 };
 
-export default function NewsPage() {
-  const news = getNews();
+export default async function NewsPage() {
+  const news = await loadNews();
 
   return (
     <div>

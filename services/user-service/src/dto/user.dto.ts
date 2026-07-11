@@ -20,12 +20,11 @@ export class UpdateProfileDto {
   @IsOptional() @IsString() linkedinUrl?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) expertiseAreas?: string[];
   @IsOptional() @IsInt() yearsExperience?: number;
-  @IsOptional() @IsInt() onboardingStep?: number;
-  @IsOptional() @IsBoolean() onboardingCompleted?: boolean;
   @IsOptional() @IsBoolean() openToOpportunities?: boolean;
   @IsOptional() @IsBoolean() availablePrivateEvents?: boolean;
   @IsOptional() @IsBoolean() availableContractWork?: boolean;
   @IsOptional() @IsBoolean() availableEmergencyStaffing?: boolean;
+  /** Display title on profile (e.g. Chef) — not JWT RBAC. */
   @IsOptional() @IsString() role?: string;
 }
 

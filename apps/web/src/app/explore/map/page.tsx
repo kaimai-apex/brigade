@@ -1,10 +1,10 @@
+import { withinBbox, type MapPin } from '@/lib/explore';
 import {
-  getMapPins,
-  getNeighbourhoods,
-  withinBbox,
-  type MapPin,
-} from '@/lib/explore';
-import { loadRestaurants, resolveLocation } from '@/lib/explore/loader';
+  loadDirectoryMapPins,
+  loadNeighbourhoods,
+  loadRestaurants,
+  resolveLocation,
+} from '@/lib/explore/loader';
 import { ExploreHeader } from '@/components/explore/explore-header';
 import { ExploreMap } from '@/components/explore/explore-map';
 import { LocationSwitcher } from '@/components/explore/location-switcher';
@@ -21,9 +21,12 @@ export default async function MapPage({
   const sp = await searchParams;
   const location = await resolveLocation(sp);
   // Pull the whole area for the map, not just the first directory page.
-  const { restaurants } = await loadRestaurants(location, { limit: 2000 });
+  const [{ restaurants }, otherPins, neighbourhoods] = await Promise.all([
+    loadRestaurants(location, { limit: 2000 }),
+    loadDirectoryMapPins(location.bbox),
+    loadNeighbourhoods(location.bbox),
+  ]);
 
-  // Live restaurant pins for this location.
   const restaurantPins: MapPin[] = restaurants.map((r) => ({
     id: r.id,
     layer: 'restaurants',
@@ -37,12 +40,11 @@ export default async function MapPage({
     meta: r.neighbourhood ?? r.cuisineTags[0],
   }));
 
-  // Curated schools / suppliers / jobs pins that fall inside this viewport.
-  const otherPins = getMapPins().filter(
-    (p) => p.layer !== 'restaurants' && withinBbox(p.lat, p.lng, location.bbox),
+  const directoryPins = otherPins.filter((p) =>
+    withinBbox(p.lat, p.lng, location.bbox),
   );
 
-  const neighbourhoods = getNeighbourhoods().filter((n) =>
+  const localNeighbourhoods = neighbourhoods.filter((n) =>
     withinBbox(n.lat, n.lng, location.bbox),
   );
 
@@ -58,9 +60,9 @@ export default async function MapPage({
         activeName={location.name}
       />
       <ExploreMap
-        pins={[...restaurantPins, ...otherPins]}
+        pins={[...restaurantPins, ...directoryPins]}
         bbox={location.bbox}
-        neighbourhoods={neighbourhoods}
+        neighbourhoods={localNeighbourhoods}
       />
     </div>
   );

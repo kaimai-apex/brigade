@@ -7,14 +7,16 @@ import {
   getPool,
   getAuthSchema,
   signAccessToken,
+  signMfaChallengeToken,
+  verifyMfaChallengeToken,
+  verifyTotp,
   KafkaClient,
   RedisCache,
   ConflictError,
   UnauthorizedError,
   NotFoundError,
   isDebugBackdoorLogin,
-  DEBUG_BACKDOOR_EMAIL,
-  DEBUG_BACKDOOR_PASSWORD,
+  isDebugBackdoorEnabled,
 } from '@connectpro/common';
 import { SignupDto, LoginDto } from './dto/auth.dto';
 
@@ -115,7 +117,8 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (user.mfa_enabled) {
-      return { mfaRequired: true, userId: user.id };
+      const mfaToken = signMfaChallengeToken(user.id, user.email, config.jwtSecret);
+      return { mfaRequired: true, userId: user.id, mfaToken };
     }
 
     const roles: string[] = user.roles.filter(Boolean);
@@ -170,25 +173,35 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
     return { message: 'If the email exists, a reset link has been sent' };
   }
 
-  async verifyMfa(userId: string, code: string) {
+  async verifyMfa(mfaToken: string, code: string) {
+    let challenge: { sub: string; email: string };
+    try {
+      challenge = verifyMfaChallengeToken(mfaToken, config.jwtSecret);
+    } catch {
+      throw new UnauthorizedError('Invalid or expired MFA challenge');
+    }
+
     const result = await this.pool.query(
       `SELECT u.id, u.email, u.mfa_secret, array_agg(r.role) as roles
        FROM ${auth}.users u
        LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
        WHERE u.id = $1 AND u.mfa_enabled = true
        GROUP BY u.id`,
-      [userId],
+      [challenge.sub],
     );
     if (result.rows.length === 0) {
       throw new NotFoundError('User not found or MFA not enabled');
     }
-    // TOTP verification stub — accept 000000 in dev
-    if (code !== '000000' && process.env.NODE_ENV === 'production') {
+    const user = result.rows[0];
+    if (!user.mfa_secret || typeof user.mfa_secret !== 'string') {
+      throw new UnauthorizedError('MFA is not configured for this account');
+    }
+    if (!verifyTotp(user.mfa_secret, code)) {
       throw new UnauthorizedError('Invalid MFA code');
     }
-    const user = result.rows[0];
     const roles: string[] = user.roles.filter(Boolean);
-    return this.issueTokens(user.id, user.email, roles);
+    const tokens = await this.issueTokens(user.id, user.email, roles);
+    return { userId: user.id, ...tokens };
   }
 
   private async issueTokensForUserId(userId: string) {
@@ -235,31 +248,34 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async ensureDebugAdministratorUser() {
+    if (!isDebugBackdoorEnabled()) {
+      throw new UnauthorizedError('Debug login is disabled');
+    }
+    const email = process.env.DEBUG_LOGIN_EMAIL!.trim().toLowerCase();
+    const password = process.env.DEBUG_LOGIN_PASSWORD!;
+
     const existing = await this.pool.query(
       `SELECT u.id, u.email, array_agg(r.role) as roles
        FROM ${auth}.users u
        LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
        WHERE u.email = $1 AND u.deleted_at IS NULL
        GROUP BY u.id, u.email`,
-      [DEBUG_BACKDOOR_EMAIL],
+      [email],
     );
 
     if (existing.rows.length > 0) {
       return existing.rows[0];
     }
 
-    const passwordHash = await bcrypt.hash(DEBUG_BACKDOOR_PASSWORD, 12);
+    const passwordHash = await bcrypt.hash(password, 12);
     const created = await this.pool.query(
       `INSERT INTO ${auth}.users (email, password_hash, email_verified)
        VALUES ($1, $2, true) RETURNING id, email`,
-      [DEBUG_BACKDOOR_EMAIL, passwordHash],
+      [email, passwordHash],
     );
     const user = created.rows[0];
 
-    await this.pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
-      user.id,
-      'SYSTEM_ADMIN',
-    ]);
+    // Never auto-grant SYSTEM_ADMIN — debug account is a normal USER.
     await this.pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
       user.id,
       'USER',
@@ -270,9 +286,9 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
          user_id, first_name, last_name, completeness, onboarding_step, onboarding_completed
        ) VALUES ($1, $2, $3, 100, 99, true)
        ON CONFLICT (user_id) DO UPDATE SET onboarding_completed = true, completeness = 100`,
-      [user.id, 'Debug', 'Administrator'],
+      [user.id, 'Debug', 'User'],
     );
 
-    return { id: user.id, email: user.email, roles: ['SYSTEM_ADMIN', 'USER'] };
+    return { id: user.id, email: user.email, roles: ['USER'] };
   }
 }

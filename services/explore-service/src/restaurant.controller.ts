@@ -1,14 +1,18 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, IsNumber } from 'class-validator';
 import { RestaurantService } from './restaurant.service';
+import { ExploreWriteGuard } from './explore-write.guard';
 import type { Bbox } from './overpass';
 
-/** Parse "south,west,north,east" into a Bbox (returns undefined if malformed). */
+/** Parse "south,west,north,east" into a Bbox (returns undefined if malformed or too large). */
 function parseBbox(raw?: string): Bbox | undefined {
   if (!raw) return undefined;
   const parts = raw.split(',').map((n) => Number(n.trim()));
   if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return undefined;
   const [south, west, north, east] = parts;
+  if (south >= north || west >= east) return undefined;
+  // Cap viewport to ~2° (~220km) to limit Overpass/DB abuse on public reads.
+  if (north - south > 2 || east - west > 2) return undefined;
   return { south, west, north, east };
 }
 
@@ -57,6 +61,7 @@ export class RestaurantController {
 
   /** Ingest/refresh a bbox on demand — used by the monthly pre-ingest cron. */
   @Post('ingest')
+  @UseGuards(ExploreWriteGuard)
   async ingest(@Body() body: IngestDto) {
     const count = await this.restaurants.ingestBbox(
       { south: body.south, west: body.west, north: body.north, east: body.east },
