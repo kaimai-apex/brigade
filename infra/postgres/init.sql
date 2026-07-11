@@ -254,6 +254,7 @@ CREATE TABLE posts.posts (
     media_url   TEXT,
     post_type   TEXT NOT NULL DEFAULT 'text',
     visibility  TEXT NOT NULL DEFAULT 'public',
+    reposted_post_id UUID REFERENCES posts.posts(id),
     like_count  INT NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at  TIMESTAMPTZ

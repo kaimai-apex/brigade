@@ -30,11 +30,12 @@ export class PostService implements OnModuleDestroy {
     mediaUrl?: string,
     postType = 'text',
     visibility = 'public',
+    repostedPostId?: string,
   ) {
     const result = await this.pool.query(
-      `INSERT INTO posts.posts (author_id, content, media_url, post_type, visibility)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [authorId, content, mediaUrl ?? null, postType, visibility],
+      `INSERT INTO posts.posts (author_id, content, media_url, post_type, visibility, reposted_post_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [authorId, content, mediaUrl ?? null, postType, visibility, repostedPostId ?? null],
     );
     const post = result.rows[0];
     await this.kafka.publish('post-created', 'post.created', {
@@ -57,7 +58,12 @@ export class PostService implements OnModuleDestroy {
             FROM (SELECT reaction, count(*) cnt FROM posts.likes
                   WHERE post_id = p.id GROUP BY reaction) s) as reactions,
          (SELECT reaction FROM posts.likes
-            WHERE post_id = p.id AND user_id = $2) as viewer_reaction
+            WHERE post_id = p.id AND user_id = $2) as viewer_reaction,
+         (SELECT jsonb_build_object(
+             'id', o.id, 'authorId', o.author_id, 'content', o.content,
+             'mediaUrl', o.media_url, 'createdAt', o.created_at)
+            FROM posts.posts o
+            WHERE o.id = p.reposted_post_id AND o.deleted_at IS NULL) as reposted_post
        FROM posts.posts p
        LEFT JOIN posts.comments c ON c.post_id = p.id
        WHERE p.id = $1 AND p.deleted_at IS NULL
@@ -66,6 +72,43 @@ export class PostService implements OnModuleDestroy {
     );
     if (result.rows.length === 0) throw new NotFoundError('Post not found');
     return this.formatPost(result.rows[0]);
+  }
+
+  async getPostsByHashtag(tag: string, viewerId?: string) {
+    const result = await this.pool.query(
+      `SELECT p.id, p.author_id, p.content, p.media_url, p.like_count, p.created_at,
+         p.reposted_post_id,
+         (SELECT COALESCE(jsonb_object_agg(reaction, cnt), '{}'::jsonb)
+            FROM (SELECT reaction, count(*) cnt FROM posts.likes
+                  WHERE post_id = p.id GROUP BY reaction) s) as reactions,
+         (SELECT reaction FROM posts.likes
+            WHERE post_id = p.id AND user_id = $2) as viewer_reaction,
+         (SELECT jsonb_build_object(
+             'id', o.id, 'authorId', o.author_id, 'content', o.content,
+             'mediaUrl', o.media_url, 'createdAt', o.created_at)
+            FROM posts.posts o
+            WHERE o.id = p.reposted_post_id AND o.deleted_at IS NULL) as reposted_post
+       FROM posts.posts p
+       WHERE p.deleted_at IS NULL AND p.content ILIKE '%#' || $1 || '%'
+       ORDER BY p.created_at DESC LIMIT 50`,
+      [tag, viewerId ?? null],
+    );
+    return {
+      tag,
+      data: result.rows.map((r) => ({
+        id: r.id,
+        authorId: r.author_id,
+        content: r.content,
+        mediaUrl: r.media_url,
+        likeCount: r.like_count,
+        reactionCount: r.like_count,
+        reactions: r.reactions ?? {},
+        viewerReaction: r.viewer_reaction ?? null,
+        repostedPostId: r.reposted_post_id ?? null,
+        repostedPost: r.reposted_post ?? null,
+        createdAt: r.created_at,
+      })),
+    };
   }
 
   async deletePost(postId: string, userId: string) {
@@ -172,16 +215,16 @@ export class PostService implements OnModuleDestroy {
     return { success: true };
   }
 
-  async sharePost(postId: string, userId: string) {
-    const original = await this.getPost(postId);
-    const repost = await this.createPost(
-      userId,
-      `Shared: ${original.content}`,
-      original.mediaUrl as string | undefined,
-      'text',
+  async sharePost(postId: string, userId: string, quote = '') {
+    const original = await this.pool.query(
+      'SELECT id FROM posts.posts WHERE id = $1 AND deleted_at IS NULL',
+      [postId],
     );
+    if (original.rows.length === 0) throw new NotFoundError('Post not found');
+    const repost = await this.createPost(userId, quote, undefined, 'repost', 'public', postId);
     await this.kafka.publish('post-shared', 'post.shared', { postId, userId, repostId: repost.id });
-    return repost;
+    // return the repost with its embedded original
+    return this.getPost(repost.id, userId);
   }
 
   private formatPost(row: Record<string, unknown>) {
@@ -196,6 +239,8 @@ export class PostService implements OnModuleDestroy {
       reactionCount: row.like_count,
       reactions: row.reactions ?? {},
       viewerReaction: row.viewer_reaction ?? null,
+      repostedPostId: row.reposted_post_id ?? null,
+      repostedPost: row.reposted_post ?? null,
       comments: row.comments ?? [],
       createdAt: row.created_at,
     };

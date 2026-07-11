@@ -7,7 +7,7 @@ import {
   normalizeInstagramUrl,
   normalizeWebsiteUrl,
 } from "@/lib/profile/links";
-import { displayName, formatLocation, getInitials } from "@/lib/utils";
+import { cn, displayName, formatLocation, getInitials } from "@/lib/utils";
 import { SiteHeader } from "@/components/layout/site-header";
 import { ProfileViewRecorder } from "@/components/profile/profile-view-recorder";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -71,17 +71,30 @@ export default async function ProfilePage({
       <main className="mx-auto max-w-4xl px-6 pb-20 pt-8">
         <section className="rounded-3xl border border-ink/10 bg-paper p-8 md:p-10">
           <div className="flex flex-col gap-6 md:flex-row md:items-start">
-            <Avatar className="size-28 border border-ink/10">
-              {profile.profile_image_url && (
-                <AvatarImage
-                  src={profile.profile_image_url}
-                  alt={displayName(profile.first_name, profile.last_name)}
-                />
+            <div className="relative shrink-0 self-start">
+              <Avatar
+                className={cn(
+                  "size-28 border border-ink/10",
+                  profile.open_to_opportunities &&
+                    "ring-4 ring-forest ring-offset-2 ring-offset-paper",
+                )}
+              >
+                {profile.profile_image_url && (
+                  <AvatarImage
+                    src={profile.profile_image_url}
+                    alt={displayName(profile.first_name, profile.last_name)}
+                  />
+                )}
+                <AvatarFallback className="bg-secondary text-3xl font-bold text-forest">
+                  {getInitials(profile.first_name, profile.last_name)}
+                </AvatarFallback>
+              </Avatar>
+              {profile.open_to_opportunities && (
+                <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-forest px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-paper shadow-sm">
+                  Open to work
+                </span>
               )}
-              <AvatarFallback className="bg-secondary text-3xl font-bold text-forest">
-                {getInitials(profile.first_name, profile.last_name)}
-              </AvatarFallback>
-            </Avatar>
+            </div>
 
             <div className="flex-1">
               <div className="flex flex-wrap items-start justify-between gap-3">

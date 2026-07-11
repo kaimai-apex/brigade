@@ -87,6 +87,12 @@ export class ApiClient {
     return this.request<{ data: Post[] }>(`/api/v1/feed?limit=${limit}`);
   }
 
+  getPostsByHashtag(tag: string) {
+    return this.request<{ tag: string; data: Post[] }>(
+      `/api/v1/posts/hashtag/${encodeURIComponent(tag)}`,
+    );
+  }
+
   createPost(content: string, mediaUrl?: string) {
     return this.request('/api/v1/posts', {
       method: 'POST',
@@ -109,10 +115,10 @@ export class ApiClient {
     return this.request(`/api/v1/posts/${postId}/reactions`, { method: 'DELETE' });
   }
 
-  repost(postId: string) {
+  repost(postId: string, quote?: string) {
     return this.request<Post>(`/api/v1/posts/${postId}/share`, {
       method: 'POST',
-      body: '{}',
+      body: JSON.stringify({ quote: quote ?? '' }),
     });
   }
 
@@ -293,6 +299,16 @@ export type Post = {
   reactionCount?: number;
   reactions?: Partial<Record<ReactionType, number>>;
   viewerReaction?: ReactionType | null;
+  repostedPostId?: string | null;
+  repostedPost?: RepostedPost | null;
+  createdAt: string;
+};
+
+export type RepostedPost = {
+  id: string;
+  authorId: string;
+  content: string;
+  mediaUrl?: string;
   createdAt: string;
 };
 

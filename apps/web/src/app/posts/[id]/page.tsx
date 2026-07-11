@@ -7,6 +7,8 @@ import { ArrowLeft, Send } from 'lucide-react';
 import { api, type Comment, type Post } from '@/lib/api/client';
 import { SiteHeader } from '@/components/layout/site-header';
 import { ReactionBar } from '@/components/feed/reaction-bar';
+import { PostContent } from '@/components/feed/post-content';
+import { RepostedCard } from '@/components/feed/reposted-card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -145,7 +147,11 @@ export default function PostDetailPage({
               </div>
             </div>
 
-            <p className="mt-3 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+            {post.content && (
+              <p className="mt-3 whitespace-pre-wrap leading-relaxed">
+                <PostContent text={post.content} />
+              </p>
+            )}
             {post.mediaUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -154,6 +160,7 @@ export default function PostDetailPage({
                 className="mt-3 max-h-96 w-full rounded-xl object-cover"
               />
             )}
+            {post.repostedPost && <RepostedCard post={post.repostedPost} />}
 
             <div className="mt-4">
               <ReactionBar post={post} commentCount={post.comments?.length ?? 0} />

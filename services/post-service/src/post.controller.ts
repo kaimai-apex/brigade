@@ -31,6 +31,10 @@ class ReactionDto {
   @IsOptional() @IsString() reaction?: string;
 }
 
+class RepostDto {
+  @IsOptional() @IsString() quote?: string;
+}
+
 @Controller('posts')
 @UseGuards(jwtGuard)
 export class PostController {
@@ -45,6 +49,11 @@ export class PostController {
       dto.postType,
       dto.visibility,
     );
+  }
+
+  @Get('hashtag/:tag')
+  byHashtag(@Param('tag') tag: string, @Req() req: AuthenticatedRequest) {
+    return this.postService.getPostsByHashtag(tag, req.user.sub);
   }
 
   @Get(':id')
@@ -87,7 +96,11 @@ export class PostController {
   }
 
   @Post(':id/share')
-  share(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    return this.postService.sharePost(id, req.user.sub);
+  share(
+    @Param('id') id: string,
+    @Body() dto: RepostDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.postService.sharePost(id, req.user.sub, dto.quote ?? '');
   }
 }

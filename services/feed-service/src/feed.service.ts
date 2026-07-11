@@ -89,7 +89,13 @@ export class FeedService implements OnModuleInit, OnModuleDestroy {
                  FROM (SELECT reaction, count(*) cnt FROM posts.likes
                        WHERE post_id = p.id GROUP BY reaction) s) as reactions,
               (SELECT reaction FROM posts.likes
-                 WHERE post_id = p.id AND user_id = $1) as viewer_reaction
+                 WHERE post_id = p.id AND user_id = $1) as viewer_reaction,
+              p.reposted_post_id,
+              (SELECT jsonb_build_object(
+                  'id', o.id, 'authorId', o.author_id, 'content', o.content,
+                  'mediaUrl', o.media_url, 'createdAt', o.created_at)
+                 FROM posts.posts o
+                 WHERE o.id = p.reposted_post_id AND o.deleted_at IS NULL) as reposted_post
        FROM posts.home_timeline t
        JOIN posts.posts p ON p.id = t.post_id
        WHERE t.user_id = $1 AND p.deleted_at IS NULL
@@ -109,6 +115,8 @@ export class FeedService implements OnModuleInit, OnModuleDestroy {
         reactionCount: r.like_count,
         reactions: r.reactions ?? {},
         viewerReaction: r.viewer_reaction ?? null,
+        repostedPostId: r.reposted_post_id ?? null,
+        repostedPost: r.reposted_post ?? null,
         createdAt: r.created_at,
         score: r.score,
       })),

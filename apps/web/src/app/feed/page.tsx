@@ -7,6 +7,8 @@ import { RefreshCw, Send } from 'lucide-react';
 import { api, type Comment, type Post, type ReactionType } from '@/lib/api/client';
 import { SiteHeader } from '@/components/layout/site-header';
 import { ReactionBar } from '@/components/feed/reaction-bar';
+import { PostContent } from '@/components/feed/post-content';
+import { RepostedCard } from '@/components/feed/reposted-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -176,17 +178,25 @@ export default function FeedPage() {
                     <p className="text-sm font-semibold">
                       {post.authorId.slice(0, 8)}…
                     </p>
-                    <p className="text-xs text-ink/50">
+                    <Link
+                      href={`/posts/${post.id}`}
+                      className="text-xs text-ink/50 hover:underline"
+                    >
+                      {post.repostedPost && 'reposted · '}
                       {new Date(post.createdAt).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
                       })}
-                    </p>
+                    </Link>
                   </div>
                 </div>
 
-                <Link href={`/posts/${post.id}`} className="mt-3 block">
-                  <p className="whitespace-pre-wrap leading-relaxed">{post.content}</p>
+                <div className="mt-3">
+                  {post.content && (
+                    <p className="whitespace-pre-wrap leading-relaxed">
+                      <PostContent text={post.content} />
+                    </p>
+                  )}
                   {post.mediaUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -195,7 +205,8 @@ export default function FeedPage() {
                       className="mt-3 max-h-72 w-full rounded-xl object-cover"
                     />
                   )}
-                </Link>
+                  {post.repostedPost && <RepostedCard post={post.repostedPost} />}
+                </div>
 
                 <div className="mt-4">
                   <ReactionBar
