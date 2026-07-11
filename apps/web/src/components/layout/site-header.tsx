@@ -122,8 +122,10 @@ export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
-        if (typeof data.unread === 'number') setUnread(data.unread);
-        if (data.type === 'new' && Array.isArray(data.notifications)) {
+        if (data.event === 'init') {
+          setUnread(data.unread ?? 0);
+        } else if (data.event === 'new') {
+          setUnread((u) => u + 1);
           toast('🔔 New notification');
         }
       } catch {

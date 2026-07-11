@@ -1,6 +1,12 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { MongoClient, Db, ObjectId } from 'mongodb';
-import { loadConfig, KafkaClient, NotFoundError, ForbiddenError } from '@connectpro/common';
+import {
+  loadConfig,
+  KafkaClient,
+  RedisCache,
+  NotFoundError,
+  ForbiddenError,
+} from '@connectpro/common';
 
 const config = loadConfig('messaging-service', 3007);
 const MONGO_URL = process.env.MONGO_URL ?? 'mongodb://localhost:27017/connectpro';
@@ -10,9 +16,11 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
   private client: MongoClient | null = null;
   private db: Db | null = null;
   private kafka: KafkaClient;
+  private redis: RedisCache;
 
   constructor() {
     this.kafka = new KafkaClient('messaging-service', config.kafkaBrokers);
+    this.redis = new RedisCache(config.redisUrl);
   }
 
   async onModuleInit() {
@@ -25,6 +33,7 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy() {
     await this.kafka.disconnect();
+    await this.redis.disconnect();
     if (this.client) await this.client.close();
   }
 
@@ -60,7 +69,7 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
   }
 
   async sendMessage(conversationId: string, senderId: string, body: string, attachments?: unknown[]) {
-    await this.getConversationOrThrow(conversationId, senderId);
+    const conv = await this.getConversationOrThrow(conversationId, senderId);
     const result = await this.db!.collection('messages').insertOne({
       conversationId: new ObjectId(conversationId),
       senderId,
@@ -81,12 +90,13 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       body,
       createdAt: new Date(),
     };
+    const recipients = (conv.participants as string[]).filter((p) => p !== senderId);
     await this.kafka.publish('message-sent', 'message.sent', {
       ...message,
-      recipientId: (await this.getConversationOrThrow(conversationId, senderId)).participants.find(
-        (p: string) => p !== senderId,
-      ),
+      recipientId: recipients[0],
     });
+    // realtime fan-out: each recipient's SSE stream subscribes to msg:<userId>
+    await Promise.all(recipients.map((p) => this.redis.publish(`msg:${p}`, message)));
     return message;
   }
 

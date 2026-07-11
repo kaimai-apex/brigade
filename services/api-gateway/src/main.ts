@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { json, Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter, loadConfig, createLogger } from '@connectpro/common';
@@ -57,6 +58,7 @@ async function bootstrap() {
   app.enableCors({ origin: true, credentials: true });
   app.use(json());
   app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   const expressApp = app.getHttpAdapter().getInstance();
   // Express 5 / path-to-regexp v8 require a *named* wildcard — bare '*' throws

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { MessagesSquare, RefreshCw, Search, Send } from 'lucide-react';
 import {
@@ -36,6 +36,10 @@ export default function MessagesPage() {
   const [query, setQuery] = useState('');
   const [people, setPeople] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const selectedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   async function loadConversations() {
     setLoading(true);
@@ -49,6 +53,27 @@ export default function MessagesPage() {
 
   useEffect(() => {
     void loadConversations();
+  }, []);
+
+  // Live message push (SSE): append to the open conversation as they arrive.
+  useEffect(() => {
+    const es = new EventSource('/api/stream/messages');
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.event !== 'message' || !data.message) return;
+        const m = data.message as Message;
+        void loadConversations();
+        if (m.conversationId === selectedIdRef.current) {
+          setMessages((prev) =>
+            prev.some((x) => x.id === m.id) ? prev : [...prev, m],
+          );
+        }
+      } catch {
+        /* ignore malformed frames */
+      }
+    };
+    return () => es.close();
   }, []);
 
   useEffect(() => {
