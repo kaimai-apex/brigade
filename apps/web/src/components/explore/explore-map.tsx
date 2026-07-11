@@ -3,21 +3,18 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
-import type { MapLayer, MapPin, Neighbourhood } from '@/lib/explore';
+import type { Bbox, MapLayer, MapPin, Neighbourhood } from '@/lib/explore';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 /**
- * Lightweight, dependency-free map of the GTA core. Renders seed pins with an
- * equirectangular projection onto an SVG — no external tiles, so it works
- * offline and inside strict CSP. The production upgrade (MD §4.8) swaps this
- * for Leaflet + OSM tiles rendering the same pin set; the data contract
- * (MapPin[]) stays identical.
+ * Lightweight, dependency-free map. Renders pins with an equirectangular
+ * projection onto an SVG — no external tiles, so it works offline and inside
+ * strict CSP. The viewport is driven by whatever bbox the page passes, so it
+ * works for any location (not just Toronto). The production upgrade (MD §4.8)
+ * swaps this for Leaflet + OSM tiles rendering the same MapPin[] set.
  */
 
-// Fixed viewport over the Toronto core (approx). Pins outside are listed but
-// not plotted, so far-flung seeds (e.g. Niagara) don't squash downtown.
-const BOUNDS = { latMin: 43.585, latMax: 43.83, lngMin: -79.67, lngMax: -79.19 };
 const W = 800;
 const H = 520;
 const PAD = 28;
@@ -37,31 +34,14 @@ const COLOR: Record<MapLayer, string> = {
   jobs: '#e8b84b',
 };
 
-function project(lat: number, lng: number) {
-  const x =
-    PAD +
-    ((lng - BOUNDS.lngMin) / (BOUNDS.lngMax - BOUNDS.lngMin)) * (W - 2 * PAD);
-  const y =
-    PAD +
-    ((BOUNDS.latMax - lat) / (BOUNDS.latMax - BOUNDS.latMin)) * (H - 2 * PAD);
-  return { x, y };
-}
-
-function inBounds(lat: number, lng: number) {
-  return (
-    lat >= BOUNDS.latMin &&
-    lat <= BOUNDS.latMax &&
-    lng >= BOUNDS.lngMin &&
-    lng <= BOUNDS.lngMax
-  );
-}
-
 export function ExploreMap({
   pins,
-  neighbourhoods,
+  bbox,
+  neighbourhoods = [],
 }: {
   pins: MapPin[];
-  neighbourhoods: Neighbourhood[];
+  bbox: Bbox;
+  neighbourhoods?: Neighbourhood[];
 }) {
   const [active, setActive] = useState<Record<MapLayer, boolean>>({
     restaurants: true,
@@ -72,13 +52,46 @@ export function ExploreMap({
   const [selected, setSelected] = useState<MapPin | null>(null);
   const [focus, setFocus] = useState<Neighbourhood | null>(null);
 
+  // Pad the viewport slightly so edge pins aren't clipped.
+  const view = useMemo(() => {
+    const padLat = (bbox.north - bbox.south) * 0.08 || 0.01;
+    const padLng = (bbox.east - bbox.west) * 0.08 || 0.01;
+    return {
+      latMin: bbox.south - padLat,
+      latMax: bbox.north + padLat,
+      lngMin: bbox.west - padLng,
+      lngMax: bbox.east + padLng,
+    };
+  }, [bbox]);
+
+  const project = useMemo(
+    () => (lat: number, lng: number) => ({
+      x:
+        PAD +
+        ((lng - view.lngMin) / (view.lngMax - view.lngMin)) * (W - 2 * PAD),
+      y:
+        PAD +
+        ((view.latMax - lat) / (view.latMax - view.latMin)) * (H - 2 * PAD),
+    }),
+    [view],
+  );
+
+  const inBounds = useMemo(
+    () => (lat: number, lng: number) =>
+      lat >= view.latMin &&
+      lat <= view.latMax &&
+      lng >= view.lngMin &&
+      lng <= view.lngMax,
+    [view],
+  );
+
   const visible = useMemo(
     () => pins.filter((p) => active[p.layer]),
     [pins, active],
   );
   const plotted = useMemo(
     () => visible.filter((p) => inBounds(p.lat, p.lng)),
-    [visible],
+    [visible, inBounds],
   );
 
   function toggle(layer: MapLayer) {
@@ -115,34 +128,38 @@ export function ExploreMap({
         })}
       </div>
 
-      {/* Neighbourhood quick-jumps */}
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        <span className="mr-1 self-center text-xs font-semibold uppercase tracking-wide text-ink/45">
-          Jump to
-        </span>
-        {neighbourhoods.map((n) => (
-          <button
-            key={n.slug}
-            type="button"
-            onClick={() => setFocus((cur) => (cur?.slug === n.slug ? null : n))}
-            className={cn(
-              'rounded-full border px-2.5 py-1 text-xs font-semibold transition',
-              focus?.slug === n.slug
-                ? 'border-rust bg-rust text-white'
-                : 'border-neutral-200 bg-white text-ink/70 hover:bg-neutral-50',
-            )}
-          >
-            {n.name}
-          </button>
-        ))}
-      </div>
+      {/* Neighbourhood quick-jumps (only where we have them) */}
+      {neighbourhoods.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          <span className="mr-1 self-center text-xs font-semibold uppercase tracking-wide text-ink/45">
+            Jump to
+          </span>
+          {neighbourhoods.map((n) => (
+            <button
+              key={n.slug}
+              type="button"
+              onClick={() =>
+                setFocus((cur) => (cur?.slug === n.slug ? null : n))
+              }
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-xs font-semibold transition',
+                focus?.slug === n.slug
+                  ? 'border-rust bg-rust text-white'
+                  : 'border-neutral-200 bg-white text-ink/70 hover:bg-neutral-50',
+              )}
+            >
+              {n.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-[#eef2ea]">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="h-auto w-full"
           role="img"
-          aria-label="Map of Toronto hospitality pins"
+          aria-label="Map of hospitality pins"
         >
           {/* subtle grid */}
           <defs>
@@ -156,18 +173,6 @@ export function ExploreMap({
             </pattern>
           </defs>
           <rect width={W} height={H} fill="url(#grid)" />
-
-          {/* Lake Ontario hint along the south edge */}
-          <rect x="0" y={H - 46} width={W} height="46" fill="#cfe0e8" />
-          <text
-            x={W - 14}
-            y={H - 18}
-            textAnchor="end"
-            className="fill-[#6b93a6]"
-            style={{ fontSize: 12, fontStyle: 'italic' }}
-          >
-            Lake Ontario
-          </text>
 
           {/* focused neighbourhood halo */}
           {focus && inBounds(focus.lat, focus.lng) && (
@@ -243,23 +248,33 @@ export function ExploreMap({
               {selected.meta && (
                 <p className="mt-0.5 text-sm text-ink/60">{selected.meta}</p>
               )}
-              {selected.href && (
-                <Link
-                  href={selected.href}
-                  className="mt-3 inline-block text-sm font-semibold text-forest hover:underline"
-                >
-                  View details →
-                </Link>
-              )}
+              {selected.href &&
+                (selected.href.startsWith('http') ? (
+                  <a
+                    href={selected.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-block text-sm font-semibold text-forest hover:underline"
+                  >
+                    View details →
+                  </a>
+                ) : (
+                  <Link
+                    href={selected.href}
+                    className="mt-3 inline-block text-sm font-semibold text-forest hover:underline"
+                  >
+                    View details →
+                  </Link>
+                ))}
             </Card>
           </div>
         )}
       </div>
 
       <p className="mt-3 text-xs text-ink/50">
-        Showing {plotted.length} of {visible.length} pins across the GTA core.
-        This lightweight view upgrades to full Leaflet + OpenStreetMap tiles in
-        production — the pin data stays the same.
+        Showing {plotted.length} of {visible.length} pins in view. Restaurant
+        pins load live from OpenStreetMap; this lightweight view upgrades to
+        full Leaflet + OSM tiles in production with the same pin data.
       </p>
     </div>
   );

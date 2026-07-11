@@ -11,8 +11,10 @@ import { RestaurantCard } from './restaurant-card';
 
 export function RestaurantDirectory({
   restaurants,
+  attribution,
 }: {
   restaurants: Restaurant[];
+  attribution?: string;
 }) {
   const [query, setQuery] = useState('');
   const [neighbourhood, setNeighbourhood] = useState('');
@@ -21,9 +23,13 @@ export function RestaurantDirectory({
 
   const neighbourhoods = useMemo(
     () =>
-      [...new Set(restaurants.map((r) => r.neighbourhood))].sort((a, b) =>
-        a.localeCompare(b),
-      ),
+      [
+        ...new Set(
+          restaurants
+            .map((r) => r.neighbourhood)
+            .filter((n): n is string => Boolean(n)),
+        ),
+      ].sort((a, b) => a.localeCompare(b)),
     [restaurants],
   );
   const cuisines = useMemo(
@@ -155,6 +161,13 @@ export function RestaurantDirectory({
             </li>
           ))}
         </ul>
+      )}
+
+      {attribution && (
+        <p className="mt-8 text-xs text-ink/45">
+          Live restaurant data {attribution}. Accolades curated from Michelin,
+          Canada’s 100 Best and local press.
+        </p>
       )}
     </div>
   );

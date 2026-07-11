@@ -13,6 +13,7 @@ export * from "./suppliers";
 export * from "./news";
 export * from "./jobs";
 export * from "./neighbourhoods";
+export * from "./locations";
 
 /**
  * Explore section registry — drives the hub grid and the section sub-nav.

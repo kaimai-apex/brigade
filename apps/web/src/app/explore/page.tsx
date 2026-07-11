@@ -5,7 +5,6 @@ import {
   getNews,
   getRestaurants,
   getSchools,
-  getSuppliers,
   getJobs,
 } from '@/lib/explore';
 import { ExploreHeader } from '@/components/explore/explore-header';
@@ -24,9 +23,9 @@ export default function ExplorePage() {
   const news = getNews().slice(0, 4);
 
   const stats = [
-    { label: 'Restaurants', value: getRestaurants().length },
+    { label: 'Cities live', value: '8+' },
+    { label: 'Curated venues', value: getRestaurants().length },
     { label: 'Schools', value: getSchools().length },
-    { label: 'Suppliers', value: getSuppliers().length },
     { label: 'Live jobs', value: getJobs().length },
   ];
 

@@ -24,22 +24,28 @@ export type Restaurant = {
   id: string;
   slug: string;
   name: string;
-  /** Approx WGS84 coords — placeholder until Google Places enrichment (MD §5 Phase 1). */
   lat: number;
   lng: number;
-  neighbourhood: string;
-  address: string;
+  /** Present on curated records and richer OSM entries; may be absent. */
+  neighbourhood?: string;
+  address?: string;
   cuisineTags: string[];
-  priceLevel: PriceLevel;
+  priceLevel?: PriceLevel;
   accolades: Accolade[];
   /** Outbound links only — we point, we don't republish (MD §6). */
   website?: string;
   instagram?: string;
   reservationUrl?: string;
-  blurb: string;
+  blurb?: string;
   featured?: boolean;
   /** null until an owner claims the venue page. */
   claimedByUserId?: string | null;
+  /** Where the record came from — drives link target and attribution. */
+  source?: "curated" | "osm";
+  osmType?: "node" | "way";
+  osmId?: number;
+  /** Non-curated cards link straight out here (website, else OSM/Maps). */
+  externalUrl?: string;
 };
 
 export type School = {
@@ -133,6 +139,26 @@ export type Neighbourhood = {
   name: string;
   lat: number;
   lng: number;
+};
+
+/** Geographic bounding box (WGS84). */
+export type Bbox = {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+};
+
+/** A place to browse — preset city/neighbourhood or a geocoded query result. */
+export type ExploreLocation = {
+  slug: string;
+  name: string;
+  region?: string;
+  lat: number;
+  lng: number;
+  bbox: Bbox;
+  /** True when produced by geocoding a free-text query rather than a preset. */
+  geocoded?: boolean;
 };
 
 /** A unified pin for the Hospitality Map, projected from any layer. */
