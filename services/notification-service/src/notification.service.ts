@@ -4,6 +4,7 @@ import {
   loadConfig,
   getPool,
   KafkaClient,
+  RedisCache,
   DomainEvent,
   NotFoundError,
 } from '@connectpro/common';
@@ -14,11 +15,13 @@ const config = loadConfig('notification-service', 3008);
 export class NotificationService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool;
   private kafka: KafkaClient;
+  private redis: RedisCache;
   private processedEvents = new Set<string>();
 
   constructor() {
     this.pool = getPool(config.databaseUrl);
     this.kafka = new KafkaClient('notification-service', config.kafkaBrokers);
+    this.redis = new RedisCache(config.redisUrl);
   }
 
   async onModuleInit() {
@@ -38,6 +41,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy() {
     await this.kafka.disconnect();
+    await this.redis.disconnect();
   }
 
   private resolveRecipient(event: DomainEvent): string | null {
@@ -104,7 +108,10 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
       userId,
       type,
     });
-    return this.format(result.rows[0]);
+    const formatted = this.format(result.rows[0]);
+    // realtime fan-out: SSE clients subscribe to this per-user channel
+    await this.redis.publish(`notif:${userId}`, formatted);
+    return formatted;
   }
 
   async list(userId: string, limit = 20) {

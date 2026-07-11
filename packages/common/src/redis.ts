@@ -50,6 +50,17 @@ export class RedisCache {
     await this.client.del(key);
   }
 
+  // Fire-and-forget pub/sub publish (used to fan realtime events out to SSE).
+  async publish(channel: string, message: unknown): Promise<void> {
+    await this.connect();
+    if (!this.available || !this.client) return;
+    try {
+      await this.client.publish(channel, JSON.stringify(message));
+    } catch (err) {
+      log.warn({ err: String(err), channel }, 'Redis publish failed');
+    }
+  }
+
   async disconnect(): Promise<void> {
     if (this.client) await this.client.disconnect().catch(() => null);
   }

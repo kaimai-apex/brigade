@@ -12,6 +12,7 @@ import {
   Settings,
   User,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/auth-provider';
 import { api } from '@/lib/api/client';
 import { cn, getInitials, displayName } from '@/lib/utils';
@@ -112,6 +113,25 @@ export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
   const router = useRouter();
   const user = useCurrentUser(session?.userId);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  // Live notification stream (SSE): keeps the bell badge in sync + toasts new ones.
+  useEffect(() => {
+    if (!session) return;
+    const es = new EventSource('/api/stream/notifications');
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (typeof data.unread === 'number') setUnread(data.unread);
+        if (data.type === 'new' && Array.isArray(data.notifications)) {
+          toast('🔔 New notification');
+        }
+      } catch {
+        /* ignore malformed frames */
+      }
+    };
+    return () => es.close();
+  }, [session]);
 
   const name = user ? displayName(user.firstName, user.lastName) : 'Brigade Member';
   const initials = getInitials(user?.firstName, user?.lastName);
@@ -165,9 +185,15 @@ export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
                     size="icon-sm"
                     aria-label="Notifications"
                     asChild
+                    className="relative"
                   >
                     <Link href="/notifications">
                       <Bell className="size-5" />
+                      {unread > 0 && (
+                        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rust px-1 text-[10px] font-bold leading-none text-paper">
+                          {unread > 9 ? '9+' : unread}
+                        </span>
+                      )}
                     </Link>
                   </Button>
                 </TooltipTrigger>
