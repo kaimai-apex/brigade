@@ -6,6 +6,7 @@ import {
   Bell,
   Briefcase,
   ChevronDown,
+  Compass,
   Home,
   LogOut,
   MessageSquare,
@@ -31,6 +32,12 @@ import { cn, displayName, getInitials } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: Home, match: (p: string) => p === '/dashboard' },
+  {
+    href: '/explore',
+    label: 'Explore',
+    icon: Compass,
+    match: (p: string) => p.startsWith('/explore'),
+  },
   { href: '/network', label: 'Network', icon: Users, match: (p: string) => p.startsWith('/network') },
   {
     href: '/opportunities',

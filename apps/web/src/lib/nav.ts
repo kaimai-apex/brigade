@@ -1,6 +1,7 @@
-/** Primary app navigation — Discover → Network → My Brigades → Opportunities */
+/** Primary app navigation — Discover → Explore → Network → My Brigades → Opportunities */
 export const PRIMARY_NAV = [
   { href: "/discover", label: "Discover" },
+  { href: "/explore", label: "Explore" },
   { href: "/network", label: "Network" },
   { href: "/my-brigades", label: "My Brigades" },
   { href: "/opportunities", label: "Opportunities" },
