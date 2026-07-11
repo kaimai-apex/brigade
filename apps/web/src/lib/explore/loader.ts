@@ -1,15 +1,13 @@
 import type { ExploreLocation, Restaurant } from "./types";
 import { getDefaultLocation, getLocation } from "./locations";
-import { fetchRestaurantsInBbox, OSM_ATTRIBUTION } from "./sources/overpass";
 import { geocodePlace } from "./sources/geocode";
-import { mergeCurated } from "./sources/merge";
+import { fetchRestaurants, type RestaurantPage } from "./api";
 
 /**
- * Server-only composition layer for the Explore restaurant loader. Pages call
- * `resolveLocation` on their search params, then `loadRestaurants` to pull live
- * OSM data (monthly-cached) merged with curated accolades. Intended for use
- * only from Server Components / server code — kept out of the client-facing
- * barrel (index.ts) so it never lands in a client bundle.
+ * Server-side composition for the Explore restaurant loader. Location comes
+ * from `?loc=` (preset) or `?q=` (geocoded); restaurants + filtering come from
+ * explore-service (Postgres-backed, OSM read-through). Kept out of the
+ * client-facing barrel (index.ts) so it never lands in a client bundle.
  */
 
 /** Turn `?loc=` / `?q=` search params into a concrete location to browse. */
@@ -24,24 +22,33 @@ export async function resolveLocation(params: {
   return getLocation(params.loc) ?? getDefaultLocation();
 }
 
-export type LoadedRestaurants = {
+export type RestaurantFilters = {
+  cuisine?: string;
+  price?: string;
+  accolade?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type LoadedRestaurants = RestaurantPage & {
   location: ExploreLocation;
-  restaurants: Restaurant[];
-  attribution: string;
-  ok: boolean;
 };
 
 export async function loadRestaurants(
   location: ExploreLocation,
+  filters: RestaurantFilters = {},
 ): Promise<LoadedRestaurants> {
-  const { restaurants, ok } = await fetchRestaurantsInBbox(location.bbox);
-  const merged = mergeCurated(restaurants, location.bbox);
-  return {
-    location,
-    restaurants: merged,
-    attribution: OSM_ATTRIBUTION,
-    ok,
-  };
+  const page = await fetchRestaurants({
+    bbox: location.bbox,
+    cuisine: filters.cuisine,
+    price: filters.price,
+    accolade: filters.accolade,
+    q: filters.search,
+    page: filters.page,
+    limit: filters.limit ?? 60,
+  });
+  return { ...page, location };
 }
 
-export { OSM_ATTRIBUTION };
+export type { Restaurant };

@@ -20,7 +20,8 @@ export default async function MapPage({
 }) {
   const sp = await searchParams;
   const location = await resolveLocation(sp);
-  const { restaurants } = await loadRestaurants(location);
+  // Pull the whole area for the map, not just the first directory page.
+  const { restaurants } = await loadRestaurants(location, { limit: 2000 });
 
   // Live restaurant pins for this location.
   const restaurantPins: MapPin[] = restaurants.map((r) => ({

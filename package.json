@@ -9,15 +9,16 @@
     "dev:web": "pnpm --filter @connectpro/web dev",
     "dev:gateway": "pnpm --filter @connectpro/api-gateway dev",
     "dev:services": "turbo dev --filter='@connectpro/*-service' --concurrency=20",
-    "dev:stop": "pkill -f '@swc-node/register' 2>/dev/null || true; pkill -f 'next dev --port 3100' 2>/dev/null || true; for p in 3000 3100 3002 3003 3004 3005 3006 3007 3008 3009 3010 3011 3012 3013 3014; do lsof -ti:$p | xargs kill -9 2>/dev/null || true; done",
-    "dev:stack": "pnpm dev:stop && pnpm --filter @connectpro/common build && dotenv -e .env -e .env.local -- concurrently -n gateway,auth,user,conn,post,feed,msg,notif,search,job,co,media,analytics,rec,web -c blue,green,yellow,magenta,cyan,white,gray,red,brightBlue,brightGreen,brightYellow,brightMagenta,brightCyan,brightRed,brightWhite \"pnpm --filter @connectpro/api-gateway dev\" \"pnpm --filter @connectpro/auth-service dev\" \"pnpm --filter @connectpro/user-service dev\" \"pnpm --filter @connectpro/connection-service dev\" \"pnpm --filter @connectpro/post-service dev\" \"pnpm --filter @connectpro/feed-service dev\" \"pnpm --filter @connectpro/messaging-service dev\" \"pnpm --filter @connectpro/notification-service dev\" \"pnpm --filter @connectpro/search-service dev\" \"pnpm --filter @connectpro/job-service dev\" \"pnpm --filter @connectpro/company-service dev\" \"pnpm --filter @connectpro/media-service dev\" \"pnpm --filter @connectpro/analytics-service dev\" \"pnpm --filter @connectpro/recommendation-service dev\" \"pnpm --filter @connectpro/web dev\"",
+    "dev:stop": "pkill -f '@swc-node/register' 2>/dev/null || true; pkill -f 'next dev --port 3100' 2>/dev/null || true; for p in 3000 3100 3002 3003 3004 3005 3006 3007 3008 3009 3010 3011 3012 3013 3014 3015; do lsof -ti:$p | xargs kill -9 2>/dev/null || true; done",
+    "dev:stack": "pnpm dev:stop && pnpm --filter @connectpro/common build && dotenv -e .env -e .env.local -- concurrently -n gateway,auth,user,conn,post,feed,msg,notif,search,job,co,media,analytics,rec,explore,web -c blue,green,yellow,magenta,cyan,white,gray,red,brightBlue,brightGreen,brightYellow,brightMagenta,brightCyan,brightRed,brightBlue,brightWhite \"pnpm --filter @connectpro/api-gateway dev\" \"pnpm --filter @connectpro/auth-service dev\" \"pnpm --filter @connectpro/user-service dev\" \"pnpm --filter @connectpro/connection-service dev\" \"pnpm --filter @connectpro/post-service dev\" \"pnpm --filter @connectpro/feed-service dev\" \"pnpm --filter @connectpro/messaging-service dev\" \"pnpm --filter @connectpro/notification-service dev\" \"pnpm --filter @connectpro/search-service dev\" \"pnpm --filter @connectpro/job-service dev\" \"pnpm --filter @connectpro/company-service dev\" \"pnpm --filter @connectpro/media-service dev\" \"pnpm --filter @connectpro/analytics-service dev\" \"pnpm --filter @connectpro/recommendation-service dev\" \"pnpm --filter @connectpro/explore-service dev\" \"pnpm --filter @connectpro/web dev\"",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "infra:logs": "docker compose logs -f",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "ingest:explore": "node scripts/ingest-explore.mjs"
   },
   "devDependencies": {
     "@swc-node/register": "^1.11.1",

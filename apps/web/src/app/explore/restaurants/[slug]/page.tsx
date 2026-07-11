@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, ExternalLink, Instagram, MapPin, Star } from 'lucide-react';
-import { getRestaurantBySlug, getRestaurants } from '@/lib/explore';
+import { getRestaurantBySlug } from '@/lib/explore';
+import { fetchRestaurantBySlug } from '@/lib/explore/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
-export function generateStaticParams() {
-  return getRestaurants().map((r) => ({ slug: r.slug }));
+/** Prefer the live DB record; fall back to the curated seed if service is down. */
+async function loadRestaurant(slug: string) {
+  return (await fetchRestaurantBySlug(slug)) ?? getRestaurantBySlug(slug) ?? null;
 }
 
 export async function generateMetadata({
@@ -16,7 +18,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const r = getRestaurantBySlug(slug);
+  const r = await loadRestaurant(slug);
   return { title: r ? `${r.name} · Explore · Brigade` : 'Restaurant · Brigade' };
 }
 
@@ -30,7 +32,7 @@ export default async function RestaurantDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const r = getRestaurantBySlug(slug);
+  const r = await loadRestaurant(slug);
   if (!r) notFound();
 
   return (

@@ -18,7 +18,14 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 export class GatewayMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const path = req.path;
-    const isPublic = PUBLIC_ROUTES.some((r) => path.startsWith(r)) || path.includes('/health');
+    // The restaurant directory is a public, read-only listing (like Explore on
+    // the marketing site). Writes (POST /restaurants/ingest) still require auth.
+    const isPublicRestaurantRead =
+      req.method === 'GET' && path.startsWith('/api/v1/restaurants');
+    const isPublic =
+      PUBLIC_ROUTES.some((r) => path.startsWith(r)) ||
+      path.includes('/health') ||
+      isPublicRestaurantRead;
 
     if (!isPublic) {
       const auth = req.headers.authorization;

@@ -26,6 +26,8 @@ const SERVICE_ROUTES: Record<string, string> = {
   analytics: process.env.ANALYTICS_SERVICE_URL ?? 'http://localhost:3013',
   recommendations: process.env.RECOMMENDATION_SERVICE_URL ?? 'http://localhost:3014',
   admin: process.env.ADMIN_SERVICE_URL ?? 'http://localhost:3013',
+  restaurants: process.env.EXPLORE_SERVICE_URL ?? 'http://localhost:3015',
+  explore: process.env.EXPLORE_SERVICE_URL ?? 'http://localhost:3015',
 };
 
 async function proxyRequest(req: Request, res: Response) {
