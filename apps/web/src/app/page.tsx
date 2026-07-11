@@ -159,7 +159,7 @@ export default function LandingPage() {
                 <Link href="/signup">Join Brigade</Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link href="/directory">Browse the directory</Link>
+                <Link href="/discover">Discover professionals</Link>
               </Button>
             </div>
 

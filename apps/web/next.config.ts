@@ -8,6 +8,13 @@ const monorepoRoot = path.join(appDir, "../..");
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
+  async redirects() {
+    return [
+      { source: "/directory", destination: "/discover", permanent: true },
+      { source: "/connections", destination: "/network", permanent: true },
+      { source: "/jobs", destination: "/opportunities", permanent: false },
+    ];
+  },
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {

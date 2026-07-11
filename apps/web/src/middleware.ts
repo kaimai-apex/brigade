@@ -2,7 +2,9 @@ import { type NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PREFIXES = [
   "/feed",
-  "/connections",
+  "/network",
+  "/my-brigades",
+  "/opportunities",
   "/jobs",
   "/messages",
   "/search",
@@ -48,7 +50,10 @@ export const config = {
     "/dashboard/:path*",
     "/settings/:path*",
     "/feed/:path*",
+    "/network/:path*",
     "/connections/:path*",
+    "/my-brigades/:path*",
+    "/opportunities/:path*",
     "/jobs/:path*",
     "/messages/:path*",
     "/search/:path*",

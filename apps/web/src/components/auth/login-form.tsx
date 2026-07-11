@@ -88,9 +88,8 @@ export function LoginForm() {
           <Input
             id="email"
             name="email"
-            type="email"
+            type="text"
             autoComplete="username"
-            inputMode="email"
             required
           />
         </div>

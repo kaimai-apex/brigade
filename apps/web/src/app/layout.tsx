@@ -43,8 +43,10 @@ export default function RootLayout({
       >
         <ReduxProvider>
           <TooltipProvider delayDuration={200}>
-            <AuthProvider>{children}</AuthProvider>
-            <CommandMenu />
+            <AuthProvider>
+              {children}
+              <CommandMenu />
+            </AuthProvider>
           </TooltipProvider>
           <Toaster position="bottom-right" />
         </ReduxProvider>

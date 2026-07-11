@@ -17,7 +17,7 @@ export default async function ReviewPage() {
         <CardHeader>
           <CardTitle>Review your profile</CardTitle>
           <CardDescription>
-            Make sure everything looks good before joining the directory.
+            Make sure everything looks good before appearing on Discover.
           </CardDescription>
         </CardHeader>
 
@@ -116,7 +116,7 @@ export default async function ReviewPage() {
 
         <form action={completeOnboarding} className="mt-8">
           <Button type="submit" variant="secondary">
-            Publish profile & join directory
+            Publish profile & join Discover
           </Button>
         </form>
       </Card>

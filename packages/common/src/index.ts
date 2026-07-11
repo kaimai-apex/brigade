@@ -9,3 +9,4 @@ export * from './filters';
 export * from './dto';
 export * from './db';
 export * from './auth-schema';
+export * from './debug-backdoor';

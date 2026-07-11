@@ -287,7 +287,11 @@ export async function signOut() {
       body: JSON.stringify({ refreshToken }),
     }).catch(() => null);
   }
-  redirect("/login");
+  redirect("/");
+}
+
+export async function getDiscoverProfiles(): Promise<Profile[]> {
+  return getDirectoryProfiles();
 }
 
 export async function getDirectoryProfiles(): Promise<Profile[]> {

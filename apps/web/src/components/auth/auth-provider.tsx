@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { api } from '@/lib/api/client';
 import { clearSession, getSession, saveSession, type AuthSession } from '@/lib/auth/session';
@@ -16,6 +17,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const dispatch = useDispatch();
   const [session, setSessionState] = useState<AuthSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api.setToken(null);
     setSessionState(null);
     dispatch(clearAuth());
-  }, [dispatch]);
+    router.push('/');
+  }, [dispatch, router]);
 
   return (
     <AuthContext.Provider value={{ session, loading, setSession, logout }}>

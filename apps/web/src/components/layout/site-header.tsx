@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   Bell,
@@ -34,16 +34,9 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { PRIMARY_NAV } from '@/lib/nav';
 
-const NAV_LINKS = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/directory', label: 'Directory' },
-  { href: '/feed', label: 'Feed' },
-  { href: '/connections', label: 'Network' },
-  { href: '/companies', label: 'Companies' },
-  { href: '/jobs', label: 'Jobs' },
-  { href: '/messages', label: 'Messages' },
-];
+const NAV_LINKS = [...PRIMARY_NAV];
 
 type CurrentUser = {
   firstName?: string;
@@ -110,7 +103,6 @@ function NavLink({
 
 export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
   const { session, logout } = useAuth();
-  const router = useRouter();
   const user = useCurrentUser(session?.userId);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -140,7 +132,6 @@ export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
 
   async function handleLogout() {
     await logout();
-    router.push('/login');
   }
 
   return (
@@ -158,6 +149,12 @@ export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
               {NAV_LINKS.map((link) => (
                 <NavLink key={link.href} {...link} />
               ))}
+              <NavLink href={`/profile/${session.userId}`} label="Profile" />
+            </nav>
+          )}
+          {!session && (
+            <nav className="hidden items-center gap-6 lg:flex">
+              <NavLink href="/discover" label="Discover" />
             </nav>
           )}
         </div>
@@ -294,6 +291,13 @@ export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
                       </Link>
                     ))}
                     <Link
+                      href={`/profile/${session.userId}`}
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-lg px-3 py-2.5 text-sm font-semibold text-ink/80 transition hover:bg-ink/5 hover:text-ink"
+                    >
+                      Profile
+                    </Link>
+                    <Link
                       href="/search"
                       onClick={() => setMobileOpen(false)}
                       className="rounded-lg px-3 py-2.5 text-sm font-semibold text-ink/80 transition hover:bg-ink/5 hover:text-ink"
@@ -311,6 +315,13 @@ export function SiteHeader({ showAuth = true }: { showAuth?: boolean }) {
                 ) : (
                   showAuth && (
                     <>
+                      <Link
+                        href="/discover"
+                        onClick={() => setMobileOpen(false)}
+                        className="rounded-lg px-3 py-2.5 text-sm font-semibold text-ink/80 transition hover:bg-ink/5 hover:text-ink"
+                      >
+                        Discover
+                      </Link>
                       <Link
                         href="/login"
                         onClick={() => setMobileOpen(false)}

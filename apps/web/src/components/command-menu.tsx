@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation';
 import {
   Bell,
   Briefcase,
-  Building2,
   LayoutDashboard,
   MessageSquare,
-  Newspaper,
   Search,
   Settings,
+  Shield,
+  User,
   Users,
   UsersRound,
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/auth-provider';
 import {
   CommandDialog,
   CommandEmpty,
@@ -24,18 +25,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
-
-const NAV = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/directory', label: 'Directory', icon: UsersRound },
-  { href: '/feed', label: 'Feed', icon: Newspaper },
-  { href: '/connections', label: 'Network', icon: Users },
-  { href: '/companies', label: 'Companies', icon: Building2 },
-  { href: '/jobs', label: 'Jobs', icon: Briefcase },
-  { href: '/messages', label: 'Messages', icon: MessageSquare },
-  { href: '/notifications', label: 'Alerts', icon: Bell },
-  { href: '/settings/notifications', label: 'Settings', icon: Settings },
-];
+import { PRIMARY_NAV, SECONDARY_NAV } from '@/lib/nav';
 
 /**
  * Global ⌘K / Ctrl+K command palette. Also opens when any element dispatches
@@ -43,6 +33,7 @@ const NAV = [
  */
 export function CommandMenu() {
   const router = useRouter();
+  const { session } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -68,6 +59,25 @@ export function CommandMenu() {
   }
 
   const trimmed = query.trim();
+
+  const navIcons: Record<string, typeof Users> = {
+    Discover: UsersRound,
+    Network: Users,
+    'My Brigades': Shield,
+    Opportunities: Briefcase,
+    Messages: MessageSquare,
+    Dashboard: LayoutDashboard,
+    Feed: Users,
+    Companies: Users,
+    Alerts: Bell,
+    Settings: Settings,
+    Profile: User,
+  };
+
+  const primaryNav = [
+    ...PRIMARY_NAV,
+    ...(session ? [{ href: `/profile/${session.userId}`, label: 'Profile' as const }] : []),
+  ];
 
   return (
     <CommandDialog
@@ -98,8 +108,24 @@ export function CommandMenu() {
           </>
         )}
         <CommandGroup heading="Go to">
-          {NAV.map((item) => {
-            const Icon = item.icon;
+          {primaryNav.map((item) => {
+            const Icon = navIcons[item.label] ?? Users;
+            return (
+              <CommandItem
+                key={item.href}
+                value={item.label}
+                onSelect={() => go(item.href)}
+              >
+                <Icon />
+                {item.label}
+              </CommandItem>
+            );
+          })}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="More">
+          {SECONDARY_NAV.map((item) => {
+            const Icon = navIcons[item.label] ?? LayoutDashboard;
             return (
               <CommandItem
                 key={item.href}

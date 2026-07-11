@@ -135,7 +135,7 @@ export default function NotificationsPage() {
               </div>
               <p className="font-display text-xl font-bold">You’re all caught up</p>
               <p className="text-sm text-ink/60">
-                Notifications about connections, posts, and jobs will show up here.
+                Notifications about your network, posts, and opportunities will show up here.
               </p>
             </Card>
           )}
