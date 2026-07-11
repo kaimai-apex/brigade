@@ -24,6 +24,7 @@ class CreatePostDto {
 
 class CommentDto {
   @IsString() content!: string;
+  @IsOptional() @IsString() parentId?: string;
 }
 
 class ReactionDto {
@@ -58,7 +59,7 @@ export class PostController {
 
   @Post(':id/comments')
   comment(@Param('id') id: string, @Body() dto: CommentDto, @Req() req: AuthenticatedRequest) {
-    return this.postService.addComment(id, req.user.sub, dto.content);
+    return this.postService.addComment(id, req.user.sub, dto.content, dto.parentId);
   }
 
   @Post(':id/likes')

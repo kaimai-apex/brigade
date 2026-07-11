@@ -72,6 +72,17 @@ export class ApiClient {
     });
   }
 
+  recordProfileView(profileId: string) {
+    return this.request(`/api/v1/users/${profileId}/views`, {
+      method: 'POST',
+      body: '{}',
+    });
+  }
+
+  getProfileViews(profileId: string) {
+    return this.request<ProfileViews>(`/api/v1/users/${profileId}/profile-views`);
+  }
+
   getFeed(limit = 20) {
     return this.request<{ data: Post[] }>(`/api/v1/feed?limit=${limit}`);
   }
@@ -109,10 +120,10 @@ export class ApiClient {
     return this.request<Post & { comments?: Comment[] }>(`/api/v1/posts/${postId}`);
   }
 
-  addComment(postId: string, content: string) {
-    return this.request(`/api/v1/posts/${postId}/comments`, {
+  addComment(postId: string, content: string, parentId?: string) {
+    return this.request<Comment>(`/api/v1/posts/${postId}/comments`, {
       method: 'POST',
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, parentId }),
     });
   }
 
@@ -352,7 +363,19 @@ export type Comment = {
   id: string;
   authorId: string;
   content: string;
+  parentId?: string | null;
   createdAt: string;
+};
+
+export type ProfileViews = {
+  total: number;
+  uniqueViewers: number;
+  recent: {
+    viewerId: string;
+    name: string | null;
+    headline: string | null;
+    viewedAt: string;
+  }[];
 };
 
 export type JobApplication = {

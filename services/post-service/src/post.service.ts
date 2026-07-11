@@ -51,8 +51,8 @@ export class PostService implements OnModuleDestroy {
       `SELECT p.*,
          COALESCE(json_agg(jsonb_build_object(
            'id', c.id, 'authorId', c.author_id, 'content', c.content,
-           'createdAt', c.created_at
-         )) FILTER (WHERE c.id IS NOT NULL), '[]') as comments,
+           'parentId', c.parent_id, 'createdAt', c.created_at
+         ) ORDER BY c.created_at) FILTER (WHERE c.id IS NOT NULL), '[]') as comments,
          (SELECT COALESCE(jsonb_object_agg(reaction, cnt), '{}'::jsonb)
             FROM (SELECT reaction, count(*) cnt FROM posts.likes
                   WHERE post_id = p.id GROUP BY reaction) s) as reactions,
@@ -78,7 +78,12 @@ export class PostService implements OnModuleDestroy {
     return { success: true };
   }
 
-  async addComment(postId: string, authorId: string, content: string) {
+  async addComment(
+    postId: string,
+    authorId: string,
+    content: string,
+    parentId?: string,
+  ) {
     const postRow = await this.pool.query(
       'SELECT id, author_id FROM posts.posts WHERE id = $1 AND deleted_at IS NULL',
       [postId],
@@ -86,8 +91,9 @@ export class PostService implements OnModuleDestroy {
     if (postRow.rows.length === 0) throw new NotFoundError('Post not found');
 
     const result = await this.pool.query(
-      `INSERT INTO posts.comments (post_id, author_id, content) VALUES ($1, $2, $3) RETURNING *`,
-      [postId, authorId, content],
+      `INSERT INTO posts.comments (post_id, author_id, content, parent_id)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [postId, authorId, content, parentId ?? null],
     );
     await this.kafka.publish('comment-created', 'comment.created', {
       postId,
@@ -100,6 +106,7 @@ export class PostService implements OnModuleDestroy {
       postId,
       authorId,
       content,
+      parentId: result.rows[0].parent_id,
       createdAt: result.rows[0].created_at,
     };
   }

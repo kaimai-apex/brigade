@@ -9,6 +9,7 @@ import {
 } from "@/lib/profile/links";
 import { displayName, formatLocation, getInitials } from "@/lib/utils";
 import { SiteHeader } from "@/components/layout/site-header";
+import { ProfileViewRecorder } from "@/components/profile/profile-view-recorder";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export default async function ProfilePage({
   return (
     <div className="min-h-screen bg-cream">
       <SiteHeader showAuth={false} />
+      <ProfileViewRecorder profileId={profile.id} isOwner={isOwner} />
 
       <main className="mx-auto max-w-4xl px-6 pb-20 pt-8">
         <section className="rounded-3xl border border-ink/10 bg-paper p-8 md:p-10">

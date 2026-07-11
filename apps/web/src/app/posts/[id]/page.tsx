@@ -20,6 +20,33 @@ function shortId(id: string) {
   return id.slice(0, 2).toUpperCase();
 }
 
+function CommentBubble({
+  comment,
+  small = false,
+}: {
+  comment: Comment;
+  small?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <Avatar size="sm" className={small ? 'size-7' : 'mt-0.5'}>
+        <AvatarFallback className="bg-muted text-[10px] font-semibold text-ink/70">
+          {shortId(comment.authorId)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="rounded-2xl bg-cream px-3.5 py-2">
+        <Link
+          href={`/profile/${comment.authorId}`}
+          className="text-sm font-semibold hover:underline"
+        >
+          {comment.authorId.slice(0, 8)}…
+        </Link>
+        <p className="text-sm text-ink/80">{comment.content}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function PostDetailPage({
   params,
 }: {
@@ -29,6 +56,8 @@ export default function PostDetailPage({
   const [post, setPost] = useState<FullPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState('');
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -42,15 +71,20 @@ export default function PostDetailPage({
     };
   }, [id]);
 
-  async function submitComment() {
-    const text = draft.trim();
+  async function submitComment(content: string, parentId?: string) {
+    const text = content.trim();
     if (!text || !post) return;
     try {
-      const comment = (await api.addComment(post.id, text)) as Comment;
+      const comment = await api.addComment(post.id, text, parentId);
       setPost((p) =>
         p ? { ...p, comments: [...(p.comments ?? []), comment] } : p,
       );
-      setDraft('');
+      if (parentId) {
+        setReplyTo(null);
+        setReplyDraft('');
+      } else {
+        setDraft('');
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to comment');
     }
@@ -132,37 +166,69 @@ export default function PostDetailPage({
                 placeholder="Add a comment..."
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && submitComment()}
+                onKeyDown={(e) => e.key === 'Enter' && submitComment(draft)}
               />
-              <Button onClick={submitComment} disabled={!draft.trim()}>
+              <Button onClick={() => submitComment(draft)} disabled={!draft.trim()}>
                 <Send className="size-4" />
               </Button>
             </div>
 
             <div className="mt-5 space-y-4">
-              {(post.comments ?? []).map((c) => (
-                <div key={c.id} className="flex items-start gap-2.5">
-                  <Avatar size="sm" className="mt-0.5">
-                    <AvatarFallback className="bg-muted text-[10px] font-semibold text-ink/70">
-                      {shortId(c.authorId)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="rounded-2xl bg-cream px-3.5 py-2">
-                    <Link
-                      href={`/profile/${c.authorId}`}
-                      className="text-sm font-semibold hover:underline"
-                    >
-                      {c.authorId.slice(0, 8)}…
-                    </Link>
-                    <p className="text-sm text-ink/80">{c.content}</p>
+              {(() => {
+                const all = post.comments ?? [];
+                const roots = all.filter((c) => !c.parentId);
+                const repliesOf = (pid: string) =>
+                  all.filter((c) => c.parentId === pid);
+                if (all.length === 0) {
+                  return (
+                    <p className="py-2 text-center text-sm text-ink/50">
+                      No comments yet — start the conversation.
+                    </p>
+                  );
+                }
+                return roots.map((c) => (
+                  <div key={c.id} className="space-y-2">
+                    <CommentBubble comment={c} />
+                    <div className="ml-9">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReplyTo(replyTo === c.id ? null : c.id)
+                        }
+                        className="text-xs font-semibold text-ink/50 hover:text-ink"
+                      >
+                        Reply
+                      </button>
+                      {repliesOf(c.id).map((r) => (
+                        <div key={r.id} className="mt-2">
+                          <CommentBubble comment={r} small />
+                        </div>
+                      ))}
+                      {replyTo === c.id && (
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            autoFocus
+                            placeholder={`Reply…`}
+                            value={replyDraft}
+                            onChange={(e) => setReplyDraft(e.target.value)}
+                            onKeyDown={(e) =>
+                              e.key === 'Enter' &&
+                              submitComment(replyDraft, c.id)
+                            }
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => submitComment(replyDraft, c.id)}
+                            disabled={!replyDraft.trim()}
+                          >
+                            Reply
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {(post.comments?.length ?? 0) === 0 && (
-                <p className="py-2 text-center text-sm text-ink/50">
-                  No comments yet — start the conversation.
-                </p>
-              )}
+                ));
+              })()}
             </div>
           </Card>
         )}

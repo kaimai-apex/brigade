@@ -288,6 +288,46 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
     return this.getProfile(userId);
   }
 
+  // "Who viewed your profile" — record a view (skipping self-views).
+  async recordProfileView(profileId: string, viewerId: string) {
+    if (profileId === viewerId) return { recorded: false };
+    await this.pool.query(
+      'INSERT INTO users.profile_views (profile_id, viewer_id) VALUES ($1, $2)',
+      [profileId, viewerId],
+    );
+    return { recorded: true };
+  }
+
+  async getProfileViews(profileId: string, requesterId: string) {
+    if (profileId !== requesterId) throw new ForbiddenError();
+    const counts = await this.pool.query(
+      `SELECT count(*)::int AS total, count(DISTINCT viewer_id)::int AS unique_viewers
+       FROM users.profile_views WHERE profile_id = $1`,
+      [profileId],
+    );
+    const recent = await this.pool.query(
+      `SELECT viewer_id, first_name, last_name, headline, viewed_at FROM (
+         SELECT DISTINCT ON (v.viewer_id)
+                v.viewer_id, v.viewed_at, p.first_name, p.last_name, p.headline
+         FROM users.profile_views v
+         LEFT JOIN users.profiles p ON p.user_id = v.viewer_id
+         WHERE v.profile_id = $1
+         ORDER BY v.viewer_id, v.viewed_at DESC
+       ) s ORDER BY viewed_at DESC LIMIT 20`,
+      [profileId],
+    );
+    return {
+      total: counts.rows[0].total,
+      uniqueViewers: counts.rows[0].unique_viewers,
+      recent: recent.rows.map((r) => ({
+        viewerId: r.viewer_id,
+        name: [r.first_name, r.last_name].filter(Boolean).join(' ') || null,
+        headline: r.headline ?? null,
+        viewedAt: r.viewed_at,
+      })),
+    };
+  }
+
   async addExperience(userId: string, requesterId: string, dto: AddExperienceDto) {
     if (userId !== requesterId) throw new ForbiddenError();
     await this.pool.query(

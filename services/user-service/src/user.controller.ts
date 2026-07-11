@@ -38,6 +38,16 @@ export class UserController {
     return this.userService.getProfile(id);
   }
 
+  @Post(':id/views')
+  recordView(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.userService.recordProfileView(id, req.user.sub);
+  }
+
+  @Get(':id/profile-views')
+  profileViews(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.userService.getProfileViews(id, req.user.sub);
+  }
+
   @Put(':id')
   updateProfile(
     @Param('id') id: string,

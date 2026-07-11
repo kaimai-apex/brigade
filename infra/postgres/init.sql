@@ -134,6 +134,14 @@ CREATE TABLE users.profile_work_photos (
 );
 CREATE INDEX idx_work_photos_user ON users.profile_work_photos(user_id);
 
+CREATE TABLE users.profile_views (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id  UUID NOT NULL,
+    viewer_id   UUID NOT NULL,
+    viewed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_profile_views_profile ON users.profile_views(profile_id, viewed_at DESC);
+
 -- Connection Service
 CREATE SCHEMA IF NOT EXISTS connections;
 
@@ -257,9 +265,11 @@ CREATE TABLE posts.comments (
     post_id     UUID NOT NULL REFERENCES posts.posts(id),
     author_id   UUID NOT NULL,
     content     TEXT NOT NULL,
+    parent_id   UUID REFERENCES posts.comments(id),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_comments_post ON posts.comments(post_id, created_at DESC);
+CREATE INDEX idx_comments_parent ON posts.comments(parent_id);
 
 CREATE TABLE posts.likes (
     post_id     UUID NOT NULL REFERENCES posts.posts(id),
