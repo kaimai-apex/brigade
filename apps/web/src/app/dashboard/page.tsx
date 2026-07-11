@@ -242,7 +242,9 @@ export default function DashboardPage() {
               userInitials={initials}
               avatarUrl={user?.avatarUrl}
               avatarSeed={session?.userId}
-              onPost={(content, mediaUrl) => api.createPost(content, mediaUrl)}
+              onPost={async (content, mediaUrl) => {
+                await api.createPost(content, mediaUrl);
+              }}
             />
 
             <HudCard className="p-8 text-center">

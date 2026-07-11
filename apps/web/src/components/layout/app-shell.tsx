@@ -64,7 +64,7 @@ function useUnreadNotifications(enabled: boolean) {
 
     api
       .getNotifications()
-      .then((res) => setUnread(res.data.filter((n) => !n.read).length))
+      .then((res) => setUnread(res.data.filter((n) => !n.readAt).length))
       .catch(() => setUnread(0));
 
     const es = new EventSource('/api/stream/notifications');

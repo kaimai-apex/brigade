@@ -30,9 +30,11 @@ export function DiscoverDirectory({ profiles }: DiscoverDirectoryProps) {
 
   const rolesInUse = useMemo(() => {
     const set = new Set(profiles.map((p) => p.role).filter(Boolean) as string[]);
-    return PROFESSIONAL_ROLES.filter((r) => set.has(r)).concat(
-      [...set].filter((r) => !(PROFESSIONAL_ROLES as readonly string[]).includes(r)),
+    const known = PROFESSIONAL_ROLES.filter((r) => set.has(r));
+    const extras = [...set].filter(
+      (r) => !(PROFESSIONAL_ROLES as readonly string[]).includes(r),
     );
+    return [...known, ...extras];
   }, [profiles]);
 
   const filtered = useMemo(() => {
