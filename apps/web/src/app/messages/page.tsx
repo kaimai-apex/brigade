@@ -10,7 +10,7 @@ import {
   type SearchResult,
 } from '@/lib/api/client';
 import { useAuth } from '@/components/auth/auth-provider';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -140,9 +140,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-4xl px-6 py-10">
+    <AppPage showAuth={false} wide>
         <div className="mb-6 flex items-center justify-between">
           <h1 className="font-display text-3xl font-black">Messages</h1>
           <Button
@@ -294,7 +292,6 @@ export default function MessagesPage() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </AppPage>
   );
 }

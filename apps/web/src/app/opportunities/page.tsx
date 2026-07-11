@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Briefcase, Building2, MapPin, Search } from 'lucide-react';
 import { api, type Job } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,9 +33,7 @@ export default function OpportunitiesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-4xl px-6 py-10">
+    <AppPage showAuth={false}>
         <div className="mb-6 flex items-center justify-between">
           <div>
             <p className="font-body text-sm font-extrabold uppercase tracking-widest text-rust">
@@ -43,7 +41,8 @@ export default function OpportunitiesPage() {
             </p>
             <h1 className="font-display mt-2 text-3xl font-black">Staff events & roles</h1>
             <p className="mt-2 text-ink/65">
-              Browse openings and deploy your Brigades to fill shifts and events.
+              Shifts, gigs, and full-time hospitality roles — deploy your Brigade or find
+              talent open to work.
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
@@ -129,7 +128,6 @@ export default function OpportunitiesPage() {
             </Card>
           )}
         </div>
-      </main>
-    </div>
+      </AppPage>
   );
 }

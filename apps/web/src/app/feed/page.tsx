@@ -3,20 +3,21 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { RefreshCw, Send } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { api, type Comment, type Post, type ReactionType } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { useAuth } from '@/components/auth/auth-provider';
+import { StartPostComposer } from '@/components/feed/start-post-composer';
+import { AppPage, useAppUser } from '@/components/layout/app-shell';
 import { ReactionBar } from '@/components/feed/reaction-bar';
 import { PostContent } from '@/components/feed/post-content';
 import { RepostedCard } from '@/components/feed/reposted-card';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn, displayName, getInitials } from '@/lib/utils';
 
 type FeedPost = Post & { comments?: Comment[] };
 
@@ -25,9 +26,9 @@ function shortId(id: string) {
 }
 
 export default function FeedPage() {
+  const { session } = useAuth();
+  const user = useAppUser(session?.userId);
   const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [content, setContent] = useState('');
-  const [mediaUrl, setMediaUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -48,17 +49,9 @@ export default function FeedPage() {
     void loadFeed();
   }, []);
 
-  async function handlePost() {
-    if (!content.trim()) return;
-    try {
-      const post = (await api.createPost(content, mediaUrl || undefined)) as FeedPost;
-      setPosts((prev) => [{ ...post, comments: [] }, ...prev]);
-      setContent('');
-      setMediaUrl('');
-      toast.success('Posted to your network');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to create post');
-    }
+  async function handleCreatePost(content: string, mediaUrl?: string) {
+    const post = (await api.createPost(content, mediaUrl)) as FeedPost;
+    setPosts((prev) => [{ ...post, comments: [] }, ...prev]);
   }
 
   function handleReactionChange(postId: string, reaction: ReactionType | null) {
@@ -111,35 +104,23 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-2xl px-6 py-8">
-        <h1 className="font-display mb-6 text-3xl font-black">Home Feed</h1>
+    <AppPage showAuth={false}>
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="font-display text-3xl font-black">Home Feed</h1>
+          <Button variant="outline" size="sm" onClick={loadFeed} disabled={loading}>
+            <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+            Refresh
+          </Button>
+        </div>
 
-        <Card className="mb-6 p-4">
-          <Textarea
-            placeholder="Share an update with your network..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={3}
-          />
-          <Input
-            className="mt-2"
-            placeholder="Image URL (optional)"
-            value={mediaUrl}
-            onChange={(e) => setMediaUrl(e.target.value)}
-          />
-          <div className="mt-3 flex justify-end gap-2">
-            <Button variant="outline" onClick={loadFeed} disabled={loading}>
-              <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
-              Refresh
-            </Button>
-            <Button onClick={handlePost} disabled={!content.trim()}>
-              <Send className="size-4" />
-              Post
-            </Button>
-          </div>
-        </Card>
+        <StartPostComposer
+          className="mb-6"
+          userName={user ? displayName(user.firstName, user.lastName) : 'Member'}
+          userInitials={getInitials(user?.firstName, user?.lastName)}
+          avatarUrl={user?.avatarUrl}
+          avatarSeed={session?.userId}
+          onPost={handleCreatePost}
+        />
 
         <div className="space-y-4">
           {loading &&
@@ -259,7 +240,6 @@ export default function FeedPage() {
               </Card>
             ))}
         </div>
-      </main>
-    </div>
+      </AppPage>
   );
 }

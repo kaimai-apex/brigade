@@ -134,7 +134,7 @@ const COVERS: Cover[] = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-cream text-ink">
+    <div className="min-h-screen bg-white text-ink">
       <SiteHeader />
 
       {/* Hero */}

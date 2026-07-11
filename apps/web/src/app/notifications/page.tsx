@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { api, type Notification } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -60,9 +60,7 @@ export default function NotificationsPage() {
   const unreadCount = items.filter((n) => !n.readAt).length;
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-2xl px-6 py-10">
+    <AppPage showAuth={false}>
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="font-display text-3xl font-black">Notifications</h1>
@@ -140,7 +138,6 @@ export default function NotificationsPage() {
             </Card>
           )}
         </div>
-      </main>
-    </div>
+      </AppPage>
   );
 }

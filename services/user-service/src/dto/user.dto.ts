@@ -9,6 +9,7 @@ export class UpdateProfileDto {
   @IsOptional() @IsString() location?: string;
   @IsOptional() @IsString() website?: string;
   @IsOptional() @IsString() avatarUrl?: string;
+  @IsOptional() @IsString() coverUrl?: string;
   @IsOptional() @IsString() resumeUrl?: string;
   @IsOptional() @IsString() city?: string;
   @IsOptional() @IsString() state?: string;

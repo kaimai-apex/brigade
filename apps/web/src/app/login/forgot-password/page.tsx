@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { ServerAppPage } from '@/components/layout/server-app-page';
 import { Card } from '@/components/ui/card';
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-paper px-6">
+    <ServerAppPage showAuth={false} className="flex min-h-[calc(100vh-52px)] items-center justify-center">
       <Card className="w-full max-w-md p-6">
         <h1 className="font-display mb-2 text-2xl font-black">Reset password</h1>
         <p className="text-sm text-ink/65">
@@ -16,6 +17,6 @@ export default function ForgotPasswordPage() {
           </Link>
         </p>
       </Card>
-    </div>
+    </ServerAppPage>
   );
 }

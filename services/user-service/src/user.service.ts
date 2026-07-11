@@ -75,6 +75,7 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
     const result = await this.pool.query(
       `SELECT user_id, first_name, last_name, headline, city, state, country,
               avatar_url, role, expertise_areas, open_to_opportunities,
+              available_private_events, available_contract_work,
               available_emergency_staffing, onboarding_completed
        FROM users.profiles
        WHERE deleted_at IS NULL AND onboarding_completed = true
@@ -96,7 +97,10 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
         role: row.role,
         expertiseAreas: row.expertise_areas ?? [],
         openToOpportunities: row.open_to_opportunities,
+        availablePrivateEvents: row.available_private_events,
+        availableContractWork: row.available_contract_work,
         availableEmergencyStaffing: row.available_emergency_staffing,
+        onboardingCompleted: row.onboarding_completed,
       })),
     };
   }
@@ -164,6 +168,7 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
       location: 'location',
       website: 'website',
       avatarUrl: 'avatar_url',
+      coverUrl: 'cover_url',
       resumeUrl: 'resume_url',
       city: 'city',
       state: 'state',
@@ -442,6 +447,7 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
       resumeUrl: row.resume_url,
       avatarUrl: row.avatar_url,
       profileImageUrl: row.avatar_url,
+      coverUrl: row.cover_url,
       city: row.city,
       state: row.state,
       country: row.country,

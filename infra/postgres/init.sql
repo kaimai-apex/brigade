@@ -65,6 +65,7 @@ CREATE TABLE users.profiles (
     available_contract_work BOOLEAN NOT NULL DEFAULT false,
     available_emergency_staffing BOOLEAN NOT NULL DEFAULT false,
     role         TEXT NOT NULL DEFAULT 'Chef',
+    cover_url    TEXT,
     completeness SMALLINT NOT NULL DEFAULT 0,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),

@@ -1,25 +1,56 @@
+/** Hospitality-first roles — searchable & used in onboarding / Discover filters */
 export const PROFESSIONAL_ROLES = [
+  "Bartender",
+  "Server",
+  "Host / Hostess",
+  "Sommelier",
   "Private Chef",
   "Executive Chef",
   "Sous Chef",
   "Pastry Chef",
   "Line Cook",
   "Caterer",
-  "Sommelier",
+  "Banquet Captain",
+  "Event Manager",
+  "Hotel General Manager",
+  "Front Desk / Guest Services",
+  "Housekeeping",
+  "Concierge",
+  "Cruise Hospitality",
+  "Staffing Coordinator",
+  "Hospitality Recruiter",
   "General Manager",
   "Hospitality Professional",
 ] as const;
 
+/** Skills & specialties recruiters actually search for */
 export const EXPERTISE_AREAS = [
   "Fine Dining",
+  "Fine Dining Service",
+  "Banquet Management",
+  "Mixology",
+  "Michelin Experience",
+  "Hotel Operations",
+  "Wedding Events",
   "Private Dining",
   "Catering",
   "Luxury Hospitality",
   "Events",
+  "Cruise Hospitality",
+  "VIP / Private Events",
   "Meal Prep",
   "Pastry & Baking",
   "Wine & Beverage",
+  "Quick Service",
+  "Volume / Banquet",
 ] as const;
+
+export const AVAILABILITY_LABELS = {
+  open_to_opportunities: "Open to work",
+  available_private_events: "Private events & weddings",
+  available_contract_work: "Contract / gig ready",
+  available_emergency_staffing: "Emergency / last-minute shifts",
+} as const;
 
 export const PORTFOLIO_LINK_TYPES = [
   "instagram",
@@ -63,6 +94,7 @@ export type Profile = {
   available_private_events: boolean;
   available_contract_work: boolean;
   available_emergency_staffing: boolean;
+  cover_url: string | null;
   onboarding_completed: boolean;
   onboarding_step: number;
   created_at: string;

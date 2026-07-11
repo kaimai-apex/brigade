@@ -1,7 +1,9 @@
 import { OnboardingProgress } from "@/components/onboarding/onboarding-progress";
 import { FileUpload } from "@/components/profile/file-upload";
+import { BannerField } from "@/components/profile/banner-field";
 import { saveBasicInfo } from "@/lib/actions/profile";
 import { getCurrentUserProfile } from "@/lib/actions/profile";
+import { PROFESSIONAL_ROLES } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +22,7 @@ export default async function BasicInfoPage() {
         <CardHeader>
           <CardTitle>Basic information</CardTitle>
           <CardDescription>
-            Tell the industry who you are and where you work.
+            Tell venues and recruiters who you are — role, city, and how you work.
           </CardDescription>
         </CardHeader>
         <form action={saveBasicInfo} className="space-y-5">
@@ -54,12 +56,31 @@ export default async function BasicInfoPage() {
             defaultUrl={profile.profile_image_url}
           />
 
+          <BannerField defaultValue={profile.cover_url} />
+
+          <div>
+            <Label htmlFor="role">Hospitality role</Label>
+            <select
+              id="role"
+              name="role"
+              defaultValue={profile.role ?? "Hospitality Professional"}
+              className="flex h-11 w-full rounded-xl border border-ink/15 bg-paper px-4 text-sm outline-none transition focus:border-forest focus:ring-2 focus:ring-forest/20"
+              required
+            >
+              {PROFESSIONAL_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <Label htmlFor="headline">Headline</Label>
             <Input
               id="headline"
               name="headline"
-              placeholder="Private Chef · Fine Dining & Events"
+              placeholder="Bartender · Mixology & Wedding Events"
               defaultValue={profile.headline ?? ""}
               required
             />
@@ -80,7 +101,7 @@ export default async function BasicInfoPage() {
             <Textarea
               id="bio"
               name="bio"
-              placeholder="Brief overview of your culinary background and specialties."
+              placeholder="Brief overview of your hospitality background — venues, events, specialties."
               defaultValue={profile.bio ?? ""}
             />
           </div>

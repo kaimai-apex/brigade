@@ -102,7 +102,8 @@ export async function ensureAuthSchema() {
         ADD COLUMN IF NOT EXISTS available_private_events BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS available_contract_work BOOLEAN NOT NULL DEFAULT false,
         ADD COLUMN IF NOT EXISTS available_emergency_staffing BOOLEAN NOT NULL DEFAULT false,
-        ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Chef'
+        ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Chef',
+        ADD COLUMN IF NOT EXISTS cover_url TEXT
     `);
   })();
 

@@ -16,7 +16,8 @@
     "test": "turbo test",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
-    "infra:logs": "docker compose logs -f"
+    "infra:logs": "docker compose logs -f",
+    "seed:demo": "node scripts/seed-demo.mjs"
   },
   "devDependencies": {
     "@swc-node/register": "^1.11.1",

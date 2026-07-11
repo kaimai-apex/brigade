@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Building2, Check, Users } from 'lucide-react';
 import { api, type Company } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,9 +41,7 @@ export default function CompanyDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-2xl px-6 py-8">
+    <AppPage showAuth={false}>
         {loading || !company ? (
           <Card className="p-6">
             <div className="flex items-center gap-4">
@@ -92,7 +90,6 @@ export default function CompanyDetailPage() {
             )}
           </Card>
         )}
-      </main>
-    </div>
+      </AppPage>
   );
 }

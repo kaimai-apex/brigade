@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -44,9 +44,7 @@ export default function NotificationSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-lg px-6 py-10">
+    <AppPage showAuth={false}>
         <h1 className="font-display mb-2 text-3xl font-black">Settings</h1>
         <p className="mb-8 text-ink/65">Manage how Brigade keeps you in the loop.</p>
 
@@ -86,7 +84,6 @@ export default function NotificationSettingsPage() {
             </Button>
           </div>
         </Card>
-      </main>
-    </div>
+      </AppPage>
   );
 }

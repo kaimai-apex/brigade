@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { api, type Company, type Job, type JobApplication } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { CreateCompanyDialog } from '@/components/company/create-company-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -72,9 +72,7 @@ export default function RecruiterDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-4xl px-6 py-10">
+    <AppPage showAuth={false}>
         <h1 className="font-display mb-6 text-3xl font-black">Recruiter dashboard</h1>
 
         <Card className="mb-8 p-6">
@@ -220,7 +218,6 @@ export default function RecruiterDashboardPage() {
             </Card>
           </section>
         )}
-      </main>
-    </div>
+      </AppPage>
   );
 }

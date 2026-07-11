@@ -75,7 +75,7 @@ export function ReactionBar({
                 {faces.map((f) => (
                   <span
                     key={f.type}
-                    className="grid size-4 place-items-center rounded-full bg-cream text-[10px] ring-1 ring-cream"
+                    className="grid size-4 place-items-center rounded-full bg-white text-[10px] ring-1 ring-white"
                   >
                     {f.emoji}
                   </span>

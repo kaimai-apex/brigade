@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Hash } from 'lucide-react';
 import { api, type Post } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { ReactionBar } from '@/components/feed/reaction-bar';
 import { PostContent } from '@/components/feed/post-content';
 import { RepostedCard } from '@/components/feed/reposted-card';
@@ -38,9 +38,7 @@ export default function HashtagPage({
   }, [tag]);
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-2xl px-6 py-8">
+    <AppPage showAuth={false}>
         <div className="mb-6 flex items-center gap-3">
           <div className="flex size-12 items-center justify-center rounded-full bg-secondary text-forest">
             <Hash className="size-6" />
@@ -121,7 +119,6 @@ export default function HashtagPage({
               </Card>
             ))}
         </div>
-      </main>
-    </div>
+      </AppPage>
   );
 }

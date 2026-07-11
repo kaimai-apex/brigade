@@ -3,6 +3,7 @@ import { completeOnboarding, getCurrentUserProfile } from "@/lib/actions/profile
 import { formatEducationDates } from "@/lib/profile/links";
 import { displayName, formatLocation } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
 
@@ -89,28 +90,22 @@ export default async function ReviewPage() {
 
           <section>
             <h4 className="mb-2 font-semibold">Availability</h4>
-            <ul className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {profile.open_to_opportunities && (
-                <li className="rounded-full bg-forest/10 px-3 py-1 text-xs font-medium text-forest">
-                  Open to opportunities
-                </li>
+                <Badge className="bg-forest text-white">Open to work</Badge>
               )}
               {profile.available_private_events && (
-                <li className="rounded-full bg-forest/10 px-3 py-1 text-xs font-medium text-forest">
-                  Private events
-                </li>
+                <Badge variant="secondary">Private events & weddings</Badge>
               )}
               {profile.available_contract_work && (
-                <li className="rounded-full bg-forest/10 px-3 py-1 text-xs font-medium text-forest">
-                  Contract work
-                </li>
+                <Badge variant="secondary">Contract / gig ready</Badge>
               )}
               {profile.available_emergency_staffing && (
-                <li className="rounded-full bg-forest/10 px-3 py-1 text-xs font-medium text-forest">
-                  Emergency staffing
-                </li>
+                <Badge variant="outline" className="border-rust text-rust">
+                  Emergency / last-minute shifts
+                </Badge>
               )}
-            </ul>
+            </div>
           </section>
         </div>
 

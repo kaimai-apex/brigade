@@ -7,7 +7,7 @@ export function RepostedCard({ post }: { post: RepostedPost }) {
   return (
     <Link
       href={`/posts/${post.id}`}
-      className="mt-3 block rounded-xl border border-ink/15 bg-cream/60 p-3.5 transition hover:bg-cream"
+      className="mt-3 block rounded-lg border border-neutral-200 bg-neutral-50 p-3.5 transition hover:bg-neutral-100"
     >
       <p className="flex items-center gap-1.5 text-xs font-semibold text-ink/50">
         <Repeat2 className="size-3.5" />

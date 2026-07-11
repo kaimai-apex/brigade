@@ -12,7 +12,7 @@ import {
   listBrigades,
   type Brigade,
 } from '@/lib/brigades/storage';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,9 +81,7 @@ export default function MyBrigadesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-3xl px-6 py-10">
+    <AppPage showAuth={false}>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <p className="font-body text-sm font-extrabold uppercase tracking-widest text-rust">
@@ -217,7 +215,8 @@ export default function MyBrigadesPage() {
           <Card className="p-12 text-center">
             <p className="font-display text-2xl font-bold">Create your first Brigade.</p>
             <p className="mt-3 text-ink/65">
-              Build trusted teams from your Network for events and opportunities.
+              Assemble trusted teams from your Network — wedding crews, banquet staff,
+              festival shifts — and reuse them for every opportunity.
             </p>
             <Button className="mt-6" onClick={() => setCreating(true)}>
               <Plus className="size-4" />
@@ -225,7 +224,6 @@ export default function MyBrigadesPage() {
             </Button>
           </Card>
         )}
-      </main>
-    </div>
+      </AppPage>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Building2, Users } from 'lucide-react';
 import { api, type Company } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { CreateCompanyDialog } from '@/components/company/create-company-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -25,9 +25,7 @@ export default function CompaniesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-4xl px-6 py-10">
+    <AppPage showAuth={false}>
         <div className="mb-6 flex items-center justify-between gap-4">
           <h1 className="font-display text-3xl font-black">Companies</h1>
           <CreateCompanyDialog
@@ -89,7 +87,6 @@ export default function CompaniesPage() {
             />
           </Card>
         )}
-      </main>
-    </div>
+      </AppPage>
   );
 }

@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ArrowLeft, Bookmark, BookmarkCheck, Building2, MapPin } from 'lucide-react';
 import { api, type Job } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,9 +51,7 @@ export default function JobDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-2xl px-6 py-8">
+    <AppPage showAuth={false}>
         <Link
           href="/jobs"
           className="inline-flex items-center gap-1 text-sm font-semibold text-forest hover:underline"
@@ -116,7 +114,6 @@ export default function JobDetailPage() {
             </div>
           </Card>
         )}
-      </main>
-    </div>
+      </AppPage>
   );
 }

@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandMenu } from "@/components/command-menu";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -39,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${fraunces.variable} ${archivo.variable} ${caveat.variable} min-h-screen`}
+        className={cn('min-h-screen bg-white font-body text-ink antialiased', fraunces.variable, archivo.variable, caveat.variable)}
       >
         <ReduxProvider>
           <TooltipProvider delayDuration={200}>

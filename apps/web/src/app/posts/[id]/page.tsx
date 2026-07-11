@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { ArrowLeft, Send } from 'lucide-react';
 import { api, type Comment, type Post } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { ReactionBar } from '@/components/feed/reaction-bar';
 import { PostContent } from '@/components/feed/post-content';
 import { RepostedCard } from '@/components/feed/reposted-card';
@@ -36,7 +36,7 @@ function CommentBubble({
           {shortId(comment.authorId)}
         </AvatarFallback>
       </Avatar>
-      <div className="rounded-2xl bg-cream px-3.5 py-2">
+      <div className="rounded-lg bg-neutral-50 px-3.5 py-2">
         <Link
           href={`/profile/${comment.authorId}`}
           className="text-sm font-semibold hover:underline"
@@ -93,9 +93,7 @@ export default function PostDetailPage({
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-2xl px-6 py-8">
+    <AppPage showAuth={false}>
         <Link
           href="/feed"
           className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-ink/60 transition hover:text-ink"
@@ -239,7 +237,6 @@ export default function PostDetailPage({
             </div>
           </Card>
         )}
-      </main>
-    </div>
+      </AppPage>
   );
 }

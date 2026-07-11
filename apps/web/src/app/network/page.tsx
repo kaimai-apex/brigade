@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { RefreshCw, Search, UserPlus } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { api, type Connection, type SearchResult } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,9 +90,7 @@ export default function NetworkPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-2xl px-6 py-10">
+    <AppPage showAuth={false}>
         <p className="font-body text-sm font-extrabold uppercase tracking-widest text-rust">
           Network
         </p>
@@ -100,7 +98,8 @@ export default function NetworkPage() {
           Professionals you&apos;ve connected with
         </h1>
         <p className="mb-6 text-ink/65">
-          Trusted contacts and collaborators — add them to your Brigades for work.
+          Trusted contacts and collaborators from kitchens, bars, and venues — add them to
+          your Brigades for events.
         </p>
 
         <Card className="mb-6 p-4">
@@ -225,7 +224,8 @@ export default function NetworkPage() {
               <Card className="p-10 text-center">
                 <p className="font-display text-lg font-bold">You haven&apos;t connected with anyone yet.</p>
                 <p className="mt-2 text-ink/60">
-                  Start discovering professionals to build your network.
+                  Find chefs, bartenders, and event pros on Discover — then build your first
+                  Brigade.
                 </p>
                 <Button asChild className="mt-4">
                   <Link href="/discover">Go to Discover</Link>
@@ -267,7 +267,6 @@ export default function NetworkPage() {
             )}
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+      </AppPage>
   );
 }

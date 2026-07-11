@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
+import { ServerAppPage } from '@/components/layout/server-app-page';
 
 export function MfaForm() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export function MfaForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-paper px-6">
+    <ServerAppPage showAuth={false} className="flex min-h-[calc(100vh-52px)] items-center justify-center">
       <Card className="w-full max-w-md p-6">
         <h1 className="font-display mb-2 text-2xl font-black">Two-factor authentication</h1>
         <p className="mb-6 text-sm text-ink/65">
@@ -69,6 +70,6 @@ export function MfaForm() {
           </Link>
         </p>
       </Card>
-    </div>
+    </ServerAppPage>
   );
 }

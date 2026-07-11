@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { resolveAvatarUrl } from '@/lib/avatars';
 import { cn, displayName, getInitials } from '@/lib/utils';
 
 const NAV_ITEMS = [
@@ -56,6 +57,7 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
   const { session, logout } = useAuth();
   const name = user ? displayName(user.firstName, user.lastName) : 'Member';
   const initials = getInitials(user?.firstName, user?.lastName);
+  const avatarSrc = resolveAvatarUrl(user?.avatarUrl, session?.userId);
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white">
@@ -119,7 +121,7 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
                   className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-medium text-neutral-600 hover:text-ink"
                 >
                   <Avatar className="size-6 border border-neutral-200">
-                    {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={name} />}
+                    <AvatarImage src={avatarSrc} alt={name} className="object-cover" />
                     <AvatarFallback className="bg-neutral-100 text-[10px] font-semibold">
                       {initials}
                     </AvatarFallback>
@@ -136,6 +138,11 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
                 <DropdownMenuItem asChild>
                   <Link href={`/profile/${session.userId}`}>
                     <User className="size-4" /> View profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/profile">
+                    <Settings className="size-4" /> Edit profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

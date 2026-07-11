@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BarChart3 } from 'lucide-react';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -33,9 +33,7 @@ export default function AdminPage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-4xl px-6 py-10">
+    <AppPage showAuth={false}>
         <h1 className="font-display mb-2 text-3xl font-black">Admin portal</h1>
         <p className="mb-8 text-ink/65">
           Platform overview from analytics-service.
@@ -89,7 +87,6 @@ export default function AdminPage() {
             </p>
           </Card>
         )}
-      </main>
-    </div>
+      </AppPage>
   );
 }

@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { api, type SearchResult } from '@/lib/api/client';
-import { SiteHeader } from '@/components/layout/site-header';
+import { AppPage } from '@/components/layout/app-shell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -76,9 +76,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <SiteHeader showAuth={false} />
-      <main className="mx-auto max-w-2xl px-6 py-10">
+    <AppPage showAuth={false}>
         <h1 className="font-display mb-6 text-3xl font-black">Search</h1>
 
         <div className="relative mb-4 flex gap-2">
@@ -168,7 +166,6 @@ export default function SearchPage() {
             </Card>
           )}
         </div>
-      </main>
-    </div>
+      </AppPage>
   );
 }
