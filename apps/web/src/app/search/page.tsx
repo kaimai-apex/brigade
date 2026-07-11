@@ -19,18 +19,26 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 
+// The search-service emits plural types: 'people' | 'jobs' | 'posts' | 'companies'.
 function iconFor(type: string): LucideIcon {
-  if (type === 'user') return User;
-  if (type === 'job') return Briefcase;
-  if (type === 'company') return Building2;
+  if (type === 'people') return User;
+  if (type === 'jobs') return Briefcase;
+  if (type === 'companies') return Building2;
   return FileText;
 }
 
 function hrefFor(r: SearchResult): string | null {
-  if (r.type === 'user') return `/profile/${r.id}`;
-  if (r.type === 'job') return `/jobs/${r.id}`;
-  if (r.type === 'company') return `/companies/${r.id}`;
+  if (r.type === 'people') return `/profile/${r.id}`;
+  if (r.type === 'jobs') return `/jobs/${r.id}`;
+  if (r.type === 'posts') return `/posts/${r.id}`;
+  if (r.type === 'companies') return `/companies/${r.id}`;
   return null;
+}
+
+function initialsFor(name?: string): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
 }
 
 export default function SearchPage() {
@@ -122,8 +130,12 @@ export default function SearchPage() {
               const inner = (
                 <Card className="flex items-center gap-3 p-4 transition hover:bg-ink/[0.03]">
                   <Avatar size="lg">
-                    <AvatarFallback className="bg-secondary text-forest">
-                      <Icon className="size-5" />
+                    <AvatarFallback className="bg-secondary text-sm font-semibold text-forest">
+                      {r.type === 'people' ? (
+                        initialsFor(r.name)
+                      ) : (
+                        <Icon className="size-5" />
+                      )}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">

@@ -42,6 +42,11 @@ export class ConnectionService implements OnModuleInit, OnModuleDestroy {
        VALUES ($1, $2, 'pending') RETURNING *`,
       [senderId, receiverId],
     );
+    await this.kafka.publish('connection-requested', 'connection.requested', {
+      connectionId: result.rows[0].id,
+      senderId,
+      receiverId,
+    });
     return this.formatConnection(result.rows[0]);
   }
 

@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { MessagesSquare, RefreshCw, Send } from 'lucide-react';
-import { api, type Conversation, type Message } from '@/lib/api/client';
+import { MessagesSquare, RefreshCw, Search, Send } from 'lucide-react';
+import {
+  api,
+  type Conversation,
+  type Message,
+  type SearchResult,
+} from '@/lib/api/client';
+import { useAuth } from '@/components/auth/auth-provider';
 import { SiteHeader } from '@/components/layout/site-header';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -19,12 +25,17 @@ function convoInitials(participants: string[]) {
 }
 
 export default function MessagesPage() {
+  const { session } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [participantId, setParticipantId] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // people-picker for starting a new chat by name
+  const [query, setQuery] = useState('');
+  const [people, setPeople] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
 
   async function loadConversations() {
     setLoading(true);
@@ -55,11 +66,35 @@ export default function MessagesPage() {
     setMessages(res.data ?? []);
   }
 
-  async function startConversation() {
-    if (!participantId.trim()) return;
+  // debounced people search (excludes self)
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setPeople([]);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.search(query, 'people');
+        setPeople(
+          (res.data ?? []).filter(
+            (r) => r.type === 'people' && r.id !== session?.userId,
+          ),
+        );
+      } catch {
+        setPeople([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, session?.userId]);
+
+  async function startWith(participantId: string) {
     try {
       const convo = await api.createConversation(participantId);
-      setParticipantId('');
+      setQuery('');
+      setPeople([]);
       await loadConversations();
       await selectConversation(convo.id);
     } catch (e) {
@@ -95,14 +130,52 @@ export default function MessagesPage() {
           </Button>
         </div>
 
-        <Card className="mb-4 flex gap-2 p-4">
-          <Input
-            placeholder="Start chat with a user ID"
-            value={participantId}
-            onChange={(e) => setParticipantId(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && startConversation()}
-          />
-          <Button onClick={startConversation}>Start</Button>
+        <Card className="relative mb-4 p-4">
+          <div className="flex items-center gap-2">
+            <Search className="size-4 shrink-0 text-ink/40" />
+            <Input
+              placeholder="Search people to message…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="border-0 bg-transparent px-0 focus-visible:ring-0"
+            />
+          </div>
+
+          {query.trim().length >= 2 && (
+            <div className="absolute left-4 right-4 top-14 z-20 overflow-hidden rounded-xl border border-ink/10 bg-paper shadow-lg">
+              {searching && people.length === 0 && (
+                <p className="px-4 py-3 text-sm text-ink/50">Searching…</p>
+              )}
+              {!searching && people.length === 0 && (
+                <p className="px-4 py-3 text-sm text-ink/50">No people found.</p>
+              )}
+              {people.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => startWith(p.id)}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-ink/5"
+                >
+                  <Avatar size="sm">
+                    <AvatarFallback className="bg-secondary text-xs font-semibold text-forest">
+                      {(p.name ?? '?')
+                        .split(/\s+/)
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{p.name}</p>
+                    {p.headline && (
+                      <p className="truncate text-xs text-ink/55">{p.headline}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </Card>
 
         <div className="grid gap-4 md:grid-cols-3">

@@ -24,7 +24,14 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     await this.kafka.subscribe(
       'notification-service',
-      ['connection-created', 'post-liked', 'comment-created', 'job-applied', 'message-sent'],
+      [
+        'connection-requested',
+        'connection-created',
+        'post-liked',
+        'comment-created',
+        'job-applied',
+        'message-sent',
+      ],
       async (event) => this.handleEvent(event),
     );
   }
@@ -37,6 +44,8 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
     const payload = event.payload as Record<string, unknown>;
 
     switch (event.type) {
+      case 'connection.requested':
+        return (payload.receiverId as string) ?? null;
       case 'connection.created':
         return (payload.receiverId as string) ?? null;
       case 'post.liked':
@@ -57,6 +66,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
     this.processedEvents.add(event.id);
 
     const typeMap: Record<string, string> = {
+      'connection.requested': 'connection_request',
       'connection.created': 'connection_request',
       'post.liked': 'post_like',
       'comment.created': 'comment',
