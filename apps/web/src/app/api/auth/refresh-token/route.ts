@@ -3,7 +3,15 @@ import { cookies } from "next/headers";
 import { refresh as refreshSession } from "@/lib/auth/auth-api";
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  // The client refreshes with an empty body and relies on the httpOnly cookie,
+  // so tolerate a missing/invalid JSON body instead of throwing a 500.
+  let body: { refreshToken?: string } = {};
+  try {
+    const text = await request.text();
+    if (text) body = JSON.parse(text);
+  } catch {
+    body = {};
+  }
   const cookieStore = await cookies();
   const refreshToken =
     body.refreshToken ?? cookieStore.get("connectpro_refresh_token")?.value;

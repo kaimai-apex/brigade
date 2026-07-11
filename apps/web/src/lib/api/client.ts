@@ -87,6 +87,24 @@ export class ApiClient {
     return this.request(`/api/v1/posts/${postId}/likes`, { method: 'POST' });
   }
 
+  react(postId: string, reaction: ReactionType = 'like') {
+    return this.request<{ success: boolean; reaction: ReactionType }>(
+      `/api/v1/posts/${postId}/reactions`,
+      { method: 'POST', body: JSON.stringify({ reaction }) },
+    );
+  }
+
+  unreact(postId: string) {
+    return this.request(`/api/v1/posts/${postId}/reactions`, { method: 'DELETE' });
+  }
+
+  repost(postId: string) {
+    return this.request<Post>(`/api/v1/posts/${postId}/share`, {
+      method: 'POST',
+      body: '{}',
+    });
+  }
+
   getPost(postId: string) {
     return this.request<Post & { comments?: Comment[] }>(`/api/v1/posts/${postId}`);
   }
@@ -169,6 +187,19 @@ export class ApiClient {
     return this.request<Company>(`/api/v1/companies/${companyId}`);
   }
 
+  createCompany(data: {
+    name: string;
+    industry?: string;
+    website?: string;
+    size?: string;
+    logoUrl?: string;
+  }) {
+    return this.request<Company>('/api/v1/companies', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   search(q: string, type?: string) {
     const params = new URLSearchParams({ q });
     if (type) params.set('type', type);
@@ -218,12 +249,39 @@ export class ApiClient {
   }
 }
 
+export type ReactionType =
+  | 'like'
+  | 'celebrate'
+  | 'support'
+  | 'love'
+  | 'insightful'
+  | 'funny';
+
+/** Shared reaction vocabulary — emoji + label + accent, mirrors LinkedIn's set. */
+export const REACTIONS: {
+  type: ReactionType;
+  emoji: string;
+  label: string;
+  color: string;
+}[] = [
+  { type: 'like', emoji: '👍', label: 'Like', color: '#2d4a9e' },
+  { type: 'celebrate', emoji: '🎉', label: 'Celebrate', color: '#1c4b3d' },
+  { type: 'support', emoji: '🤝', label: 'Support', color: '#8b5cf6' },
+  { type: 'love', emoji: '❤️', label: 'Love', color: '#c8471f' },
+  { type: 'insightful', emoji: '💡', label: 'Insightful', color: '#e8b84b' },
+  { type: 'funny', emoji: '😄', label: 'Funny', color: '#0ea5e9' },
+];
+
 export type Post = {
   id: string;
   authorId: string;
   content: string;
   mediaUrl?: string;
+  postType?: string;
   likeCount: number;
+  reactionCount?: number;
+  reactions?: Partial<Record<ReactionType, number>>;
+  viewerReaction?: ReactionType | null;
   createdAt: string;
 };
 
@@ -246,6 +304,10 @@ export type Company = {
   id: string;
   name: string;
   description?: string;
+  industry?: string;
+  website?: string;
+  size?: string;
+  logoUrl?: string;
   followerCount?: number;
 };
 

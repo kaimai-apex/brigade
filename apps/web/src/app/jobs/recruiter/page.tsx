@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { api, type Company, type Job, type JobApplication } from '@/lib/api/client';
 import { SiteHeader } from '@/components/layout/site-header';
+import { CreateCompanyDialog } from '@/components/company/create-company-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -81,19 +82,36 @@ export default function RecruiterDashboardPage() {
           <div className="mt-4 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="company">Company</Label>
-              <select
-                id="company"
-                className="h-11 w-full rounded-full border border-input bg-paper px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
-                value={form.companyId}
-                onChange={(e) => setForm((f) => ({ ...f, companyId: e.target.value }))}
-              >
-                <option value="">Select company</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+              <div className="flex gap-2">
+                <select
+                  id="company"
+                  className="h-11 w-full rounded-full border border-input bg-paper px-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+                  value={form.companyId}
+                  onChange={(e) => setForm((f) => ({ ...f, companyId: e.target.value }))}
+                >
+                  <option value="">
+                    {companies.length === 0
+                      ? 'No companies yet — create one →'
+                      : 'Select company'}
                   </option>
-                ))}
-              </select>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <CreateCompanyDialog
+                  trigger={
+                    <Button type="button" variant="outline" className="shrink-0">
+                      + New
+                    </Button>
+                  }
+                  onCreated={(company) => {
+                    setCompanies((prev) => [company, ...prev]);
+                    setForm((f) => ({ ...f, companyId: company.id }));
+                  }}
+                />
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">

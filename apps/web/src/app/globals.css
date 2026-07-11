@@ -56,6 +56,7 @@
 
   --font-display: var(--font-fraunces);
   --font-body: var(--font-archivo);
+  --font-marker: var(--font-caveat);
 
   /* shadcn semantic color utilities (bg-card, text-muted-foreground, …) */
   --color-background: var(--background);
@@ -103,5 +104,229 @@
   h2,
   h3 {
     @apply font-display tracking-tight;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Landing-page signature elements — ported faithfully from the original
+   Brigade hero. Scoped to the public landing so they don't leak into the app.
+--------------------------------------------------------------------------- */
+
+/* ---------- HERO ART (staggered chef illustrations over color blobs) ------- */
+.hero-art {
+  position: relative;
+  height: 560px;
+  width: 100%;
+}
+.art-blob {
+  position: absolute;
+  border-radius: 50%;
+  display: block;
+}
+.blob-forest {
+  width: 150px;
+  height: 150px;
+  background: #1c4b3d;
+  top: 6%;
+  right: 8%;
+}
+.blob-gold {
+  width: 110px;
+  height: 110px;
+  background: #e8b84b;
+  bottom: 14%;
+  left: 2%;
+}
+.blob-rust {
+  width: 70px;
+  height: 70px;
+  background: #c8471f;
+  bottom: 2%;
+  right: 22%;
+}
+.blob-cobalt {
+  width: 100px;
+  height: 100px;
+  background: #2d4a9e;
+  top: 0;
+  left: 4%;
+}
+.art-piece {
+  position: absolute;
+  mix-blend-mode: multiply; /* drops the white JPEG bg so line-art sits on the blobs */
+  filter: contrast(1.05);
+  border-radius: 2px;
+}
+.art-cutlery {
+  width: 38%;
+  top: 0;
+  left: 2%;
+  transform: rotate(-6deg);
+  z-index: 3;
+}
+.art-bartender {
+  width: 44%;
+  top: 8%;
+  right: 2%;
+  transform: rotate(3deg);
+  z-index: 2;
+}
+.art-cook {
+  width: 42%;
+  bottom: 0;
+  left: 0;
+  transform: rotate(-3deg);
+  z-index: 2;
+}
+.art-chef {
+  width: 34%;
+  bottom: 4%;
+  right: 14%;
+  transform: rotate(4deg);
+  z-index: 4;
+}
+@media (max-width: 1024px) {
+  .hero-art {
+    height: auto;
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px 28px;
+    align-items: center;
+    justify-items: center;
+  }
+  .art-piece {
+    position: relative;
+    z-index: 1;
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+    transform: none;
+  }
+  .art-blob {
+    z-index: 0;
+  }
+  .blob-cobalt {
+    width: 120px;
+    height: 120px;
+    top: 2%;
+    left: 4%;
+  }
+  .blob-forest {
+    width: 130px;
+    height: 130px;
+    top: 2%;
+    right: 4%;
+  }
+  .blob-gold {
+    width: 110px;
+    height: 110px;
+    bottom: 6%;
+    left: 6%;
+  }
+  .blob-rust {
+    width: 80px;
+    height: 80px;
+    bottom: 8%;
+    right: 14%;
+  }
+}
+@media (max-width: 560px) {
+  .hero-art {
+    gap: 14px 16px;
+  }
+  .art-piece {
+    max-width: 190px;
+  }
+}
+
+/* ---------- COVER DECK (tilted role cards with lift-on-hover) -------------- */
+.deck-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+@media (max-width: 980px) {
+  .deck-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .deck-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.cover {
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transform: rotate(var(--tilt, 0deg));
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.35s ease;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  cursor: default;
+}
+.cover:hover {
+  transform: rotate(0deg) translateY(-8px);
+  box-shadow: 0 22px 40px rgba(0, 0, 0, 0.18);
+}
+.cover:nth-child(1) { --tilt: -3deg; }
+.cover:nth-child(2) { --tilt: 2deg; }
+.cover:nth-child(3) { --tilt: -2deg; }
+.cover:nth-child(4) { --tilt: 3deg; }
+.cover:nth-child(5) { --tilt: 2deg; }
+.cover:nth-child(6) { --tilt: -3deg; }
+.cover:nth-child(7) { --tilt: 3deg; }
+.cover:nth-child(8) { --tilt: -2deg; }
+.cover .masthead {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cover .icon {
+  width: 30px;
+  height: 30px;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+.cover .icon svg {
+  width: 100%;
+  height: 100%;
+}
+.cover .role {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.02;
+}
+.cover .role em {
+  font-style: italic;
+  font-weight: 600;
+}
+.cover .stat {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cover {
+    transition: none;
   }
 }

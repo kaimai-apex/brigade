@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { Building2, Users } from 'lucide-react';
 import { api, type Company } from '@/lib/api/client';
 import { SiteHeader } from '@/components/layout/site-header';
+import { CreateCompanyDialog } from '@/components/company/create-company-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -26,7 +28,12 @@ export default function CompaniesPage() {
     <div className="min-h-screen bg-cream">
       <SiteHeader showAuth={false} />
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <h1 className="font-display mb-6 text-3xl font-black">Companies</h1>
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <h1 className="font-display text-3xl font-black">Companies</h1>
+          <CreateCompanyDialog
+            onCreated={(company) => setCompanies((prev) => [company, ...prev])}
+          />
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {loading &&
@@ -75,8 +82,11 @@ export default function CompaniesPage() {
             </div>
             <p className="font-display text-xl font-bold">No company pages yet</p>
             <p className="text-sm text-ink/60">
-              Company profiles will appear here as they join Brigade.
+              Be the first — create a company page for your restaurant or group.
             </p>
+            <CreateCompanyDialog
+              onCreated={(company) => setCompanies((prev) => [company, ...prev])}
+            />
           </Card>
         )}
       </main>

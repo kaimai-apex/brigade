@@ -46,17 +46,23 @@ export class PostService implements OnModuleDestroy {
     return this.formatPost(post);
   }
 
-  async getPost(postId: string) {
+  async getPost(postId: string, viewerId?: string) {
     const result = await this.pool.query(
-      `SELECT p.*, COALESCE(json_agg(jsonb_build_object(
-          'id', c.id, 'authorId', c.author_id, 'content', c.content,
-          'createdAt', c.created_at
-        )) FILTER (WHERE c.id IS NOT NULL), '[]') as comments
+      `SELECT p.*,
+         COALESCE(json_agg(jsonb_build_object(
+           'id', c.id, 'authorId', c.author_id, 'content', c.content,
+           'createdAt', c.created_at
+         )) FILTER (WHERE c.id IS NOT NULL), '[]') as comments,
+         (SELECT COALESCE(jsonb_object_agg(reaction, cnt), '{}'::jsonb)
+            FROM (SELECT reaction, count(*) cnt FROM posts.likes
+                  WHERE post_id = p.id GROUP BY reaction) s) as reactions,
+         (SELECT reaction FROM posts.likes
+            WHERE post_id = p.id AND user_id = $2) as viewer_reaction
        FROM posts.posts p
        LEFT JOIN posts.comments c ON c.post_id = p.id
        WHERE p.id = $1 AND p.deleted_at IS NULL
        GROUP BY p.id`,
-      [postId],
+      [postId, viewerId ?? null],
     );
     if (result.rows.length === 0) throw new NotFoundError('Post not found');
     return this.formatPost(result.rows[0]);
@@ -98,27 +104,51 @@ export class PostService implements OnModuleDestroy {
     };
   }
 
-  async likePost(postId: string, userId: string) {
+  static readonly REACTIONS = [
+    'like',
+    'celebrate',
+    'support',
+    'love',
+    'insightful',
+    'funny',
+  ];
+
+  // A user has exactly one reaction per post. Setting a new type updates it in
+  // place; like_count only increments on the first reaction (LinkedIn semantics).
+  async reactPost(postId: string, userId: string, reaction = 'like') {
+    if (!PostService.REACTIONS.includes(reaction)) reaction = 'like';
     const post = await this.pool.query(
       'SELECT author_id FROM posts.posts WHERE id = $1 AND deleted_at IS NULL',
       [postId],
     );
     if (post.rows.length === 0) throw new NotFoundError('Post not found');
 
-    await this.pool.query(
-      `INSERT INTO posts.likes (post_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+    const existing = await this.pool.query(
+      'SELECT 1 FROM posts.likes WHERE post_id = $1 AND user_id = $2',
       [postId, userId],
     );
     await this.pool.query(
-      'UPDATE posts.posts SET like_count = like_count + 1 WHERE id = $1',
-      [postId],
+      `INSERT INTO posts.likes (post_id, user_id, reaction) VALUES ($1, $2, $3)
+       ON CONFLICT (post_id, user_id) DO UPDATE SET reaction = $3`,
+      [postId, userId, reaction],
     );
-    await this.kafka.publish('post-liked', 'post.liked', {
-      postId,
-      userId,
-      authorId: post.rows[0].author_id,
-    });
-    return { success: true };
+    if (existing.rows.length === 0) {
+      await this.pool.query(
+        'UPDATE posts.posts SET like_count = like_count + 1 WHERE id = $1',
+        [postId],
+      );
+      await this.kafka.publish('post-liked', 'post.liked', {
+        postId,
+        userId,
+        authorId: post.rows[0].author_id,
+      });
+    }
+    return { success: true, reaction };
+  }
+
+  // Back-compat: a plain "like" is just the default reaction.
+  likePost(postId: string, userId: string) {
+    return this.reactPost(postId, userId, 'like');
   }
 
   async unlikePost(postId: string, userId: string) {
@@ -156,6 +186,9 @@ export class PostService implements OnModuleDestroy {
       postType: row.post_type,
       visibility: row.visibility,
       likeCount: row.like_count,
+      reactionCount: row.like_count,
+      reactions: row.reactions ?? {},
+      viewerReaction: row.viewer_reaction ?? null,
       comments: row.comments ?? [],
       createdAt: row.created_at,
     };

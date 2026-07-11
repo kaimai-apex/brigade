@@ -31,11 +31,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  async rewrites() {
-    return {
-      beforeFiles: [{ source: "/", destination: "/legacy-landing.html" }],
-    };
-  },
 };
 
 export default nextConfig;

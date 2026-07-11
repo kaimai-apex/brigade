@@ -26,6 +26,10 @@ class CommentDto {
   @IsString() content!: string;
 }
 
+class ReactionDto {
+  @IsOptional() @IsString() reaction?: string;
+}
+
 @Controller('posts')
 @UseGuards(jwtGuard)
 export class PostController {
@@ -43,8 +47,8 @@ export class PostController {
   }
 
   @Get(':id')
-  get(@Param('id') id: string) {
-    return this.postService.getPost(id);
+  get(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.postService.getPost(id, req.user.sub);
   }
 
   @Delete(':id')
@@ -64,6 +68,20 @@ export class PostController {
 
   @Delete(':id/likes')
   unlike(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.postService.unlikePost(id, req.user.sub);
+  }
+
+  @Post(':id/reactions')
+  react(
+    @Param('id') id: string,
+    @Body() dto: ReactionDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.postService.reactPost(id, req.user.sub, dto.reaction ?? 'like');
+  }
+
+  @Delete(':id/reactions')
+  unreact(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.postService.unlikePost(id, req.user.sub);
   }
 

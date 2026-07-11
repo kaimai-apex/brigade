@@ -84,7 +84,12 @@ export class FeedService implements OnModuleInit, OnModuleDestroy {
 
     const result = await this.pool.query(
       `SELECT p.id, p.author_id, p.content, p.media_url, p.post_type,
-              p.like_count, p.created_at, t.score
+              p.like_count, p.created_at, t.score,
+              (SELECT COALESCE(jsonb_object_agg(reaction, cnt), '{}'::jsonb)
+                 FROM (SELECT reaction, count(*) cnt FROM posts.likes
+                       WHERE post_id = p.id GROUP BY reaction) s) as reactions,
+              (SELECT reaction FROM posts.likes
+                 WHERE post_id = p.id AND user_id = $1) as viewer_reaction
        FROM posts.home_timeline t
        JOIN posts.posts p ON p.id = t.post_id
        WHERE t.user_id = $1 AND p.deleted_at IS NULL
@@ -101,6 +106,9 @@ export class FeedService implements OnModuleInit, OnModuleDestroy {
         mediaUrl: r.media_url,
         postType: r.post_type,
         likeCount: r.like_count,
+        reactionCount: r.like_count,
+        reactions: r.reactions ?? {},
+        viewerReaction: r.viewer_reaction ?? null,
         createdAt: r.created_at,
         score: r.score,
       })),

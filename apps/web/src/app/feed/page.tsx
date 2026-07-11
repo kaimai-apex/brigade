@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
-import { Heart, MessageCircle, RefreshCw, Send } from 'lucide-react';
-import { api, type Comment, type Post } from '@/lib/api/client';
+import { RefreshCw, Send } from 'lucide-react';
+import { api, type Comment, type Post, type ReactionType } from '@/lib/api/client';
 import { SiteHeader } from '@/components/layout/site-header';
+import { ReactionBar } from '@/components/feed/reaction-bar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,7 +27,6 @@ export default function FeedPage() {
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [loading, setLoading] = useState(true);
-  const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -58,16 +59,19 @@ export default function FeedPage() {
     }
   }
 
-  async function handleLike(postId: string) {
-    if (liked[postId]) return;
-    setLiked((p) => ({ ...p, [postId]: true }));
+  function handleReactionChange(postId: string, reaction: ReactionType | null) {
     setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, likeCount: p.likeCount + 1 } : p)),
+      prev.map((p) => (p.id === postId ? { ...p, viewerReaction: reaction } : p)),
     );
+  }
+
+  async function handleRepost(postId: string) {
     try {
-      await api.likePost(postId);
-    } catch {
-      /* optimistic */
+      const repost = (await api.repost(postId)) as FeedPost;
+      setPosts((prev) => [{ ...repost, comments: [] }, ...prev]);
+      toast.success('Reposted to your network');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to repost');
     }
   }
 
@@ -181,39 +185,26 @@ export default function FeedPage() {
                   </div>
                 </div>
 
-                <p className="mt-3 whitespace-pre-wrap leading-relaxed">{post.content}</p>
-                {post.mediaUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={post.mediaUrl}
-                    alt=""
-                    className="mt-3 max-h-72 w-full rounded-xl object-cover"
-                  />
-                )}
-
-                <div className="mt-4 flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleLike(post.id)}
-                    className={cn('gap-1.5', liked[post.id] && 'text-rust')}
-                  >
-                    <Heart
-                      className={cn('size-4', liked[post.id] && 'fill-rust')}
+                <Link href={`/posts/${post.id}`} className="mt-3 block">
+                  <p className="whitespace-pre-wrap leading-relaxed">{post.content}</p>
+                  {post.mediaUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={post.mediaUrl}
+                      alt=""
+                      className="mt-3 max-h-72 w-full rounded-xl object-cover"
                     />
-                    {post.likeCount}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleComments(post.id)}
-                    className="gap-1.5"
-                  >
-                    <MessageCircle className="size-4" />
-                    {(post.comments?.length ?? 0) > 0
-                      ? post.comments?.length
-                      : 'Comment'}
-                  </Button>
+                  )}
+                </Link>
+
+                <div className="mt-4">
+                  <ReactionBar
+                    post={post}
+                    commentCount={post.comments?.length ?? 0}
+                    onToggleComments={() => toggleComments(post.id)}
+                    onRepost={() => handleRepost(post.id)}
+                    onChange={(r) => handleReactionChange(post.id, r)}
+                  />
                 </div>
 
                 {expanded[post.id] && (

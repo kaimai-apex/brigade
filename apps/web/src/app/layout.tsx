@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Archivo } from "next/font/google";
+import { Fraunces, Archivo, Caveat } from "next/font/google";
 import { ReduxProvider } from "@/lib/store";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -19,6 +19,12 @@ const archivo = Archivo({
   display: "swap",
 });
 
+const caveat = Caveat({
+  subsets: ["latin"],
+  variable: "--font-caveat",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Brigade — Hospitality Talent Network",
   description:
@@ -32,7 +38,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} ${archivo.variable} min-h-screen`}>
+      <body
+        className={`${fraunces.variable} ${archivo.variable} ${caveat.variable} min-h-screen`}
+      >
         <ReduxProvider>
           <TooltipProvider delayDuration={200}>
             <AuthProvider>{children}</AuthProvider>

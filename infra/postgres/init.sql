@@ -264,6 +264,8 @@ CREATE INDEX idx_comments_post ON posts.comments(post_id, created_at DESC);
 CREATE TABLE posts.likes (
     post_id     UUID NOT NULL REFERENCES posts.posts(id),
     user_id     UUID NOT NULL,
+    reaction    TEXT NOT NULL DEFAULT 'like'
+                CHECK (reaction IN ('like','celebrate','support','love','insightful','funny')),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (post_id, user_id)
 );
