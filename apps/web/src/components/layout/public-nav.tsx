@@ -36,7 +36,7 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
                 <Link href="/login">Log in</Link>
               </Button>
               <Button asChild size="sm" className="min-h-11">
-                <Link href="/signup">Join Brigade</Link>
+                <Link href="/#waitlist">Join waitlist</Link>
               </Button>
             </>
           )}
@@ -44,8 +44,8 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
 
         <div className="flex items-center gap-2 sm:hidden">
           {showAuth && (
-            <Button asChild variant="ghost" size="sm" className="min-h-11 px-3">
-              <Link href="/login">Log in</Link>
+            <Button asChild size="sm" className="min-h-11 px-3">
+              <Link href="/#waitlist">Waitlist</Link>
             </Button>
           )}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -69,8 +69,8 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
                       Log in
                     </Link>
                     <Button asChild className="mt-2 min-h-11">
-                      <Link href="/signup" onClick={() => setMobileOpen(false)}>
-                        Join Brigade
+                      <Link href="/#waitlist" onClick={() => setMobileOpen(false)}>
+                        Join waitlist
                       </Link>
                     </Button>
                   </>
