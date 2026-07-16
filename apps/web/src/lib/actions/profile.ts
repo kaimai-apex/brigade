@@ -297,30 +297,33 @@ export async function getDiscoverProfiles(): Promise<Profile[]> {
   return getDirectoryProfiles();
 }
 
+/** Authenticated directory only — no public unauthenticated listing. */
 export async function getDirectoryProfiles(): Promise<Profile[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/users/directory/public`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as { data: Record<string, unknown>[] };
+    const session = await getConnectProSession();
+    if (!session) return [];
+
+    const json = await connectProFetch<{ data: Record<string, unknown>[] }>(
+      "/api/v1/users/directory/list",
+    );
     return (json.data ?? []).map((row) => ({
-    id: String(row.userId ?? row.id),
-    first_name: String(row.firstName ?? ""),
-    last_name: String(row.lastName ?? ""),
-    headline: (row.headline as string) ?? null,
-    city: (row.city as string) ?? null,
-    state: (row.state as string) ?? null,
-    country: (row.country as string) ?? null,
-    profile_image_url: (row.profileImageUrl as string) ?? (row.avatarUrl as string) ?? null,
-    role: (row.role as string) ?? "Chef",
-    expertise_areas: (row.expertiseAreas as string[]) ?? [],
-    open_to_opportunities: Boolean(row.openToOpportunities),
-    available_private_events: Boolean(row.availablePrivateEvents),
-    available_contract_work: Boolean(row.availableContractWork),
-    available_emergency_staffing: Boolean(row.availableEmergencyStaffing),
-    onboarding_completed: true,
-  })) as Profile[];
+      id: String(row.userId ?? row.id),
+      first_name: String(row.firstName ?? ""),
+      last_name: String(row.lastName ?? ""),
+      headline: (row.headline as string) ?? null,
+      city: (row.city as string) ?? null,
+      state: (row.state as string) ?? null,
+      country: (row.country as string) ?? null,
+      profile_image_url:
+        (row.profileImageUrl as string) ?? (row.avatarUrl as string) ?? null,
+      role: (row.role as string) ?? "Chef",
+      expertise_areas: (row.expertiseAreas as string[]) ?? [],
+      open_to_opportunities: Boolean(row.openToOpportunities),
+      available_private_events: Boolean(row.availablePrivateEvents),
+      available_contract_work: Boolean(row.availableContractWork),
+      available_emergency_staffing: Boolean(row.availableEmergencyStaffing),
+      onboarding_completed: true,
+    })) as Profile[];
   } catch {
     return [];
   }

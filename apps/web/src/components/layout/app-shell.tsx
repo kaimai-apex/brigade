@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/auth-provider';
 import { api } from '@/lib/api/client';
 import { AppNav } from '@/components/layout/app-nav';
+import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
 import { PublicNav } from '@/components/layout/public-nav';
 import { cn } from '@/lib/utils';
 
@@ -98,7 +99,12 @@ export function PageHeader({ showAuth = true }: PageHeaderProps) {
   const unread = useUnreadNotifications(Boolean(session));
 
   if (session) {
-    return <AppNav user={user ?? undefined} unreadNotifications={unread} />;
+    return (
+      <>
+        <AppNav user={user ?? undefined} unreadNotifications={unread} />
+        <MobileTabBar />
+      </>
+    );
   }
 
   return <PublicNav showAuth={showAuth} />;

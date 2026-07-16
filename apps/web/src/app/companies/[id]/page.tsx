@@ -64,7 +64,9 @@ export default function CompanyDetailPage() {
                 <h1 className="font-display text-3xl font-black">{company.name}</h1>
                 <Badge variant="secondary" className="mt-2">
                   <Users className="size-3" />
-                  {company.followerCount ?? 0} followers
+                  {(company.followerCount ?? 0) === 1
+                    ? '1 follower'
+                    : `${company.followerCount ?? 0} followers`}
                 </Badge>
               </div>
               <Button

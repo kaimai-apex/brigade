@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   Bell,
-  Briefcase,
   ChevronDown,
   Compass,
-  Home,
   LogOut,
   MessageSquare,
+  Newspaper,
   Search,
   Settings,
   User,
@@ -31,26 +31,29 @@ import { resolveAvatarUrl } from '@/lib/avatars';
 import { cn, displayName, getInitials } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Home', icon: Home, match: (p: string) => p === '/dashboard' },
   {
-    href: '/explore',
-    label: 'Explore',
+    href: '/feed',
+    label: 'Feed',
+    icon: Newspaper,
+    match: (p: string) => p === '/feed' || p.startsWith('/posts'),
+  },
+  {
+    href: '/brigade',
+    label: 'Brigade',
+    icon: Users,
+    match: (p: string) => p.startsWith('/brigade') || p.startsWith('/network'),
+  },
+  {
+    href: '/discover',
+    label: 'Discover',
     icon: Compass,
-    match: (p: string) => p.startsWith('/explore'),
+    match: (p: string) => p.startsWith('/discover'),
   },
-  { href: '/network', label: 'Network', icon: Users, match: (p: string) => p.startsWith('/network') },
   {
-    href: '/opportunities',
-    label: 'Opportunities',
-    icon: Briefcase,
-    match: (p: string) => p.startsWith('/opportunities') || p.startsWith('/jobs'),
-  },
-  { href: '/messages', label: 'Messaging', icon: MessageSquare, match: (p: string) => p.startsWith('/messages') },
-  {
-    href: '/notifications',
-    label: 'Notifications',
-    icon: Bell,
-    match: (p: string) => p.startsWith('/notifications'),
+    href: '/messages',
+    label: 'Messages',
+    icon: MessageSquare,
+    match: (p: string) => p.startsWith('/messages'),
   },
 ] as const;
 
@@ -59,56 +62,119 @@ type AppNavProps = {
   unreadNotifications?: number;
 };
 
+function AccountMenuItems({
+  name,
+  onLogout,
+}: {
+  name: string;
+  onLogout: () => void;
+}) {
+  return (
+    <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuLabel className="truncate">{name}</DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem asChild>
+        <Link href="/profile/me">
+          <User className="size-4" /> View profile
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/settings/profile">
+          <Settings className="size-4" /> Edit profile
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/settings/notifications">
+          <Settings className="size-4" /> Settings
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/notifications">Alerts</Link>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onSelect={onLogout} className="text-rust focus:text-rust">
+        <LogOut className="size-4" /> Sign out
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  );
+}
+
 export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { session, logout } = useAuth();
   const name = user ? displayName(user.firstName, user.lastName) : 'Member';
   const initials = getInitials(user?.firstName, user?.lastName);
   const avatarSrc = resolveAvatarUrl(user?.avatarUrl, session?.userId);
+  const profileActive =
+    pathname.startsWith('/profile') || pathname.startsWith('/settings/profile');
+
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    let lastY = window.scrollY;
+    function onScroll() {
+      const y = window.scrollY;
+      if (y < 48) {
+        setCollapsed(false);
+      } else if (y > lastY + 8) {
+        setCollapsed(true);
+      } else if (y < lastY - 8) {
+        setCollapsed(false);
+      }
+      lastY = y;
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  function goDiscover() {
+    router.push('/discover?focus=1');
+  }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white">
-      <div className="mx-auto flex h-[52px] max-w-[1128px] items-center gap-3 px-4">
+    <header
+      className={cn(
+        'sticky top-0 z-50 border-b border-neutral-200 bg-white transition-transform duration-200',
+        collapsed && '-translate-y-full md:translate-y-0',
+      )}
+    >
+      <div className="mx-auto flex h-12 max-w-[1128px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
         <Link
-          href="/dashboard"
-          className="shrink-0 font-display text-xl font-black tracking-tight text-ink"
+          href="/feed"
+          className="flex min-h-11 shrink-0 items-center font-display text-xl font-black tracking-tight text-ink"
         >
           Brigade
         </Link>
 
-        <div className="hidden min-w-0 flex-1 sm:block sm:max-w-[280px]">
+        <div className="hidden min-w-0 flex-1 sm:block sm:max-w-[220px]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-500" />
             <Input
               readOnly
-              placeholder="Search"
+              placeholder="Search people & companies"
               className="h-9 rounded-md border-neutral-300 bg-neutral-50 pl-9 text-sm"
-              onFocus={() => window.dispatchEvent(new Event('open-command-menu'))}
+              onFocus={goDiscover}
+              onClick={goDiscover}
             />
           </div>
         </div>
 
-        <nav className="ml-auto flex items-stretch">
+        <nav className="ml-auto hidden items-stretch md:flex">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = item.match(pathname);
-            const showBadge = item.label === 'Notifications' && unreadNotifications > 0;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'relative flex min-w-[64px] flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-medium transition',
+                  'relative flex min-h-[44px] min-w-[52px] flex-col items-center justify-center gap-0.5 px-1.5 text-[11px] font-medium transition sm:min-w-[64px] sm:px-2',
                   active ? 'text-ink' : 'text-neutral-600 hover:text-ink',
                 )}
               >
                 <span className="relative flex h-6 items-center justify-center">
                   <Icon className="size-5" strokeWidth={active ? 2.25 : 1.75} />
-                  {showBadge && (
-                    <span className="absolute -right-1 -top-0.5 flex size-4 items-center justify-center rounded-full bg-rust text-[9px] font-bold text-white">
-                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                    </span>
-                  )}
                 </span>
                 <span className={cn('hidden lg:block', active && 'font-semibold')}>
                   {item.label}
@@ -125,7 +191,10 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 px-2 text-[11px] font-medium text-neutral-600 hover:text-ink"
+                  className={cn(
+                    'relative flex min-h-[44px] min-w-[52px] flex-col items-center justify-center gap-0.5 px-1.5 text-[11px] font-medium sm:min-w-[64px] sm:px-2',
+                    profileActive ? 'text-ink' : 'text-neutral-600 hover:text-ink',
+                  )}
                 >
                   <Avatar className="size-6 border border-neutral-200">
                     <AvatarImage src={avatarSrc} alt={name} className="object-cover" />
@@ -134,50 +203,65 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden items-center gap-0.5 lg:flex">
-                    Me
+                    Profile
                     <ChevronDown className="size-3" />
                   </span>
+                  {profileActive && (
+                    <span className="absolute bottom-0 h-0.5 w-8 rounded-full bg-ink" />
+                  )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="truncate">{name}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href={`/profile/${session.userId}`}>
-                    <User className="size-4" /> View profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/profile">
-                    <Settings className="size-4" /> Edit profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings/notifications">
-                    <Settings className="size-4" /> Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => void logout()}
-                  className="text-rust focus:text-rust"
-                >
-                  <LogOut className="size-4" /> Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+              <AccountMenuItems name={name} onLogout={() => void logout()} />
             </DropdownMenu>
           )}
         </nav>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="sm:hidden"
-          aria-label="Search"
-          onClick={() => window.dispatchEvent(new Event('open-command-menu'))}
-        >
-          <Search className="size-5" />
-        </Button>
+        {/* Mobile: search · alerts · avatar (tabs are in the bottom bar) */}
+        <div className="ml-auto flex items-center gap-0.5 md:hidden">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="min-h-11 min-w-11"
+            aria-label="Search"
+            onClick={goDiscover}
+          >
+            <Search className="size-5" />
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon-sm"
+            className="relative min-h-11 min-w-11"
+          >
+            <Link href="/notifications" aria-label="Notifications">
+              <Bell className="size-5" />
+              {unreadNotifications > 0 && (
+                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rust px-1 text-[10px] font-bold text-white">
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              )}
+            </Link>
+          </Button>
+          {session && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Account"
+                  className="flex min-h-11 min-w-11 items-center justify-center"
+                >
+                  <Avatar className="size-7 border border-neutral-200">
+                    <AvatarImage src={avatarSrc} alt={name} className="object-cover" />
+                    <AvatarFallback className="bg-neutral-100 text-[10px] font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <AccountMenuItems name={name} onLogout={() => void logout()} />
+            </DropdownMenu>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -328,11 +328,14 @@ export type Job = {
 export type Company = {
   id: string;
   name: string;
+  slug?: string | null;
   description?: string;
   industry?: string;
   website?: string;
   size?: string;
   logoUrl?: string;
+  createdBy?: string | null;
+  ownerUserId?: string | null;
   followerCount?: number;
 };
 

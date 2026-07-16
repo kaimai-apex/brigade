@@ -16,8 +16,6 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { displayName } from '@/lib/utils';
-
 export default function EditProfilePage() {
   const { session } = useAuth();
   const router = useRouter();
@@ -84,7 +82,7 @@ export default function EditProfilePage() {
         coverUrl: bannerId,
       });
       toast.success('Profile updated');
-      router.push(`/profile/${session.userId}`);
+      router.push('/profile/me');
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save profile');
@@ -109,17 +107,10 @@ export default function EditProfilePage() {
   const previewBanner = resolveBannerUrl(bannerId, session.userId);
 
   return (
-    <AppPage showAuth={false} className="max-w-3xl pb-16">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-black">Edit profile</h1>
-          <p className="mt-1 text-sm text-neutral-600">
-            Customize how venues and recruiters see you on Brigade.
-          </p>
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/profile/${session.userId}`}>Cancel</Link>
-        </Button>
+    <AppPage showAuth={false} mainClassName="pb-24 py-4">
+      <div className="mx-auto w-full max-w-2xl px-0 sm:px-2">
+      <div className="mb-4">
+        <h1 className="text-page-title">Edit profile</h1>
       </div>
 
       {loading ? (
@@ -138,6 +129,9 @@ export default function EditProfilePage() {
           </Card>
 
           <Card className="space-y-4 p-5">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-ink/50">
+              Identity
+            </p>
             <FileUpload
               bucket="avatars"
               userId={session.userId}
@@ -174,7 +168,7 @@ export default function EditProfilePage() {
                 id="role"
                 value={form.role}
                 onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-                className="flex h-11 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm"
+                className="flex h-12 w-full rounded-xl border border-neutral-200 bg-white px-4 text-sm"
               >
                 {PROFESSIONAL_ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -190,10 +184,15 @@ export default function EditProfilePage() {
                 id="headline"
                 value={form.headline}
                 onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
-                placeholder="Bartender · Mixology & Wedding Events"
+                placeholder="Bartender · Mixology"
               />
             </div>
+          </Card>
 
+          <Card className="space-y-4 p-5">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-ink/50">
+              About
+            </p>
             <div>
               <Label htmlFor="currentPosition">Current position</Label>
               <Input
@@ -202,9 +201,8 @@ export default function EditProfilePage() {
                 onChange={(e) => setForm((f) => ({ ...f, currentPosition: e.target.value }))}
               />
             </div>
-
             <div>
-              <Label htmlFor="about">About</Label>
+              <Label htmlFor="about">Summary</Label>
               <Textarea
                 id="about"
                 value={form.about}
@@ -212,7 +210,12 @@ export default function EditProfilePage() {
                 rows={4}
               />
             </div>
+          </Card>
 
+          <Card className="space-y-4 p-5">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-ink/50">
+              Location
+            </p>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <Label htmlFor="city">City</Label>
@@ -241,16 +244,20 @@ export default function EditProfilePage() {
             </div>
           </Card>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" asChild>
-              <Link href={`/profile/${session.userId}`}>Cancel</Link>
+          <div
+            className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 border-t border-neutral-200 bg-white px-4 py-3 md:static md:border-0 md:bg-transparent md:px-0 md:py-0"
+            style={{ bottom: 'calc(56px + env(safe-area-inset-bottom))' }}
+          >
+            <Button type="button" variant="ghost" asChild className="touch-compact">
+              <Link href="/profile/me">Cancel</Link>
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : `Save — ${displayName(form.firstName, form.lastName)}`}
+            <Button type="submit" disabled={saving} className="min-w-[7rem]">
+              {saving ? 'Saving…' : 'Save'}
             </Button>
           </div>
         </form>
       )}
+      </div>
     </AppPage>
   );
 }

@@ -22,7 +22,7 @@ export default async function BasicInfoPage() {
         <CardHeader>
           <CardTitle>Basic information</CardTitle>
           <CardDescription>
-            Tell venues and recruiters who you are — role, city, and how you work.
+            Tell venues and teams who you are — role, city, and how you work.
           </CardDescription>
         </CardHeader>
         <form action={saveBasicInfo} className="space-y-5">
@@ -121,7 +121,11 @@ export default async function BasicInfoPage() {
             </div>
           </div>
 
-          <Button type="submit">Continue</Button>
+          <div className="sticky bottom-0 -mx-4 border-t border-neutral-100 bg-white px-4 py-3">
+            <Button type="submit" className="w-full">
+              Continue
+            </Button>
+          </div>
         </form>
       </Card>
     </>

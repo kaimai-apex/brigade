@@ -91,7 +91,7 @@ export default function MyBrigadesPage() {
               Your trusted teams for work
             </h1>
             <p className="mt-2 text-ink/65">
-              Groups of professionals from your Network — reusable for events, venues,
+              Groups of professionals from Your Brigade — reusable for events, venues,
               and opportunities.
             </p>
           </div>
@@ -118,13 +118,13 @@ export default function MyBrigadesPage() {
               </div>
               <div>
                 <p className="mb-2 text-sm font-semibold">
-                  Select members from your Network
+                  Select members from Your Brigade
                 </p>
                 {connections.length === 0 ? (
                   <p className="text-sm text-ink/60">
-                    Connect with professionals first, then add them to a Brigade.{' '}
-                    <Link href="/network" className="font-semibold text-forest underline">
-                      Go to Network
+                    Invite people to Your Brigade first, then add them here.{' '}
+                    <Link href="/brigade" className="font-semibold text-forest underline">
+                      Go to Your Brigade
                     </Link>
                   </p>
                 ) : (
@@ -215,7 +215,7 @@ export default function MyBrigadesPage() {
           <Card className="p-12 text-center">
             <p className="font-display text-2xl font-bold">Create your first Brigade.</p>
             <p className="mt-3 text-ink/65">
-              Assemble trusted teams from your Network — wedding crews, banquet staff,
+              Assemble trusted teams from Your Brigade — wedding crews, banquet staff,
               festival shifts — and reuse them for every opportunity.
             </p>
             <Button className="mt-6" onClick={() => setCreating(true)}>

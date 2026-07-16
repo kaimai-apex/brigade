@@ -18,12 +18,11 @@ export const PROFESSIONAL_ROLES = [
   "Concierge",
   "Cruise Hospitality",
   "Staffing Coordinator",
-  "Hospitality Recruiter",
   "General Manager",
   "Hospitality Professional",
 ] as const;
 
-/** Skills & specialties recruiters actually search for */
+/** Skills & specialties used in onboarding / Discover filters */
 export const EXPERTISE_AREAS = [
   "Fine Dining",
   "Fine Dining Service",

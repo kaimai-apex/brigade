@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { formatAuthError, type AuthErrorDetail } from "@/lib/auth/auth-errors";
 import { offerPasswordSave } from "@/lib/auth/offer-password-save";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 function isAuthErrorDetail(data: unknown): data is AuthErrorDetail {
@@ -22,6 +22,7 @@ function isAuthErrorDetail(data: unknown): data is AuthErrorDetail {
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setSession } = useAuth();
   const [error, setError] = useState<AuthErrorDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,7 +63,8 @@ export function LoginForm() {
 
       setSession({ userId: data.userId });
 
-      router.push("/dashboard");
+      const next = searchParams.get("next");
+      router.push(next && next.startsWith("/") ? next : "/feed");
       router.refresh();
     } catch (err) {
       setError(formatAuthError(err, "proxy"));

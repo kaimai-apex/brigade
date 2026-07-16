@@ -330,3 +330,83 @@
     transition: none;
   }
 }
+
+/* ================================================================
+   Mobile type scale (5 sizes) + shell polish (< md)
+   page title 28 / section 18 / body 15 / meta 12 / eyebrow 11
+   ================================================================ */
+@layer utilities {
+  .text-page-title {
+    font-family: var(--font-display);
+    font-size: 1.75rem; /* 28px */
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .text-section-title {
+    font-family: var(--font-display);
+    font-size: 1.125rem; /* 18px */
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .text-body-md {
+    font-size: 0.9375rem; /* 15px */
+    font-weight: 400;
+    line-height: 1.5;
+  }
+  .text-meta {
+    font-size: 0.75rem; /* 12px */
+    font-weight: 400;
+    line-height: 1.4;
+  }
+  .text-eyebrow {
+    font-size: 0.6875rem; /* 11px */
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
+@media (max-width: 767px) {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body:has([data-mobile-tabbar]) {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+
+  /* Primary CTAs full-width on mobile when marked */
+  .btn-mobile-block {
+    width: 100%;
+  }
+
+  button:not([role='checkbox']):not([role='switch']):not([role='radio']):not(
+      .touch-compact
+    ),
+  [role='button']:not(.touch-compact),
+  a[data-slot='button']:not(.touch-compact),
+  [data-slot='tabs-trigger'] {
+    min-height: 44px;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  input:not([type='checkbox']):not([type='radio']),
+  select {
+    min-height: 48px;
+  }
+
+  /* Single-line truncates for list rows */
+  .truncate-safe {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+}

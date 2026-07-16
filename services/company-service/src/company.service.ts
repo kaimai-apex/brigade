@@ -37,6 +37,31 @@ export class CompanyService implements OnModuleDestroy {
     return { data: result.rows.map((r) => this.format(r)) };
   }
 
+  private slugify(name: string) {
+    const base = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+    return base || 'company';
+  }
+
+  private async uniqueSlug(name: string) {
+    const base = this.slugify(name);
+    let slug = base;
+    let n = 0;
+    for (;;) {
+      const existing = await this.pool.query(
+        `SELECT 1 FROM jobs.companies WHERE slug = $1 AND deleted_at IS NULL`,
+        [slug],
+      );
+      if (existing.rows.length === 0) return slug;
+      n += 1;
+      slug = `${base}-${n}`;
+    }
+  }
+
   async create(
     ownerUserId: string,
     data: {
@@ -47,11 +72,18 @@ export class CompanyService implements OnModuleDestroy {
       logoUrl?: string;
     },
   ) {
+    // Ensure slug column exists (idempotent for local/dev DBs)
+    await this.pool.query(
+      `ALTER TABLE jobs.companies ADD COLUMN IF NOT EXISTS slug TEXT`,
+    ).catch(() => undefined);
+
+    const slug = await this.uniqueSlug(data.name);
     const result = await this.pool.query(
-      `INSERT INTO jobs.companies (name, industry, website, size, logo_url, owner_user_id)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      `INSERT INTO jobs.companies (name, slug, industry, website, size, logo_url, owner_user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [
         data.name,
+        slug,
         data.industry ?? null,
         data.website ?? null,
         data.size ?? null,
@@ -62,17 +94,20 @@ export class CompanyService implements OnModuleDestroy {
     const company = result.rows[0];
     await this.kafka.publish('company-created', 'company.created', {
       companyId: company.id,
+      slug: company.slug,
       name: company.name,
       ownerUserId,
     });
     return this.format(company);
   }
 
-  async get(companyId: string) {
+  async get(companyIdOrSlug: string) {
     const result = await this.pool.query(
       `SELECT c.*, (SELECT count(*) FROM jobs.company_followers cf WHERE cf.company_id = c.id) as follower_count
-       FROM jobs.companies c WHERE c.id = $1 AND c.deleted_at IS NULL`,
-      [companyId],
+       FROM jobs.companies c
+       WHERE c.deleted_at IS NULL
+         AND (c.id::text = $1 OR c.slug = $1)`,
+      [companyIdOrSlug],
     );
     if (result.rows.length === 0) throw new NotFoundError('Company not found');
     return this.format(result.rows[0]);
@@ -150,11 +185,13 @@ export class CompanyService implements OnModuleDestroy {
     return {
       id: row.id,
       name: row.name,
+      slug: row.slug ?? null,
       industry: row.industry,
       website: row.website,
       size: row.size,
       logoUrl: row.logo_url,
       ownerUserId: row.owner_user_id ?? null,
+      createdBy: row.owner_user_id ?? null,
       followerCount: row.follower_count,
       createdAt: row.created_at,
     };

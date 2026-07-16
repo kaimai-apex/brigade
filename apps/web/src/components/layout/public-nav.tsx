@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,65 +29,56 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
           Brigade
         </Link>
 
-        <nav className="hidden items-center gap-6 sm:flex">
-          <Link
-            href="/discover"
-            className="text-sm font-semibold text-neutral-600 transition hover:text-ink"
-          >
-            Discover
-          </Link>
+        <nav className="hidden items-center gap-3 sm:flex">
           {showAuth && (
             <>
-              <Link
-                href="/login"
-                className="text-sm font-semibold text-neutral-600 transition hover:text-ink"
-              >
-                Log in
-              </Link>
-              <Button asChild size="sm">
+              <Button asChild variant="ghost" size="sm" className="min-h-11">
+                <Link href="/login">Log in</Link>
+              </Button>
+              <Button asChild size="sm" className="min-h-11">
                 <Link href="/signup">Join Brigade</Link>
               </Button>
             </>
           )}
         </nav>
 
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="sm:hidden" aria-label="Open menu">
-              <Menu className="size-5" />
+        <div className="flex items-center gap-2 sm:hidden">
+          {showAuth && (
+            <Button asChild variant="ghost" size="sm" className="min-h-11 px-3">
+              <Link href="/login">Log in</Link>
             </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-72 bg-white">
-            <SheetHeader>
-              <SheetTitle className="font-display text-2xl font-black">Brigade</SheetTitle>
-            </SheetHeader>
-            <nav className="mt-4 flex flex-col gap-1 px-2">
-              <Link
-                href="/discover"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
-              >
-                Discover
-              </Link>
-              {showAuth && (
-                <>
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileOpen(false)}
-                    className="rounded-md px-3 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
-                  >
-                    Log in
-                  </Link>
-                  <Button asChild className="mt-2">
-                    <Link href="/signup" onClick={() => setMobileOpen(false)}>
-                      Join Brigade
+          )}
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="min-h-11 min-w-11" aria-label="Open menu">
+                <Menu className="size-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 bg-white">
+              <SheetHeader>
+                <SheetTitle className="font-display text-2xl font-black">Brigade</SheetTitle>
+              </SheetHeader>
+              <nav className="mt-4 flex flex-col gap-1 px-2">
+                {showAuth && (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-md px-3 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                    >
+                      Log in
                     </Link>
-                  </Button>
-                </>
-              )}
-            </nav>
-          </SheetContent>
-        </Sheet>
+                    <Button asChild className="mt-2 min-h-11">
+                      <Link href="/signup" onClick={() => setMobileOpen(false)}>
+                        Join Brigade
+                      </Link>
+                    </Button>
+                  </>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

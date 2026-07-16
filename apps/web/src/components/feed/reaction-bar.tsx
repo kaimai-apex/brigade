@@ -96,10 +96,9 @@ export function ReactionBar({
         </div>
       )}
 
-      <div className="flex items-center gap-1 border-t border-ink/10 pt-1">
-        {/* React trigger + hover tray */}
+      <div className="flex h-10 items-center gap-1 border-t border-ink/10 pt-1">
         <div className="group relative flex-1">
-          <div className="pointer-events-none absolute bottom-full left-0 mb-2 flex gap-1 rounded-full border border-ink/10 bg-paper p-1.5 opacity-0 shadow-lg transition-all duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+          <div className="pointer-events-none absolute bottom-full left-0 mb-2 flex gap-1 rounded-full border border-ink/10 bg-paper p-1.5 opacity-0 shadow-lg transition-all duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
             {REACTIONS.map((r) => (
               <button
                 key={r.type}
@@ -107,7 +106,7 @@ export function ReactionBar({
                 aria-label={r.label}
                 title={r.label}
                 onClick={() => choose(r.type)}
-                className="grid size-9 place-items-center rounded-full text-xl transition-transform duration-150 hover:-translate-y-1 hover:scale-125"
+                className="touch-compact grid size-10 place-items-center rounded-full text-lg"
               >
                 {r.emoji}
               </button>
@@ -118,7 +117,7 @@ export function ReactionBar({
             onClick={() => choose(reaction ?? 'like')}
             disabled={busy}
             className={cn(
-              'flex w-full items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold transition hover:bg-ink/5',
+              'touch-compact flex h-10 w-full items-center justify-center gap-1.5 rounded-md text-[13px] font-semibold transition hover:bg-ink/5',
               active ? '' : 'text-ink/60',
             )}
             style={active ? { color: active.color } : undefined}
@@ -126,28 +125,28 @@ export function ReactionBar({
             {active ? (
               <span className="text-base leading-none">{active.emoji}</span>
             ) : (
-              <ThumbsUp className="size-4" />
+              <ThumbsUp className="size-[18px]" />
             )}
-            {active ? active.label : 'React'}
+            <span className="tabular-nums">{count > 0 ? count : ''}</span>
           </button>
         </div>
 
         <button
           type="button"
           onClick={onToggleComments}
-          className="flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold text-ink/60 transition hover:bg-ink/5"
+          className="touch-compact flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md text-[13px] font-semibold text-ink/60 transition hover:bg-ink/5"
         >
-          <MessageCircle className="size-4" />
-          Comment
+          <MessageCircle className="size-[18px]" />
+          <span className="tabular-nums">{commentCount > 0 ? commentCount : ''}</span>
         </button>
 
         <button
           type="button"
           onClick={onRepost}
-          className="flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-semibold text-ink/60 transition hover:bg-ink/5"
+          className="touch-compact flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md text-[13px] font-semibold text-ink/60 transition hover:bg-ink/5"
+          aria-label="Repost"
         >
-          <Repeat2 className="size-4" />
-          Repost
+          <Repeat2 className="size-[18px]" />
         </button>
       </div>
     </div>

@@ -172,6 +172,7 @@ CREATE SCHEMA IF NOT EXISTS jobs;
 CREATE TABLE jobs.companies (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT NOT NULL,
+    slug       TEXT,
     industry   TEXT,
     website    TEXT,
     size       TEXT,
@@ -180,6 +181,9 @@ CREATE TABLE jobs.companies (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at TIMESTAMPTZ
 );
+CREATE UNIQUE INDEX idx_jobs_companies_slug
+  ON jobs.companies(slug)
+  WHERE slug IS NOT NULL AND deleted_at IS NULL;
 
 CREATE TABLE jobs.company_followers (
     company_id UUID NOT NULL REFERENCES jobs.companies(id),

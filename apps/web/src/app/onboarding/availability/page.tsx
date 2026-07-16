@@ -17,8 +17,8 @@ export default async function AvailabilityPage() {
         <CardHeader>
           <CardTitle>How you want to work</CardTitle>
           <CardDescription>
-            Hospitality staffing is immediate — tell recruiters and venues what you&apos;re
-            available for. You can change this anytime from your home feed.
+            Hospitality moves fast — let venues and Your Brigade know what you&apos;re
+            available for. You can change this anytime from your profile.
           </CardDescription>
         </CardHeader>
         <form action={saveAvailability} className="space-y-4">

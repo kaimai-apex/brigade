@@ -1,15 +1,8 @@
-import { ServerAppPage } from '@/components/layout/server-app-page';
-import { ExploreSectionNav } from '@/components/explore/explore-section-nav';
-
+/** Passthrough — Explore shows Coming Soon; no shell nesting. */
 export default function ExploreLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <ServerAppPage className="pb-20">
-      <ExploreSectionNav />
-      {children}
-    </ServerAppPage>
-  );
+  return children;
 }

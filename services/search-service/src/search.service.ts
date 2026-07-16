@@ -18,8 +18,6 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
   private index: Map<string, SearchDocument[]> = new Map([
     ['people', []],
     ['companies', []],
-    ['jobs', []],
-    ['posts', []],
   ]);
   private processedEvents = new Set<string>();
 
@@ -31,7 +29,7 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     await this.kafka.subscribe(
       'search-service',
-      ['profile-updated', 'company-created', 'job-created', 'post-created'],
+      ['profile-updated', 'company-created'],
       async (event) => this.indexEvent(event),
     );
     await this.bootstrapIndexes();
@@ -54,6 +52,23 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
         location: p.location,
         industry: p.industry,
       });
+    }
+
+    try {
+      const companies = await this.pool.query(
+        'SELECT id, name, slug, industry FROM jobs.companies WHERE deleted_at IS NULL LIMIT 1000',
+      );
+      for (const c of companies.rows) {
+        this.upsert('companies', {
+          id: c.id,
+          type: 'companies',
+          name: c.name,
+          slug: c.slug,
+          industry: c.industry,
+        });
+      }
+    } catch {
+      /* companies table may not exist in some envs */
     }
   }
 
@@ -81,21 +96,14 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    if (event.type === 'post.created') {
-      this.upsert('posts', {
-        id: payload.postId as string,
-        type: 'posts',
-        content: payload.content,
-        authorId: payload.authorId,
-      });
-    }
+    // People + companies only (product redesign). Ignore posts/jobs/messages.
 
-    if (event.type === 'job.created') {
-      this.upsert('jobs', {
-        id: payload.jobId as string,
-        type: 'jobs',
-        title: payload.title,
-        location: payload.location,
+    if (event.type === 'company.created') {
+      this.upsert('companies', {
+        id: (payload.companyId as string) ?? (payload.id as string),
+        type: 'companies',
+        name: payload.name,
+        slug: payload.slug,
       });
     }
   }
@@ -110,7 +118,11 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
 
   async search(q: string, type?: string, limit = 20): Promise<{ data: Record<string, unknown>[]; query: string }> {
     const query = q.toLowerCase();
-    const types = type ? [type] : ['people', 'companies', 'jobs', 'posts'];
+    // Map legacy client types → people/companies only
+    const normalized = type === 'user' || type === 'person' ? 'people' : type === 'company' ? 'companies' : type;
+    const types = normalized
+      ? [normalized].filter((t) => t === 'people' || t === 'companies')
+      : ['people', 'companies'];
     const results: SearchDocument[] = [];
 
     for (const t of types) {
@@ -130,9 +142,10 @@ export class SearchService implements OnModuleInit, OnModuleDestroy {
     const query = q.toLowerCase();
     const suggestions: string[] = [];
 
-    for (const docs of this.index.values()) {
+    for (const key of ['people', 'companies'] as const) {
+      const docs = this.index.get(key) ?? [];
       for (const doc of docs) {
-        const name = (doc.name as string) ?? (doc.title as string) ?? (doc.content as string)?.slice(0, 50);
+        const name = (doc.name as string) ?? (doc.title as string);
         if (name?.toLowerCase().startsWith(query)) {
           suggestions.push(name);
         }

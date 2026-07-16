@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import { Briefcase, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { HudCard } from '@/components/layout/app-shell';
 import { api } from '@/lib/api/client';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /**
@@ -46,7 +44,7 @@ export function OpenToWorkCard() {
       await api.updateProfile(session.userId, { openToOpportunities: next });
       toast.success(
         next
-          ? 'You’re marked Open to work — recruiters can find you faster'
+          ? 'You’re marked Open to work — venues and your Brigade can find you faster'
           : 'Open to work turned off',
       );
     } catch (e) {
@@ -88,16 +86,11 @@ export function OpenToWorkCard() {
           </span>
           <span className="mt-0.5 block text-xs leading-snug text-neutral-600">
             {openToWork
-              ? 'Visible to recruiters and venue managers looking for talent.'
+              ? 'Visible to venues and managers looking to build their team.'
               : 'Hospitality staffing moves fast — let venues know you’re available.'}
           </span>
         </span>
       </button>
-      <div className="mt-2 border-t border-neutral-100 pt-2">
-        <Button asChild variant="ghost" size="sm" className="h-auto w-full justify-start px-2 py-1.5 text-xs">
-          <Link href="/jobs/recruiter">Hiring? Post a shift or role →</Link>
-        </Button>
-      </div>
     </HudCard>
   );
 }

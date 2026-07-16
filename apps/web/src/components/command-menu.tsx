@@ -4,15 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bell,
-  Briefcase,
-  LayoutDashboard,
+  Building2,
+  Compass,
   MessageSquare,
+  Newspaper,
   Search,
   Settings,
-  Shield,
   User,
   Users,
-  UsersRound,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import {
@@ -23,7 +22,6 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from '@/components/ui/command';
 import { PRIMARY_NAV, SECONDARY_NAV } from '@/lib/nav';
 
@@ -61,33 +59,31 @@ export function CommandMenu() {
   const trimmed = query.trim();
 
   const navIcons: Record<string, typeof Users> = {
-    Discover: UsersRound,
-    Network: Users,
-    'My Brigades': Shield,
-    Opportunities: Briefcase,
+    Feed: Newspaper,
+    Brigade: Users,
+    Discover: Compass,
     Messages: MessageSquare,
-    Dashboard: LayoutDashboard,
-    Feed: Users,
-    Companies: Users,
+    Profile: User,
+    Companies: Building2,
     Alerts: Bell,
     Settings: Settings,
-    Profile: User,
   };
 
-  const primaryNav = [
-    ...PRIMARY_NAV,
-    ...(session ? [{ href: `/profile/${session.userId}`, label: 'Profile' as const }] : []),
-  ];
+  const primaryNav = PRIMARY_NAV.map((item) =>
+    item.href === '/profile/me' && session
+      ? { ...item, href: `/profile/${session.userId}` as const }
+      : item,
+  );
 
   return (
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
       title="Command menu"
-      description="Search and jump anywhere in Brigade"
+      description="Search people and companies in Brigade"
     >
       <CommandInput
-        placeholder="Search or jump to…"
+        placeholder="Search people & companies…"
         value={query}
         onValueChange={setQuery}
       />
@@ -98,10 +94,12 @@ export function CommandMenu() {
             <CommandGroup heading="Search">
               <CommandItem
                 value={`search ${trimmed}`}
-                onSelect={() => go(`/search?q=${encodeURIComponent(trimmed)}`)}
+                onSelect={() =>
+                  go(`/discover?focus=1&q=${encodeURIComponent(trimmed)}`)
+                }
               >
                 <Search />
-                Search Brigade for “{trimmed}”
+                Search for “{trimmed}”
               </CommandItem>
             </CommandGroup>
             <CommandSeparator />
@@ -125,7 +123,7 @@ export function CommandMenu() {
         <CommandSeparator />
         <CommandGroup heading="More">
           {SECONDARY_NAV.map((item) => {
-            const Icon = navIcons[item.label] ?? LayoutDashboard;
+            const Icon = navIcons[item.label] ?? Settings;
             return (
               <CommandItem
                 key={item.href}
@@ -134,9 +132,6 @@ export function CommandMenu() {
               >
                 <Icon />
                 {item.label}
-                {item.href === '/dashboard' && (
-                  <CommandShortcut>Home</CommandShortcut>
-                )}
               </CommandItem>
             );
           })}

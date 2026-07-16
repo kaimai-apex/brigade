@@ -1,19 +1,24 @@
-import { ServerAppPage } from "@/components/layout/server-app-page";
 import Link from "next/link";
 
+/**
+ * Onboarding is a corridor: logo + progress + form. No app chrome, tabs, or escapes.
+ */
 export default function OnboardingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <ServerAppPage showAuth={false} className="max-w-3xl py-10">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="text-sm font-semibold text-ink/60 hover:text-ink">
-            ← Back to home
-          </Link>
-        </div>
-        {children}
-      </ServerAppPage>
+    <div className="min-h-dvh bg-white text-ink">
+      <header className="flex h-12 items-center border-b border-neutral-100 px-4">
+        <Link
+          href="/"
+          className="font-display text-xl font-black tracking-tight text-ink"
+        >
+          Brigade
+        </Link>
+      </header>
+      <div className="mx-auto max-w-lg px-4 py-6">{children}</div>
+    </div>
   );
 }

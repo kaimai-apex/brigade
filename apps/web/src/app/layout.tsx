@@ -27,9 +27,9 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "Brigade — Hospitality Talent Network",
+  title: "Brigade — Hospitality Community",
   description:
-    "The professional network for chefs, private chefs, and hospitality professionals.",
+    "A hospitality community for building your Brigade — relationships, collaboration, and career growth.",
 };
 
 export default function RootLayout({

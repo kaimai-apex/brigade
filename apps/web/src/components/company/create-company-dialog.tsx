@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Building2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, type Company } from '@/lib/api/client';
@@ -19,9 +20,7 @@ import { Label } from '@/components/ui/label';
 const SIZES = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
 
 /**
- * Create a Company Page (LinkedIn parity). Wraps the POST /companies endpoint,
- * which the web app previously had no way to reach. Reusable trigger + dialog;
- * reports the new company via onCreated so callers can update their list/selection.
+ * Create a Company Page. On success redirects to /company/:slug.
  */
 export function CreateCompanyDialog({
   onCreated,
@@ -30,6 +29,7 @@ export function CreateCompanyDialog({
   onCreated?: (company: Company) => void;
   trigger?: React.ReactNode;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -57,6 +57,10 @@ export function CreateCompanyDialog({
       onCreated?.(company);
       setForm({ name: '', industry: '', website: '', size: '' });
       setOpen(false);
+      const dest = company.slug
+        ? `/company/${company.slug}`
+        : `/companies/${company.id}`;
+      router.push(dest);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to create company');
     } finally {
@@ -68,7 +72,7 @@ export function CreateCompanyDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button>
+          <Button className="min-h-11">
             <Plus className="size-4" />
             Create company page
           </Button>
@@ -90,6 +94,7 @@ export function CreateCompanyDialog({
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
               autoFocus
+              className="min-h-11"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -100,6 +105,7 @@ export function CreateCompanyDialog({
                 placeholder="Fine Dining"
                 value={form.industry}
                 onChange={(e) => set('industry', e.target.value)}
+                className="min-h-11"
               />
             </div>
             <div className="space-y-1.5">
@@ -126,14 +132,15 @@ export function CreateCompanyDialog({
               placeholder="https://…"
               value={form.website}
               onChange={(e) => set('website', e.target.value)}
+              className="min-h-11"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" className="min-h-11" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={!form.name.trim() || busy}>
+          <Button className="min-h-11" onClick={submit} disabled={!form.name.trim() || busy}>
             {busy ? 'Creating…' : 'Create page'}
           </Button>
         </DialogFooter>

@@ -103,36 +103,49 @@ export default async function ProfilePage({
               </div>
 
               <div className="flex-1">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-forest">
-                      {profile.role}
-                    </p>
-                    <h1 className="font-display text-4xl font-black tracking-tight">
-                      {displayName(profile.first_name, profile.last_name)}
-                    </h1>
-                  </div>
-                  {isOwner && (
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/settings/profile">Edit profile</Link>
-                    </Button>
-                  )}
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-wide text-forest">
+                    {profile.role}
+                  </p>
+                  <h1 className="mt-1 font-display text-[28px] font-bold leading-[1.15] tracking-tight md:text-4xl">
+                    {displayName(profile.first_name, profile.last_name)}
+                  </h1>
                 </div>
 
-                <p className="mt-2 text-lg text-ink/75">{profile.headline}</p>
-                <p className="mt-2 text-sm text-ink/60">
+                {isOwner ? (
+                  <Button asChild variant="outline" className="mt-3 w-full sm:w-auto">
+                    <Link href="/settings/profile">Edit profile</Link>
+                  </Button>
+                ) : (
+                  <div className="mt-3 flex w-full flex-col gap-2 sm:flex-row">
+                    <Button asChild className="w-full sm:flex-1">
+                      <Link href={`/brigade?invite=${profile.id}`}>
+                        Invite to Brigade
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="w-full sm:flex-1">
+                      <Link href={`/messages?to=${profile.id}`}>Message</Link>
+                    </Button>
+                  </div>
+                )}
+
+                <p className="mt-3 text-body-md text-ink/75">{profile.headline}</p>
+                <p className="mt-1 text-meta text-ink/60">
                   {formatLocation(profile.city, profile.state, profile.country)}
                   {profile.years_experience != null &&
                     ` · ${profile.years_experience}+ years experience`}
                 </p>
 
-                {availability.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {availability.map((label) => (
-                      <Badge key={label} variant="secondary">
-                        {label}
-                      </Badge>
-                    ))}
+                {/* Open to work is shown as avatar badge only — don't duplicate */}
+                {availability.filter((a) => a !== "Open to work").length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {availability
+                      .filter((a) => a !== "Open to work")
+                      .map((label) => (
+                        <Badge key={label} variant="secondary">
+                          {label}
+                        </Badge>
+                      ))}
                   </div>
                 )}
               </div>
