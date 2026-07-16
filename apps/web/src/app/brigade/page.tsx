@@ -127,9 +127,9 @@ export default function BrigadePage() {
             <Card className="flex flex-col items-center gap-3 p-10 text-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/hero/chef-bartender.jpg"
+                src="/hero/chef-bartender.png"
                 alt=""
-                className="h-28 w-28 rounded-2xl object-cover mix-blend-multiply"
+                className="h-28 w-28 rounded-2xl object-contain"
               />
               <p className="text-section-title">Your Brigade is empty</p>
               <p className="text-body-md text-ink/60">

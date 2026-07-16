@@ -1,20 +1,50 @@
 import { NextResponse } from "next/server";
 import { getPool } from "@connectpro/common";
 import { ensureWaitlistSchema } from "@/lib/waitlist/ensure-waitlist-schema";
+import { COUNTRY_CODES } from "@/lib/waitlist/country-codes";
+import { subscribeToKit } from "@/lib/waitlist/subscribe-to-kit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^[\d\s().+-]{6,24}$/;
+const VALID_CODES = new Set<string>(COUNTRY_CODES.map((c) => c.code));
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as {
       email?: string;
       name?: string;
+      phone?: string;
+      phoneCountry?: string;
       source?: string;
     };
 
     const email = body.email?.trim().toLowerCase() ?? "";
-    const name = body.name?.trim().slice(0, 120) || null;
+    const name = body.name?.trim().slice(0, 120) ?? "";
+    const phoneRaw = body.phone?.trim() ?? "";
+    const phoneCountry = body.phoneCountry?.trim() || "+1";
     const source = body.source?.trim().slice(0, 64) || "landing";
+
+    if (!name || name.length < 2) {
+      return NextResponse.json(
+        { message: "Enter your name." },
+        { status: 400 },
+      );
+    }
+
+    if (!VALID_CODES.has(phoneCountry)) {
+      return NextResponse.json(
+        { message: "Pick a valid country code." },
+        { status: 400 },
+      );
+    }
+
+    const phoneDigits = phoneRaw.replace(/\D/g, "");
+    if (!phoneRaw || !PHONE_RE.test(phoneRaw) || phoneDigits.length < 6) {
+      return NextResponse.json(
+        { message: "Enter a valid phone number." },
+        { status: 400 },
+      );
+    }
 
     if (!email || !EMAIL_RE.test(email)) {
       return NextResponse.json(
@@ -23,24 +53,32 @@ export async function POST(request: Request) {
       );
     }
 
+    const phone = `${phoneCountry} ${phoneDigits}`;
+
     await ensureWaitlistSchema();
     const pool = getPool();
 
     const result = await pool.query(
-      `INSERT INTO public.waitlist_signups (email, name, source)
-       VALUES ($1, $2, $3)
+      `INSERT INTO public.waitlist_signups (email, name, phone, phone_country, source)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (email) DO NOTHING
        RETURNING id`,
-      [email, name, source],
+      [email, name, phone, phoneCountry, source],
     );
 
     const inserted = result.rowCount === 1;
+
+    // Server Kit sync when KIT_API_KEY is set. Browser bridge handles the
+    // public form path (Kit bot-guards bare server POSTs).
+    if (process.env.KIT_API_KEY || process.env.CONVERTKIT_API_KEY) {
+      await subscribeToKit({ email, name, phone });
+    }
 
     return NextResponse.json({
       ok: true,
       alreadyJoined: !inserted,
       message: inserted
-        ? "You're on the list. We'll be in touch."
+        ? "You're on the list. Check your email to confirm."
         : "You're already on the waitlist — talk soon.",
     });
   } catch (error) {

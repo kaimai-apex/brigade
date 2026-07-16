@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Public signup paused — collect waitlist contacts on the landing page. */
+/** Public signup paused — collect waitlist contacts instead. */
 export default function SignupPage() {
-  redirect("/#waitlist");
+  redirect("/waitlist");
 }

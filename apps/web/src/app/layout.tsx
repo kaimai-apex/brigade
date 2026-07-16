@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Archivo, Caveat } from "next/font/google";
 import { ReduxProvider } from "@/lib/store";
 import { AuthProvider } from "@/components/auth/auth-provider";
@@ -30,6 +30,13 @@ export const metadata: Metadata = {
   title: "Brigade — Hospitality Community",
   description:
     "A hospitality community for building your Brigade — relationships, collaboration, and career growth.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#e8b84b",
 };
 
 export default function RootLayout({

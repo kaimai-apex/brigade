@@ -19,9 +19,9 @@ export default async function DiscoverPage() {
         <Card className="flex flex-col items-center gap-3 p-10 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/hero/chef-cutlery.jpg"
+            src="/hero/chef-cutlery.png"
             alt=""
-            className="h-28 w-28 rounded-2xl object-cover mix-blend-multiply"
+            className="h-28 w-28 rounded-2xl object-contain"
           />
           <p className="text-section-title">No one here yet</p>
           <p className="text-body-md text-ink/65">

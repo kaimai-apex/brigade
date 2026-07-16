@@ -5,10 +5,10 @@
  */
 
 export const DEFAULT_AVATARS = [
-  "/avatars/chef-chef.jpg",
-  "/avatars/chef-bartender.jpg",
-  "/avatars/chef-cook.jpg",
-  "/avatars/chef-cutlery.jpg",
+  "/avatars/chef-chef.png",
+  "/avatars/chef-bartender.png",
+  "/avatars/chef-cook.png",
+  "/avatars/chef-cutlery.png",
   "/avatars/avatar-toque-whisk.png",
   "/avatars/avatar-bar-glass.png",
   "/avatars/avatar-knife-board.png",

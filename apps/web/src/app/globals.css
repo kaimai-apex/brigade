@@ -153,7 +153,6 @@
 }
 .art-piece {
   position: absolute;
-  mix-blend-mode: multiply; /* drops the white JPEG bg so line-art sits on the blobs */
   filter: contrast(1.05);
   border-radius: 2px;
 }
@@ -249,25 +248,52 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 22px;
+  /* Room for card tilt so rotated corners don't clip the viewport */
+  padding: 10px 6px 18px;
+  overflow: visible;
 }
 @media (max-width: 980px) {
   .deck-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    padding: 8px 4px 14px;
   }
 }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .deck-grid {
     grid-template-columns: 1fr;
+    gap: 18px;
+    max-width: 22rem;
+    margin-inline: auto;
+    padding: 6px 2px 12px;
+  }
+  .cover {
+    --tilt: 0deg !important;
+  }
+  .cover:hover {
+    transform: none;
+  }
+  .cover .role {
+    max-width: 62%;
+    font-size: clamp(26px, 7vw, 34px);
+  }
+  .cover-art {
+    right: -2%;
+    bottom: 16%;
+    width: 64%;
   }
 }
 .cover {
   aspect-ratio: 3 / 4;
   border-radius: 6px;
-  padding: 26px;
+  padding: 22px 22px 20px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
   transform: rotate(var(--tilt, 0deg));
   transition:
     transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -275,9 +301,11 @@
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
   cursor: default;
 }
-.cover:hover {
-  transform: rotate(0deg) translateY(-8px);
-  box-shadow: 0 22px 40px rgba(0, 0, 0, 0.18);
+@media (hover: hover) and (pointer: fine) {
+  .cover:hover {
+    transform: rotate(0deg) translateY(-8px);
+    box-shadow: 0 22px 40px rgba(0, 0, 0, 0.18);
+  }
 }
 .cover:nth-child(1) { --tilt: -3deg; }
 .cover:nth-child(2) { --tilt: 2deg; }
@@ -294,40 +322,109 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   opacity: 0.7;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: relative;
+  z-index: 2;
 }
-.cover .icon {
-  width: 30px;
-  height: 30px;
-  opacity: 0.9;
-  flex-shrink: 0;
+.cover-art {
+  position: absolute;
+  right: -6%;
+  bottom: 18%;
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
 }
-.cover .icon svg {
-  width: 100%;
-  height: 100%;
+.cover-art img {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
 }
 .cover .role {
   font-family: var(--font-display);
   font-weight: 900;
   font-size: clamp(24px, 3vw, 32px);
   line-height: 1.02;
+  position: relative;
+  z-index: 2;
+  max-width: 70%;
 }
 .cover .role em {
   font-style: italic;
   font-weight: 600;
 }
-.cover .stat {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  opacity: 0.85;
-}
 
 @media (prefers-reduced-motion: reduce) {
   .cover {
     transition: none;
+  }
+}
+
+/* Waitlist success celebration */
+.waitlist-burst-particle {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  margin-left: -4px;
+  margin-top: -4px;
+  transform: translate(0, 0) rotate(0deg);
+  opacity: 1;
+  animation: waitlist-burst 1.05s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
+  animation-delay: var(--delay, 0ms);
+}
+@keyframes waitlist-burst {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.2) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+.waitlist-thanks {
+  animation: waitlist-thanks-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.waitlist-thanks-art {
+  position: relative;
+  animation: waitlist-thanks-pop 0.65s cubic-bezier(0.2, 0.85, 0.25, 1) 0.08s both;
+}
+@keyframes waitlist-thanks-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes waitlist-thanks-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  70% {
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waitlist-burst-particle {
+    display: none;
+  }
+  .waitlist-thanks,
+  .waitlist-thanks-art {
+    animation: none;
   }
 }
 
