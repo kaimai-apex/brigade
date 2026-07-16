@@ -49,11 +49,12 @@ export async function subscribeToKit(input: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
+        // Keep payload minimal — unknown custom-field keys can break some accounts.
+        // Name + email are enough to land in Kit; phone stays in our DB.
         body: JSON.stringify({
           api_key: key,
           email: input.email,
           first_name: firstName || undefined,
-          fields: input.phone ? { phone_number: input.phone } : undefined,
         }),
         signal: AbortSignal.timeout(8_000),
       },
