@@ -68,15 +68,22 @@ export async function POST(request: Request) {
 
     const inserted = result.rowCount === 1;
 
-    // Server Kit sync when KIT_API_KEY is set. Browser bridge handles the
-    // public form path (Kit bot-guards bare server POSTs).
-    if (process.env.KIT_API_KEY || process.env.CONVERTKIT_API_KEY) {
-      await subscribeToKit({ email, name, phone });
+    // Kit sync (needs KIT_API_KEY on the deployment). Never block join on Kit.
+    const kit = await subscribeToKit({ email, name, phone });
+    if (!kit.ok) {
+      console.error("[waitlist/kit]", {
+        via: kit.via,
+        status: kit.status,
+        hasApiKey: Boolean(
+          process.env.KIT_API_KEY || process.env.CONVERTKIT_API_KEY,
+        ),
+      });
     }
 
     return NextResponse.json({
       ok: true,
       alreadyJoined: !inserted,
+      kitSynced: kit.ok,
       message: inserted
         ? "You're on the list. Check your email to confirm."
         : "You're already on the waitlist — talk soon.",

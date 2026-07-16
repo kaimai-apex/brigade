@@ -27,9 +27,20 @@ export async function subscribeToKit(input: {
   email: string;
   name: string;
   phone?: string;
-}): Promise<{ ok: boolean; status?: number; via?: "api" | "form" }> {
+}): Promise<{
+  ok: boolean;
+  status?: number;
+  via?: "api" | "form" | "skipped";
+}> {
   const firstName = input.name.trim().split(/\s+/)[0] ?? "";
   const key = apiKey();
+
+  if (!key) {
+    console.error(
+      "[waitlist/kit] KIT_API_KEY missing — set V3 API Key in Vercel env and redeploy",
+    );
+    return { ok: false, via: "skipped" };
+  }
 
   if (key) {
     try {
