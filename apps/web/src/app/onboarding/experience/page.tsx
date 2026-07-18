@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 
 export default async function ExperiencePage() {
   const profile = await getCurrentUserProfile();
-  if (!profile) redirect("/signup");
+  if (!profile) redirect("/waitlist");
 
   const previousRows = profile.experiences
     .filter((exp) => !exp.is_current)

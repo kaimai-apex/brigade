@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 
 export default async function ReviewPage() {
   const profile = await getCurrentUserProfile();
-  if (!profile) redirect("/signup");
+  if (!profile) redirect("/waitlist");
 
   return (
     <>

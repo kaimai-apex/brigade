@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
       { source: "/directory", destination: "/discover", permanent: true },
       { source: "/connections", destination: "/network", permanent: true },
       { source: "/jobs", destination: "/opportunities", permanent: false },
+      // Edge redirect (not a page-level redirect) so Safari back from /waitlist
+      // doesn't bounce through /signup → /waitlist again.
+      { source: "/signup", destination: "/waitlist", permanent: false },
+      { source: "/signup/:path*", destination: "/waitlist", permanent: false },
     ];
   },
   webpack: (config, { dev }) => {

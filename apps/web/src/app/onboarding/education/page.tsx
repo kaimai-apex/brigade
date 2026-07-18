@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 
 export default async function EducationPage() {
   const profile = await getCurrentUserProfile();
-  if (!profile) redirect("/signup");
+  if (!profile) redirect("/waitlist");
 
   const defaultRows = profile.education.map((item) => ({
     school_name: item.school_name,

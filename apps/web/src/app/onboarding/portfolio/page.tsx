@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 
 export default async function PortfolioPage() {
   const profile = await getCurrentUserProfile();
-  if (!profile) redirect("/signup");
+  if (!profile) redirect("/waitlist");
 
   const defaultRows = profile.portfolio_links.map((link) => ({
     link_type: link.type,

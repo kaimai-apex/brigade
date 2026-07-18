@@ -118,8 +118,8 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-ink/65">
         New to Brigade?{" "}
-        <Link href="/signup" className="font-semibold text-forest underline-offset-2 hover:underline">
-          Create an account
+        <Link href="/waitlist" className="font-semibold text-forest underline-offset-2 hover:underline">
+          Join the waitlist
         </Link>
       </p>
     </div>

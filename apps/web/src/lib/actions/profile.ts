@@ -27,7 +27,7 @@ async function requireUserId() {
     const session = await requireConnectProSession();
     return session.userId;
   } catch {
-    redirect("/signup");
+    redirect("/waitlist");
   }
 }
 
