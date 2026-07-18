@@ -22,14 +22,6 @@ export default function LandingPage() {
         <nav className="flex items-center gap-2 sm:gap-3">
           <Button
             asChild
-            variant="ghost"
-            size="sm"
-            className="rounded-full px-4 text-ink hover:bg-ink/5 hover:text-ink"
-          >
-            <Link href="/login">Log in</Link>
-          </Button>
-          <Button
-            asChild
             variant="gold"
             size="sm"
             className="rounded-full px-4"
@@ -57,7 +49,7 @@ export default function LandingPage() {
               The professional network for chefs, private chefs, and hospitality
               leaders — the people you&rsquo;ll actually work with.
             </p>
-            <div className="mt-8 flex items-center justify-center gap-5 lg:justify-start">
+            <div className="mt-8 flex items-center justify-center lg:justify-start">
               <Button
                 asChild
                 variant="gold"
@@ -68,12 +60,6 @@ export default function LandingPage() {
                   Join Waitlist <span aria-hidden>→</span>
                 </Link>
               </Button>
-              <Link
-                href="/login"
-                className="text-base font-medium text-ink hover:text-forest"
-              >
-                Log in
-              </Link>
             </div>
           </div>
 
