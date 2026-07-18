@@ -1,9 +1,36 @@
 "use client";
 
-import Script from "next/script";
-
 const KIT_FORM_ID = "9691589";
 const KIT_UID = "a655181cc5";
+const KIT_SCRIPT_SRC = "https://f.convertkit.com/ckjs/ck.5.js";
+
+let kitScriptPromise: Promise<void> | null = null;
+
+/** Load ConvertKit JS only when submitting — avoids Safari history pollution on page view. */
+function ensureKitScript(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (kitScriptPromise) return kitScriptPromise;
+
+  const existing = document.querySelector<HTMLScriptElement>(
+    `script[src="${KIT_SCRIPT_SRC}"]`,
+  );
+  if (existing) {
+    kitScriptPromise = Promise.resolve();
+    return kitScriptPromise;
+  }
+
+  kitScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = KIT_SCRIPT_SRC;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Kit script"));
+    document.body.appendChild(script);
+  });
+
+  return kitScriptPromise;
+}
 
 /**
  * Hidden Kit form + iframe target.
@@ -13,11 +40,6 @@ const KIT_UID = "a655181cc5";
 export function KitWaitlistBridge() {
   return (
     <>
-      <Script
-        src="https://f.convertkit.com/ckjs/ck.5.js"
-        strategy="afterInteractive"
-        crossOrigin="anonymous"
-      />
       <iframe
         name="kit-waitlist-frame"
         title="Kit waitlist"
@@ -89,12 +111,20 @@ export function submitToKitBridge(input: {
   set("email_address", input.email);
   set("fields[phone_number]", input.phone);
 
-  // requestSubmit fires the submit event so Kit's ckjs can run (form.submit() skips it).
-  // target=iframe keeps any native fallback from navigating this page away.
-  if (typeof form.requestSubmit === "function") {
-    form.requestSubmit();
-  } else {
-    form.submit();
-  }
+  void ensureKitScript()
+    .then(() => {
+      // requestSubmit fires the submit event so Kit's ckjs can run (form.submit() skips it).
+      // target=iframe keeps any native fallback from navigating this page away.
+      if (typeof form.requestSubmit === "function") {
+        form.requestSubmit();
+      } else {
+        form.submit();
+      }
+    })
+    .catch(() => {
+      // Fallback: native iframe post without Kit JS enhancement.
+      form.submit();
+    });
+
   return true;
 }

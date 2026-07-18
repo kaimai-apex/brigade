@@ -84,6 +84,7 @@ export async function POST(request: Request) {
       ok: true,
       alreadyJoined: !inserted,
       kitSynced: kit.ok,
+      kitState: kit.subscriberState ?? null,
       message: inserted
         ? "You're on the list. Check your email to confirm."
         : "You're already on the waitlist — talk soon.",

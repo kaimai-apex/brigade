@@ -29,6 +29,8 @@ export async function subscribeToKit(input: {
   ok: boolean;
   status?: number;
   via?: "api" | "skipped";
+  subscriberState?: string | null;
+  subscriptionId?: number | null;
 }> {
   const firstName = input.name.trim().split(/\s+/)[0] ?? "";
   const key = apiKey();
@@ -60,17 +62,37 @@ export async function subscribeToKit(input: {
       },
     );
 
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+      subscription?: {
+        id?: number;
+        state?: string;
+        subscriber?: { state?: string; email_address?: string };
+      };
+    };
+
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
       console.error(
         "[waitlist/kit:api]",
         res.status,
-        text.slice(0, 300) || res.statusText,
+        body.error || body.message || res.statusText,
       );
       return { ok: false, status: res.status, via: "api" };
     }
 
-    return { ok: true, status: res.status, via: "api" };
+    const subscriberState =
+      body.subscription?.subscriber?.state ??
+      body.subscription?.state ??
+      null;
+
+    return {
+      ok: true,
+      status: res.status,
+      via: "api",
+      subscriberState,
+      subscriptionId: body.subscription?.id ?? null,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[waitlist/kit:api]", message);
