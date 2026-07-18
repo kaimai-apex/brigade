@@ -2,60 +2,48 @@
 
 import { useEffect, useState } from 'react';
 
-type Role = {
+type ValueCard = {
   className: string;
-  role: [string, string];
+  title: [string, string];
   art: string;
-  who: string;
+  blurb: string;
   dot: string;
 };
 
-const ROLES: Role[] = [
+// Value-first cards: say what you'll DO here, not who you are. The hero
+// answers "is this for me?"; these answer "what can I actually do?".
+const CARDS: ValueCard[] = [
   {
     className: 'bg-forest text-paper',
-    role: ['Chefs', '& sous'],
-    art: '/hero/chef-chef.png',
-    who: 'Line cooks to executive chefs',
+    title: ['Build Your', 'Network'],
+    art: '/hero/hero-host.png',
+    blurb: 'Connect with trusted hospitality professionals.',
     dot: '#1c4b3d',
   },
   {
     className: 'bg-rust text-paper',
-    role: ['Bar', 'program'],
-    art: '/hero/chef-bartender.png',
-    who: 'Bartenders, barbacks & beverage directors',
+    title: ['Learn', 'Together'],
+    art: '/hero/chef-chef.png',
+    blurb: 'Share knowledge, advice, and industry insights.',
     dot: '#c8471f',
   },
   {
     className: 'bg-gold text-ink',
-    role: ['Pastry', '& bake'],
-    art: '/hero/hero-pastry.png',
-    who: 'Pastry chefs, bakers & chocolatiers',
+    title: ['Discover', 'Opportunities'],
+    art: '/hero/hero-manager.png',
+    blurb: 'Find jobs, collaborations, and referrals.',
     dot: '#e8b84b',
   },
   {
     className: 'bg-cobalt text-paper',
-    role: ['Front', 'of house'],
-    art: '/hero/hero-host.png',
-    who: "Servers, hosts & maître d's",
+    title: ['Build Your', 'Brigade'],
+    art: '/hero/chef-cook.png',
+    blurb: "Create trusted teams you'll work with again.",
     dot: '#2d4a9e',
-  },
-  {
-    className: 'bg-cream text-ink',
-    role: ['Somme-', 'liers'],
-    art: '/hero/hero-sommelier.png',
-    who: 'Somms, wine directors & cicerones',
-    dot: '#b7a887',
-  },
-  {
-    className: 'bg-forest text-paper',
-    role: ['GMs', '& owners'],
-    art: '/hero/hero-manager.png',
-    who: 'Managers, operators & owners',
-    dot: '#1c4b3d',
   },
 ];
 
-const MID = (ROLES.length - 1) / 2;
+const MID = (CARDS.length - 1) / 2;
 const INTERVAL = 1500;
 
 export function RoleDeck() {
@@ -72,7 +60,7 @@ export function RoleDeck() {
       return;
     }
     const id = setInterval(
-      () => setActive((a) => (a + 1) % ROLES.length),
+      () => setActive((a) => (a + 1) % CARDS.length),
       INTERVAL,
     );
     return () => clearInterval(id);
@@ -90,39 +78,39 @@ export function RoleDeck() {
       onMouseLeave={() => setPaused(false)}
     >
       <div className="fan" style={{ '--mid': MID } as React.CSSProperties}>
-        {ROLES.map((r, i) => (
+        {CARDS.map((c, i) => (
           <article
-            key={r.role.join(' ')}
-            className={`fan-card ${r.className} ${i === active ? 'is-active' : ''}`}
+            key={c.title.join(' ')}
+            className={`fan-card ${c.className} ${i === active ? 'is-active' : ''}`}
             style={{ '--i': i, zIndex: i + 1 } as React.CSSProperties}
             onMouseEnter={() => setActive(i)}
           >
             <span className="fan-masthead">Brigade</span>
             <span className="fan-art" aria-hidden>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={r.art} alt="" />
+              <img src={c.art} alt="" />
             </span>
             <span className="fan-role">
-              {r.role[0]}
+              {c.title[0]}
               <br />
-              <em>{r.role[1]}</em>
+              <em>{c.title[1]}</em>
             </span>
-            <span className="fan-for">{r.who}</span>
+            <span className="fan-for">{c.blurb}</span>
           </article>
         ))}
       </div>
 
-      <div className="fan-dots" role="tablist" aria-label="Who Brigade is for">
-        {ROLES.map((r, i) => (
+      <div className="fan-dots" role="tablist" aria-label="What you can do on Brigade">
+        {CARDS.map((c, i) => (
           <button
-            key={r.role.join(' ')}
+            key={c.title.join(' ')}
             type="button"
             className="fan-dot"
             role="tab"
             aria-selected={i === active}
-            aria-label={`${r.role.join(' ').replace('- ', '')} — ${r.who}`}
+            aria-label={`${c.title.join(' ')} — ${c.blurb}`}
             data-active={i === active}
-            style={{ '--dot': r.dot } as React.CSSProperties}
+            style={{ '--dot': c.dot } as React.CSSProperties}
             onClick={() => select(i)}
           />
         ))}

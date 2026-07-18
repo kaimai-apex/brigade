@@ -54,8 +54,8 @@ export default function LandingPage() {
               <span className="italic font-semibold text-forest">.</span>
             </h1>
             <p className="mx-auto mt-6 max-w-md text-lg text-ink/70 lg:mx-0">
-              The professional network built for everyone with a seat at the
-              table. Every one of them is your people.
+              The professional network for chefs, private chefs, and hospitality
+              leaders — the people you&rsquo;ll actually work with.
             </p>
             <div className="mt-8 flex items-center justify-center gap-5 lg:justify-start">
               <Button
