@@ -311,10 +311,6 @@
 .cover:nth-child(2) { --tilt: 2deg; }
 .cover:nth-child(3) { --tilt: -2deg; }
 .cover:nth-child(4) { --tilt: 3deg; }
-.cover:nth-child(5) { --tilt: 2deg; }
-.cover:nth-child(6) { --tilt: -3deg; }
-.cover:nth-child(7) { --tilt: 3deg; }
-.cover:nth-child(8) { --tilt: -2deg; }
 .cover .masthead {
   font-family: var(--font-body);
   font-weight: 800;
@@ -360,6 +356,191 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cover {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   FULL-SCREEN LANDING (222.place-style) + fanned role-card deck.
+   Dark hero with a hand of role cards that pop up on hover.
+--------------------------------------------------------------------------- */
+.brigade-landing {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  color: var(--color-ink);
+}
+
+.fan {
+  position: relative;
+  width: min(560px, 92vw);
+  height: 460px;
+  margin-inline: auto;
+}
+.fan-card {
+  --offset: calc(var(--i) - var(--mid));
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 216px;
+  height: 300px;
+  margin: -150px 0 0 -108px;
+  padding: 16px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.14);
+  transform-origin: bottom center;
+  transform: translateX(calc(var(--offset) * 48px))
+    translateY(calc(var(--offset) * var(--offset) * 11px))
+    rotate(calc(var(--offset) * 5deg));
+  transition:
+    transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.45s ease,
+    border-color 0.45s ease;
+}
+.fan-card.is-active {
+  transform: translateX(calc(var(--offset) * 48px)) translateY(-38px)
+    rotate(0deg) scale(1.06);
+  box-shadow: 0 26px 52px rgba(0, 0, 0, 0.22);
+  border-color: rgba(232, 184, 75, 0.7);
+  z-index: 50 !important;
+}
+.fan-card:focus-visible {
+  outline: none;
+  transform: translateX(calc(var(--offset) * 48px)) translateY(-38px)
+    rotate(0deg) scale(1.06);
+  box-shadow: 0 26px 52px rgba(0, 0, 0, 0.22);
+  border-color: rgba(232, 184, 75, 0.7);
+  z-index: 50 !important;
+}
+.fan-masthead {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.fan-art {
+  align-self: flex-end;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.fan-art img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+}
+.fan-role {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 27px;
+  line-height: 1.0;
+  margin-top: auto;
+}
+.fan-role em {
+  font-style: italic;
+  font-weight: 600;
+}
+.fan-for {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.3;
+  margin-top: 8px;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease,
+    max-height 0.3s ease;
+}
+.fan-card.is-active .fan-for,
+.fan-card:focus-visible .fan-for {
+  opacity: 0.9;
+  transform: none;
+  max-height: 60px;
+}
+.role-deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.fan-dots {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+.fan-dot {
+  width: 11px;
+  height: 11px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(26, 26, 23, 0.16);
+  cursor: pointer;
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 0.3s ease;
+}
+.fan-dot:hover {
+  background: rgba(26, 26, 23, 0.32);
+}
+.fan-dot[data-active="true"] {
+  background: var(--dot);
+  transform: scale(1.35);
+}
+.fan-dot:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+@media (max-width: 1024px) {
+  .fan {
+    height: 420px;
+  }
+}
+@media (max-width: 640px) {
+  .fan {
+    width: 100%;
+    height: 340px;
+  }
+  .fan-card {
+    width: 168px;
+    height: 234px;
+    margin: -117px 0 0 -84px;
+    transform: translateX(calc(var(--offset) * 34px))
+      translateY(calc(var(--offset) * var(--offset) * 8px))
+      rotate(calc(var(--offset) * 4deg));
+  }
+  .fan-role {
+    font-size: 23px;
+  }
+  .fan-card.is-active,
+  .fan-card:focus-visible {
+    transform: translateX(calc(var(--offset) * 34px)) translateY(-30px)
+      rotate(0deg) scale(1.05);
+    box-shadow: 0 26px 52px rgba(0, 0, 0, 0.22);
+    border-color: rgba(232, 184, 75, 0.7);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fan-card {
     transition: none;
   }
 }
