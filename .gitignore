@@ -32,6 +32,9 @@ npm-debug.log*
 # Vendored shadcn/ui source (components already copied into apps/web)
 /ui-main/
 
+# Figma export kit — local HTML/asset snapshots, not app source
+/figma-export/
+
 # Misc
 public/-.textClipping
 apps/web/public/uploads/

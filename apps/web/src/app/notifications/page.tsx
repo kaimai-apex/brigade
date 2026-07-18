@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { api, type Notification } from '@/lib/api/client';
 import { AppPage } from '@/components/layout/app-shell';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, personLabel, relativeTime } from '@/lib/utils';

@@ -13,7 +13,6 @@ type WorkPhotosUploadProps = {
 };
 
 export function WorkPhotosUpload({
-  userId: _userId,
   defaultUrls = [],
   className,
 }: WorkPhotosUploadProps) {

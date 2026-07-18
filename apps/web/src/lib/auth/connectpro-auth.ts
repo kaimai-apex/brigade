@@ -63,27 +63,6 @@ async function issueTokens(userId: string, email: string, roles: string[]) {
   return { accessToken, refreshToken };
 }
 
-async function issueTokensForUserId(userId: string) {
-  const pool = getPool();
-  const result = await pool.query(
-    `SELECT u.id, u.email, array_agg(r.role) as roles
-     FROM ${auth}.users u
-     LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
-     WHERE u.id = $1 AND u.deleted_at IS NULL
-     GROUP BY u.id, u.email`,
-    [userId],
-  );
-
-  if (result.rows.length === 0) {
-    throw new NotFoundError("User not found");
-  }
-
-  const user = result.rows[0];
-  const roles: string[] = user.roles.filter(Boolean);
-  const tokens = await issueTokens(user.id, user.email, roles);
-  return { userId: user.id, ...tokens };
-}
-
 export function isConnectProAuthConfigured() {
   return databaseConfigured();
 }
