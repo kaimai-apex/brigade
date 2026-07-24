@@ -20,6 +20,17 @@ export default function LandingPage() {
           Brigade
         </Link>
         <nav className="flex items-center gap-2 sm:gap-3">
+          {process.env.NODE_ENV !== "production" && (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="rounded-full px-4"
+            >
+              {/* DEV-ONLY: skip the waitlist, log in as a demo member, open the Directory. */}
+              <a href="/api/dev/login?next=/directory">Enter demo →</a>
+            </Button>
+          )}
           <Button
             asChild
             variant="gold"

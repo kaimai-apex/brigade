@@ -77,11 +77,13 @@ export default async function ProfilePage({
             style={{ backgroundImage: `url(${bannerSrc})` }}
           />
           <div className="px-8 pb-8 md:px-10">
-            <div className="-mt-14 flex flex-col gap-6 md:flex-row md:items-end">
-              <div className="relative shrink-0 self-start">
+            {/* Only the avatar overlaps the cover. Name, headline and actions all sit
+                on plain white below it, so nothing is read against the photo. */}
+            <div className="-mt-14 md:-mt-16">
+              <div className="relative inline-block">
                 <Avatar
                   className={cn(
-                    "size-28 border-4 border-white",
+                    "size-28 border-4 border-white shadow-sm md:size-32",
                     profile.open_to_opportunities &&
                       "ring-4 ring-forest ring-offset-2 ring-offset-white",
                   )}
@@ -101,54 +103,61 @@ export default async function ProfilePage({
                   </span>
                 )}
               </div>
+            </div>
 
-              <div className="flex-1">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-forest">
-                    {profile.role}
-                  </p>
-                  <h1 className="mt-1 font-display text-[28px] font-bold leading-[1.15] tracking-tight md:text-4xl">
-                    {displayName(profile.first_name, profile.last_name)}
-                  </h1>
-                </div>
+            <div className="mt-4">
+              <p className="text-sm font-semibold uppercase tracking-wide text-forest">
+                {profile.role}
+              </p>
+              <h1 className="mt-1 font-display text-[28px] font-bold leading-[1.15] tracking-tight md:text-4xl">
+                {displayName(profile.first_name, profile.last_name)}
+              </h1>
 
-                {isOwner ? (
-                  <Button asChild variant="outline" className="mt-3 w-full sm:w-auto">
-                    <Link href="/settings/profile">Edit profile</Link>
-                  </Button>
-                ) : (
-                  <div className="mt-3 flex w-full flex-col gap-2 sm:flex-row">
-                    <Button asChild className="w-full sm:flex-1">
-                      <Link href={`/brigade?invite=${profile.id}`}>
-                        Invite to Brigade
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="w-full sm:flex-1">
-                      <Link href={`/messages?to=${profile.id}`}>Message</Link>
-                    </Button>
-                  </div>
-                )}
-
-                <p className="mt-3 text-body-md text-ink/75">{profile.headline}</p>
+              {profile.headline && (
+                <p className="mt-2 text-body-md text-ink/75">{profile.headline}</p>
+              )}
+              {(formatLocation(profile.city, profile.state, profile.country) ||
+                profile.years_experience != null) && (
                 <p className="mt-1 text-meta text-ink/60">
                   {formatLocation(profile.city, profile.state, profile.country)}
                   {profile.years_experience != null &&
                     ` · ${profile.years_experience}+ years experience`}
                 </p>
+              )}
 
-                {/* Open to work is shown as avatar badge only — don't duplicate */}
-                {availability.filter((a) => a !== "Open to work").length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {availability
-                      .filter((a) => a !== "Open to work")
-                      .map((label) => (
-                        <Badge key={label} variant="secondary">
-                          {label}
-                        </Badge>
-                      ))}
-                  </div>
-                )}
-              </div>
+              {/* Open to work is shown as avatar badge only — don't duplicate */}
+              {availability.filter((a) => a !== "Open to work").length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {availability
+                    .filter((a) => a !== "Open to work")
+                    .map((label) => (
+                      <Badge key={label} variant="secondary">
+                        {label}
+                      </Badge>
+                    ))}
+                </div>
+              )}
+
+              {isOwner ? (
+                <Button asChild variant="outline" className="mt-5 w-full sm:w-auto">
+                  <Link href="/settings/profile">Edit profile</Link>
+                </Button>
+              ) : (
+                <div className="mt-5 flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                  <Button asChild className="w-full sm:w-auto sm:min-w-[10rem]">
+                    <Link href={`/brigade?invite=${profile.id}`}>
+                      Invite to Brigade
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full sm:w-auto sm:min-w-[8rem]"
+                  >
+                    <Link href={`/messages?to=${profile.id}`}>Message</Link>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </section>

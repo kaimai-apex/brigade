@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 export default function EditProfilePage() {
   const { session } = useAuth();
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function EditProfilePage() {
     currentPosition: '',
     avatarUrl: '',
   });
+  const [visibleInDirectory, setVisibleInDirectory] = useState(true);
 
   useEffect(() => {
     if (!session?.userId) return;
@@ -55,6 +57,9 @@ export default function EditProfilePage() {
         });
         const cover = (p.coverUrl ?? p.cover_url) as string | undefined;
         setBannerId(getBannerById(cover).id);
+        setVisibleInDirectory(
+          (p.visibleInDirectory ?? p.visible_in_directory ?? true) !== false,
+        );
       })
       .catch(() => toast.error('Could not load profile'))
       .finally(() => setLoading(false));
@@ -80,6 +85,7 @@ export default function EditProfilePage() {
         location: [form.city, form.state, form.country].filter(Boolean).join(', '),
         avatarUrl: avatarFromForm || undefined,
         coverUrl: bannerId,
+        visibleInDirectory,
       });
       toast.success('Profile updated');
       router.push('/profile/me');
@@ -241,6 +247,28 @@ export default function EditProfilePage() {
                   onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
                 />
               </div>
+            </div>
+          </Card>
+
+          <Card className="space-y-4 p-5">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-ink/50">
+              Privacy
+            </p>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <Label htmlFor="visibleInDirectory" className="text-[15px]">
+                  Show me in the member directory
+                </Label>
+                <p className="text-meta text-ink/60">
+                  When on, other members can find you in the Directory. Turn off to
+                  stay hidden.
+                </p>
+              </div>
+              <Switch
+                id="visibleInDirectory"
+                checked={visibleInDirectory}
+                onCheckedChange={setVisibleInDirectory}
+              />
             </div>
           </Card>
 

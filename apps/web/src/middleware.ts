@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PREFIXES = [
+  "/admin",
   "/feed",
   "/brigade",
   "/network",
@@ -77,6 +78,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/admin/:path*",
     "/onboarding/:path*",
     "/dashboard/:path*",
     "/settings/:path*",
