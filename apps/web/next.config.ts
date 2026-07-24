@@ -26,7 +26,6 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/directory", destination: "/discover", permanent: true },
       { source: "/connections", destination: "/network", permanent: true },
       { source: "/jobs", destination: "/opportunities", permanent: false },
       // Edge redirect (not a page-level redirect) so Safari back from /waitlist

@@ -19,10 +19,10 @@ const TABS = [
     match: (p: string) => p.startsWith('/brigade') || p.startsWith('/network'),
   },
   {
-    href: '/discover',
-    label: 'Discover',
+    href: '/directory',
+    label: 'Directory',
     icon: Compass,
-    match: (p: string) => p.startsWith('/discover'),
+    match: (p: string) => p.startsWith('/directory') || p.startsWith('/discover'),
   },
   {
     href: '/messages',

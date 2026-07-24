@@ -61,7 +61,7 @@ export function CommandMenu() {
   const navIcons: Record<string, typeof Users> = {
     Feed: Newspaper,
     Brigade: Users,
-    Discover: Compass,
+    Directory: Compass,
     Messages: MessageSquare,
     Profile: User,
     Companies: Building2,
@@ -95,7 +95,7 @@ export function CommandMenu() {
               <CommandItem
                 value={`search ${trimmed}`}
                 onSelect={() =>
-                  go(`/discover?focus=1&q=${encodeURIComponent(trimmed)}`)
+                  go(`/directory?q=${encodeURIComponent(trimmed)}`)
                 }
               >
                 <Search />

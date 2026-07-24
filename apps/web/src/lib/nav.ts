@@ -1,8 +1,8 @@
-/** Primary app navigation — Feed → Brigade → Discover → Messages → Profile */
+/** Primary app navigation — Feed → Brigade → Directory → Messages → Profile */
 export const PRIMARY_NAV = [
   { href: "/feed", label: "Feed" },
   { href: "/brigade", label: "Brigade" },
-  { href: "/discover", label: "Discover" },
+  { href: "/directory", label: "Directory" },
   { href: "/messages", label: "Messages" },
   { href: "/profile/me", label: "Profile" },
 ] as const;

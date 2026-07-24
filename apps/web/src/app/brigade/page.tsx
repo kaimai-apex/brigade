@@ -136,7 +136,7 @@ export default function BrigadePage() {
                 Find your first Brigade member and start building relationships.
               </p>
               <Button asChild className="mt-1 w-full max-w-xs">
-                <Link href="/discover">Find people</Link>
+                <Link href="/directory">Find people</Link>
               </Button>
             </Card>
           )}

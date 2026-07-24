@@ -44,10 +44,10 @@ const NAV_ITEMS = [
     match: (p: string) => p.startsWith('/brigade') || p.startsWith('/network'),
   },
   {
-    href: '/discover',
-    label: 'Discover',
+    href: '/directory',
+    label: 'Directory',
     icon: Compass,
-    match: (p: string) => p.startsWith('/discover'),
+    match: (p: string) => p.startsWith('/directory') || p.startsWith('/discover'),
   },
   {
     href: '/messages',
@@ -129,7 +129,7 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
   }, []);
 
   function goDiscover() {
-    router.push('/discover?focus=1');
+    router.push('/directory');
   }
 
   return (

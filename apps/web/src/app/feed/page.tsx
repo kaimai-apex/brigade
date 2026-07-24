@@ -162,7 +162,7 @@ export default function FeedPage() {
               Follow people to fill your feed with what&apos;s happening in hospitality.
             </p>
             <Button asChild className="mt-1 w-full max-w-xs">
-              <Link href="/discover">Find people</Link>
+              <Link href="/directory">Find people</Link>
             </Button>
           </Card>
         )}
