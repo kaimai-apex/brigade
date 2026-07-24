@@ -1,17 +1,27 @@
 import { NextResponse } from 'next/server';
 import { getConnectProSession } from '@/lib/connectpro/server';
+import { parseDirectoryParams, DIRECTORY_PAGE_SIZE } from '@/lib/directory/params';
+import { dbListDirectory } from '@/lib/server/profile-db';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-
-export async function GET() {
+/** Directory page fetch (powers load-more / infinite scroll). Reads Postgres directly. */
+export async function GET(request: Request) {
   const session = await getConnectProSession();
   if (!session) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const res = await fetch(`${API_BASE}/api/v1/users/directory/list`, {
-    headers: { Authorization: `Bearer ${session.accessToken}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  return NextResponse.json(data, { status: res.status });
+  const url = new URL(request.url);
+  const params = parseDirectoryParams(url.searchParams);
+  const limit = Number(url.searchParams.get('limit')) || DIRECTORY_PAGE_SIZE;
+  const offset = Number(url.searchParams.get('offset')) || 0;
+
+  try {
+    const result = await dbListDirectory({ ...params, limit, offset });
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json(
+      { message: 'Could not load the directory' },
+      { status: 500 },
+    );
+  }
 }

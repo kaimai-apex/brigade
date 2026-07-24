@@ -1,17 +1,30 @@
 "use server";
 
 import {
-  connectProFetch,
   getConnectProSession,
   requireConnectProSession,
 } from "@/lib/connectpro/server";
 import type { FullProfile, OnboardingSlug, Profile } from "@/lib/types/database";
+import {
+  mapDirectoryRow,
+  type DirectoryFacets,
+  type DirectoryParams,
+  type DirectoryResult,
+} from "@/lib/directory/params";
+import {
+  dbGetProfile,
+  dbListDirectory,
+  dbListSavedMemberIds,
+  dbReplaceEducation,
+  dbReplaceExperience,
+  dbReplacePortfolioLinks,
+  dbReplaceWorkPhotos,
+  dbUpdateProfile,
+} from "@/lib/server/profile-db";
 import { normalizeInstagramUrl, normalizeWebsiteUrl } from "@/lib/profile/links";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 const STEP_INDEX: Record<OnboardingSlug, number> = {
   "basic-info": 0,
@@ -119,23 +132,20 @@ export async function saveBasicInfo(formData: FormData) {
   const state = formData.get("state")?.toString() || "";
   const country = formData.get("country")?.toString() || "";
 
-  await connectProFetch(`/api/v1/users/${userId}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      firstName: formData.get("first_name")?.toString() || "",
-      lastName: formData.get("last_name")?.toString() || "",
-      headline: formData.get("headline")?.toString() || "",
-      about: formData.get("bio")?.toString() || "",
-      currentPosition: formData.get("current_position")?.toString() || "",
-      role: formData.get("role")?.toString() || "Hospitality Professional",
-      city,
-      state,
-      country,
-      location: [city, state, country].filter(Boolean).join(", "),
-      avatarUrl: formData.get("profile_image_url")?.toString() || undefined,
-      coverUrl: formData.get("cover_url")?.toString() || undefined,
-      onboardingStep: STEP_INDEX.experience,
-    }),
+  await dbUpdateProfile(userId, {
+    firstName: formData.get("first_name")?.toString() || "",
+    lastName: formData.get("last_name")?.toString() || "",
+    headline: formData.get("headline")?.toString() || "",
+    about: formData.get("bio")?.toString() || "",
+    currentPosition: formData.get("current_position")?.toString() || "",
+    role: formData.get("role")?.toString() || "Hospitality Professional",
+    city,
+    state,
+    country,
+    location: [city, state, country].filter(Boolean).join(", "),
+    avatarUrl: formData.get("profile_image_url")?.toString() || undefined,
+    coverUrl: formData.get("cover_url")?.toString() || undefined,
+    onboardingStep: STEP_INDEX.experience,
   });
 
   redirect("/onboarding/experience");
@@ -165,21 +175,15 @@ export async function saveExperience(formData: FormData) {
     });
   }
 
-  await connectProFetch(`/api/v1/users/${userId}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      yearsExperience: years,
-      currentEmployer: currentEmployer || undefined,
-      currentPosition: currentPosition || undefined,
-      expertiseAreas: expertiseRaw,
-      onboardingStep: STEP_INDEX.education,
-    }),
+  await dbUpdateProfile(userId, {
+    yearsExperience: years,
+    currentEmployer: currentEmployer || undefined,
+    currentPosition: currentPosition || undefined,
+    expertiseAreas: expertiseRaw,
+    onboardingStep: STEP_INDEX.education,
   });
 
-  await connectProFetch(`/api/v1/users/${userId}/experience`, {
-    method: "PUT",
-    body: JSON.stringify({ items }),
-  });
+  await dbReplaceExperience(userId, items);
 
   redirect("/onboarding/education");
 }
@@ -198,15 +202,8 @@ export async function saveEducation(formData: FormData) {
     endDate: endDates[index] || undefined,
   }));
 
-  await connectProFetch(`/api/v1/users/${userId}/education`, {
-    method: "PUT",
-    body: JSON.stringify({ items }),
-  });
-
-  await connectProFetch(`/api/v1/users/${userId}`, {
-    method: "PUT",
-    body: JSON.stringify({ onboardingStep: STEP_INDEX.portfolio }),
-  });
+  await dbReplaceEducation(userId, items);
+  await dbUpdateProfile(userId, { onboardingStep: STEP_INDEX.portfolio });
 
   redirect("/onboarding/portfolio");
 }
@@ -214,15 +211,12 @@ export async function saveEducation(formData: FormData) {
 export async function savePortfolio(formData: FormData) {
   const userId = await requireUserId();
 
-  await connectProFetch(`/api/v1/users/${userId}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      instagramUrl: normalizeInstagramUrl(formData.get("instagram_url")?.toString() || "") || undefined,
-      website: normalizeWebsiteUrl(formData.get("website_url")?.toString() || "") || undefined,
-      linkedinUrl: normalizeWebsiteUrl(formData.get("linkedin_url")?.toString() || "") || undefined,
-      resumeUrl: formData.get("resume_url")?.toString() || undefined,
-      onboardingStep: STEP_INDEX.availability,
-    }),
+  await dbUpdateProfile(userId, {
+    instagramUrl: normalizeInstagramUrl(formData.get("instagram_url")?.toString() || "") || undefined,
+    website: normalizeWebsiteUrl(formData.get("website_url")?.toString() || "") || undefined,
+    linkedinUrl: normalizeWebsiteUrl(formData.get("linkedin_url")?.toString() || "") || undefined,
+    resumeUrl: formData.get("resume_url")?.toString() || undefined,
+    onboardingStep: STEP_INDEX.availability,
   });
 
   const types = formData.getAll("link_type").map(String);
@@ -234,16 +228,10 @@ export async function savePortfolio(formData: FormData) {
     }))
     .filter((row) => row.url);
 
-  await connectProFetch(`/api/v1/users/${userId}/portfolio-links`, {
-    method: "PUT",
-    body: JSON.stringify({ links }),
-  });
+  await dbReplacePortfolioLinks(userId, links);
 
   const photoUrls = formData.getAll("work_photo_url").map(String).filter(Boolean).slice(0, 5);
-  await connectProFetch(`/api/v1/users/${userId}/work-photos`, {
-    method: "PUT",
-    body: JSON.stringify({ imageUrls: photoUrls }),
-  });
+  await dbReplaceWorkPhotos(userId, photoUrls);
 
   redirect("/onboarding/availability");
 }
@@ -251,15 +239,12 @@ export async function savePortfolio(formData: FormData) {
 export async function saveAvailability(formData: FormData) {
   const userId = await requireUserId();
 
-  await connectProFetch(`/api/v1/users/${userId}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      openToOpportunities: formData.get("open_to_opportunities") === "on",
-      availablePrivateEvents: formData.get("available_private_events") === "on",
-      availableContractWork: formData.get("available_contract_work") === "on",
-      availableEmergencyStaffing: formData.get("available_emergency_staffing") === "on",
-      onboardingStep: STEP_INDEX.review,
-    }),
+  await dbUpdateProfile(userId, {
+    openToOpportunities: formData.get("open_to_opportunities") === "on",
+    availablePrivateEvents: formData.get("available_private_events") === "on",
+    availableContractWork: formData.get("available_contract_work") === "on",
+    availableEmergencyStaffing: formData.get("available_emergency_staffing") === "on",
+    onboardingStep: STEP_INDEX.review,
   });
 
   redirect("/onboarding/review");
@@ -268,15 +253,13 @@ export async function saveAvailability(formData: FormData) {
 export async function completeOnboarding() {
   const userId = await requireUserId();
 
-  await connectProFetch(`/api/v1/users/${userId}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      onboardingCompleted: true,
-      onboardingStep: STEP_INDEX.review,
-    }),
+  await dbUpdateProfile(userId, {
+    onboardingCompleted: true,
+    onboardingStep: STEP_INDEX.review,
   });
 
   revalidatePath(`/profile/${userId}`);
+  revalidatePath("/directory");
   redirect(`/profile/${userId}`);
 }
 
@@ -297,33 +280,53 @@ export async function getDiscoverProfiles(): Promise<Profile[]> {
   return getDirectoryProfiles();
 }
 
+const EMPTY_FACETS: DirectoryFacets = { roles: [], cities: [], expertise: [] };
+
+/** Authenticated, filtered, paginated directory with facet counts. */
+export async function getDirectory(
+  params: DirectoryParams = {},
+): Promise<DirectoryResult> {
+  const empty: DirectoryResult = {
+    profiles: [],
+    total: 0,
+    limit: params.limit ?? 24,
+    offset: params.offset ?? 0,
+    facets: EMPTY_FACETS,
+  };
+  try {
+    const session = await getConnectProSession();
+    if (!session) return empty;
+
+    const json = await dbListDirectory(params);
+
+    return {
+      profiles: (json.data ?? []).map((row) =>
+        mapDirectoryRow(row as Record<string, unknown>),
+      ),
+      total: json.total ?? json.data.length,
+      limit: json.limit ?? params.limit ?? 24,
+      offset: json.offset ?? params.offset ?? 0,
+      facets: (json.facets as DirectoryFacets) ?? EMPTY_FACETS,
+    };
+  } catch {
+    return empty;
+  }
+}
+
 /** Authenticated directory only — no public unauthenticated listing. */
-export async function getDirectoryProfiles(): Promise<Profile[]> {
+export async function getDirectoryProfiles(
+  params: DirectoryParams = {},
+): Promise<Profile[]> {
+  const { profiles } = await getDirectory(params);
+  return profiles;
+}
+
+/** Member ids the current user has saved to their shortlist. */
+export async function getSavedMemberIds(): Promise<string[]> {
   try {
     const session = await getConnectProSession();
     if (!session) return [];
-
-    const json = await connectProFetch<{ data: Record<string, unknown>[] }>(
-      "/api/v1/users/directory/list",
-    );
-    return (json.data ?? []).map((row) => ({
-      id: String(row.userId ?? row.id),
-      first_name: String(row.firstName ?? ""),
-      last_name: String(row.lastName ?? ""),
-      headline: (row.headline as string) ?? null,
-      city: (row.city as string) ?? null,
-      state: (row.state as string) ?? null,
-      country: (row.country as string) ?? null,
-      profile_image_url:
-        (row.profileImageUrl as string) ?? (row.avatarUrl as string) ?? null,
-      role: (row.role as string) ?? "Chef",
-      expertise_areas: (row.expertiseAreas as string[]) ?? [],
-      open_to_opportunities: Boolean(row.openToOpportunities),
-      available_private_events: Boolean(row.availablePrivateEvents),
-      available_contract_work: Boolean(row.availableContractWork),
-      available_emergency_staffing: Boolean(row.availableEmergencyStaffing),
-      onboarding_completed: true,
-    })) as Profile[];
+    return await dbListSavedMemberIds(session.userId);
   } catch {
     return [];
   }
@@ -331,11 +334,8 @@ export async function getDirectoryProfiles(): Promise<Profile[]> {
 
 export async function getFullProfile(userId: string): Promise<FullProfile | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/v1/users/public/${userId}`, {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) return null;
-    const raw = await res.json();
+    const raw = await dbGetProfile(userId);
+    if (!raw) return null;
     return mapProfile(raw as Record<string, unknown>);
   } catch {
     return null;
@@ -346,8 +346,9 @@ export async function getCurrentUserProfile(): Promise<FullProfile | null> {
   const session = await getConnectProSession();
   if (!session) return null;
   try {
-    const raw = await connectProFetch<Record<string, unknown>>(`/api/v1/users/${session.userId}`);
-    return mapProfile(raw);
+    const raw = await dbGetProfile(session.userId);
+    if (!raw) return null;
+    return mapProfile(raw as Record<string, unknown>);
   } catch {
     return null;
   }

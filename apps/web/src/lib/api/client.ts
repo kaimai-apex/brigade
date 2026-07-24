@@ -45,6 +45,27 @@ export class ApiClient {
     return res.json();
   }
 
+  /**
+   * Calls the web app's own route handlers (which read Postgres directly) rather
+   * than proxying to the gateway. Used for features that must work on the hosted
+   * site, where the microservices are not deployed.
+   */
+  private async localRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const res = await fetch(path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string>),
+      },
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message ?? 'Request failed');
+    }
+    return res.json();
+  }
+
   signup(data: { email: string; password: string; firstName: string; lastName: string }) {
     return this.request<{ userId: string; accessToken: string; refreshToken: string }>(
       '/api/v1/auth/signup',
@@ -60,18 +81,18 @@ export class ApiClient {
   }
 
   getProfile(userId: string) {
-    return this.request(`/api/v1/users/${userId}`);
+    return this.localRequest(`/api/users/${userId}`);
   }
 
   updateProfile(userId: string, data: Record<string, unknown>) {
-    return this.request(`/api/v1/users/${userId}`, {
+    return this.localRequest(`/api/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   recordProfileView(profileId: string) {
-    return this.request(`/api/v1/users/${profileId}/views`, {
+    return this.localRequest(`/api/users/${profileId}/views`, {
       method: 'POST',
       body: '{}',
     });
@@ -150,30 +171,47 @@ export class ApiClient {
   }
 
   getConnections(status = 'accepted') {
-    return this.request<{ data: Connection[] }>(
-      `/api/v1/connections?status=${encodeURIComponent(status)}`,
+    return this.localRequest<{ data: Connection[] }>(
+      `/api/connections?status=${encodeURIComponent(status)}`,
     );
   }
 
   sendConnectionRequest(receiverId: string) {
-    return this.request('/api/v1/connections/request', {
+    return this.localRequest('/api/connections', {
       method: 'POST',
       body: JSON.stringify({ receiverId }),
     });
   }
 
   acceptConnection(connectionId: string) {
-    return this.request(`/api/v1/connections/${connectionId}/accept`, { method: 'POST' });
+    return this.localRequest(`/api/connections/${connectionId}/accept`, { method: 'POST' });
   }
 
   rejectConnection(connectionId: string) {
-    return this.request(`/api/v1/connections/${connectionId}/reject`, { method: 'POST' });
+    return this.localRequest(`/api/connections/${connectionId}/reject`, { method: 'POST' });
   }
 
   followUser(followeeId: string) {
     return this.request('/api/v1/follows', {
       method: 'POST',
       body: JSON.stringify({ followeeId }),
+    });
+  }
+
+  getSavedMemberIds() {
+    return this.localRequest<string[]>('/api/directory/saves');
+  }
+
+  saveMember(userId: string) {
+    return this.localRequest(`/api/directory/saves/${userId}`, {
+      method: 'POST',
+      body: '{}',
+    });
+  }
+
+  unsaveMember(userId: string) {
+    return this.localRequest(`/api/directory/saves/${userId}`, {
+      method: 'DELETE',
     });
   }
 
