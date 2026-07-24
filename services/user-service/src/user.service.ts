@@ -28,6 +28,24 @@ interface UserCreatedPayload {
   lastName: string;
 }
 
+export interface DirectoryQuery {
+  q?: string;
+  role?: string;
+  expertise?: string[];
+  city?: string;
+  state?: string;
+  country?: string;
+  openToWork?: boolean;
+  emergency?: boolean;
+  privateEvents?: boolean;
+  contract?: boolean;
+  minYears?: number;
+  hasPhoto?: boolean;
+  sort?: 'recent' | 'newest' | 'name' | 'experience' | 'complete';
+  limit?: number;
+  offset?: number;
+}
+
 @Injectable()
 export class UserService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool;
@@ -71,20 +89,105 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  async listDirectory(limit = 50) {
-    const result = await this.pool.query(
+  async listDirectory(params: DirectoryQuery = {}) {
+    const limit = Math.min(Math.max(params.limit ?? 24, 1), 48);
+    const offset = Math.max(params.offset ?? 0, 0);
+
+    // Shared filter clauses (everything except pagination / ordering). Parameterized —
+    // user input never touched string concatenation.
+    const where: string[] = [
+      'deleted_at IS NULL',
+      'onboarding_completed = true',
+      'visible_in_directory = true',
+    ];
+    const values: unknown[] = [];
+    const add = (value: unknown) => {
+      values.push(value);
+      return `$${values.length}`;
+    };
+
+    if (params.q && params.q.trim()) {
+      const like = `%${params.q.trim()}%`;
+      const p = add(like);
+      where.push(
+        `(first_name ILIKE ${p} OR last_name ILIKE ${p} OR headline ILIKE ${p} ` +
+          `OR role ILIKE ${p} OR city ILIKE ${p} OR state ILIKE ${p} ` +
+          `OR current_employer ILIKE ${p})`,
+      );
+    }
+    if (params.role) where.push(`role = ${add(params.role)}`);
+    if (params.expertise?.length) {
+      where.push(`expertise_areas @> ${add(params.expertise)}::text[]`);
+    }
+    if (params.city) where.push(`city = ${add(params.city)}`);
+    if (params.state) where.push(`state = ${add(params.state)}`);
+    if (params.country) where.push(`country = ${add(params.country)}`);
+    if (params.openToWork) where.push('open_to_opportunities = true');
+    if (params.emergency) where.push('available_emergency_staffing = true');
+    if (params.privateEvents) where.push('available_private_events = true');
+    if (params.contract) where.push('available_contract_work = true');
+    if (typeof params.minYears === 'number') {
+      where.push(`years_experience >= ${add(params.minYears)}`);
+    }
+    if (params.hasPhoto) where.push("avatar_url IS NOT NULL AND avatar_url <> ''");
+
+    const whereSql = where.join(' AND ');
+
+    const orderSql =
+      {
+        recent: 'updated_at DESC',
+        newest: 'created_at DESC',
+        name: 'last_name ASC, first_name ASC',
+        experience: 'years_experience DESC NULLS LAST',
+        complete: 'completeness DESC',
+      }[params.sort ?? 'recent'] ?? 'updated_at DESC';
+
+    const rowsPromise = this.pool.query(
       `SELECT user_id, first_name, last_name, headline, city, state, country,
-              avatar_url, role, expertise_areas, open_to_opportunities,
-              available_private_events, available_contract_work,
-              available_emergency_staffing, onboarding_completed
+              avatar_url, role, expertise_areas, years_experience, completeness,
+              open_to_opportunities, available_private_events, available_contract_work,
+              available_emergency_staffing, onboarding_completed, created_at, updated_at
        FROM users.profiles
-       WHERE deleted_at IS NULL AND onboarding_completed = true
-       ORDER BY updated_at DESC
-       LIMIT $1`,
-      [limit],
+       WHERE ${whereSql}
+       ORDER BY ${orderSql}
+       LIMIT ${add(limit)} OFFSET ${add(offset)}`,
+      values,
     );
+
+    // Facet counts + total use the SAME filter values but not the pagination params,
+    // so slice values back to the pre-limit/offset set.
+    const facetValues = values.slice(0, values.length - 2);
+    const totalPromise = this.pool.query(
+      `SELECT count(*)::int AS total FROM users.profiles WHERE ${whereSql}`,
+      facetValues,
+    );
+    const roleFacetPromise = this.pool.query(
+      `SELECT role AS value, count(*)::int AS count FROM users.profiles
+       WHERE ${whereSql} AND role IS NOT NULL GROUP BY role ORDER BY count DESC`,
+      facetValues,
+    );
+    const cityFacetPromise = this.pool.query(
+      `SELECT city AS value, state, count(*)::int AS count FROM users.profiles
+       WHERE ${whereSql} AND city IS NOT NULL AND city <> ''
+       GROUP BY city, state ORDER BY count DESC LIMIT 40`,
+      facetValues,
+    );
+    const expertiseFacetPromise = this.pool.query(
+      `SELECT unnest(expertise_areas) AS value, count(*)::int AS count FROM users.profiles
+       WHERE ${whereSql} GROUP BY value ORDER BY count DESC LIMIT 40`,
+      facetValues,
+    );
+
+    const [rows, total, roleFacet, cityFacet, expertiseFacet] = await Promise.all([
+      rowsPromise,
+      totalPromise,
+      roleFacetPromise,
+      cityFacetPromise,
+      expertiseFacetPromise,
+    ]);
+
     return {
-      data: result.rows.map((row) => ({
+      data: rows.rows.map((row) => ({
         id: row.user_id,
         userId: row.user_id,
         firstName: row.first_name,
@@ -96,13 +199,52 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
         profileImageUrl: row.avatar_url,
         role: row.role,
         expertiseAreas: row.expertise_areas ?? [],
+        yearsExperience: row.years_experience,
+        completeness: row.completeness,
         openToOpportunities: row.open_to_opportunities,
         availablePrivateEvents: row.available_private_events,
         availableContractWork: row.available_contract_work,
         availableEmergencyStaffing: row.available_emergency_staffing,
         onboardingCompleted: row.onboarding_completed,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
       })),
+      total: total.rows[0]?.total ?? 0,
+      limit,
+      offset,
+      facets: {
+        roles: roleFacet.rows,
+        cities: cityFacet.rows,
+        expertise: expertiseFacet.rows,
+      },
     };
+  }
+
+  async listSavedMemberIds(userId: string): Promise<string[]> {
+    const result = await this.pool.query(
+      `SELECT saved_user_id FROM users.directory_saves
+       WHERE user_id = $1 ORDER BY created_at DESC`,
+      [userId],
+    );
+    return result.rows.map((row) => row.saved_user_id);
+  }
+
+  async saveMember(userId: string, savedUserId: string) {
+    if (userId === savedUserId) return { saved: false };
+    await this.pool.query(
+      `INSERT INTO users.directory_saves (user_id, saved_user_id)
+       VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [userId, savedUserId],
+    );
+    return { saved: true };
+  }
+
+  async unsaveMember(userId: string, savedUserId: string) {
+    await this.pool.query(
+      `DELETE FROM users.directory_saves WHERE user_id = $1 AND saved_user_id = $2`,
+      [userId, savedUserId],
+    );
+    return { saved: false };
   }
 
   async getProfile(userId: string): Promise<Record<string, unknown>> {
@@ -182,6 +324,9 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
       availablePrivateEvents: 'available_private_events',
       availableContractWork: 'available_contract_work',
       availableEmergencyStaffing: 'available_emergency_staffing',
+      visibleInDirectory: 'visible_in_directory',
+      onboardingStep: 'onboarding_step',
+      onboardingCompleted: 'onboarding_completed',
       role: 'role',
     };
 
@@ -461,6 +606,7 @@ export class UserService implements OnModuleInit, OnModuleDestroy {
       availablePrivateEvents: row.available_private_events,
       availableContractWork: row.available_contract_work,
       availableEmergencyStaffing: row.available_emergency_staffing,
+      visibleInDirectory: row.visible_in_directory,
       role: row.role,
       completeness: row.completeness,
       experience: row.experience,

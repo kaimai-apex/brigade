@@ -1,6 +1,7 @@
 -- ConnectPro / Brigade — consolidated PostgreSQL schemas per service boundary
 CREATE EXTENSION IF NOT EXISTS citext;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Auth Service
 CREATE SCHEMA IF NOT EXISTS auth;
@@ -67,10 +68,17 @@ CREATE TABLE users.profiles (
     role         TEXT NOT NULL DEFAULT 'Chef',
     cover_url    TEXT,
     completeness SMALLINT NOT NULL DEFAULT 0,
+    visible_in_directory BOOLEAN NOT NULL DEFAULT true,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at   TIMESTAMPTZ
 );
+CREATE INDEX IF NOT EXISTS idx_profiles_expertise ON users.profiles USING gin (expertise_areas);
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON users.profiles (role);
+CREATE INDEX IF NOT EXISTS idx_profiles_city_state ON users.profiles (city, state);
+CREATE INDEX IF NOT EXISTS idx_profiles_updated ON users.profiles (updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_search_trgm
+  ON users.profiles USING gin (first_name gin_trgm_ops, last_name gin_trgm_ops, city gin_trgm_ops);
 
 CREATE TABLE users.experience (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -142,6 +150,14 @@ CREATE TABLE users.profile_views (
     viewed_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_profile_views_profile ON users.profile_views(profile_id, viewed_at DESC);
+
+CREATE TABLE users.directory_saves (
+    user_id       UUID NOT NULL,
+    saved_user_id UUID NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, saved_user_id)
+);
+CREATE INDEX idx_directory_saves_user ON users.directory_saves(user_id, created_at DESC);
 
 -- Connection Service
 CREATE SCHEMA IF NOT EXISTS connections;

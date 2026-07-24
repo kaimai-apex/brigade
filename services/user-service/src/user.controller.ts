@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import {
   AddSkillDto,
   ReplacePortfolioLinksDto,
   ReplaceWorkPhotosDto,
+  DirectoryQueryDto,
 } from './dto/user.dto';
 import { JwtAuthGuard, loadConfig, AuthenticatedRequest } from '@connectpro/common';
 
@@ -29,8 +31,23 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('directory/list')
-  listDirectory() {
-    return this.userService.listDirectory();
+  listDirectory(@Query() query: DirectoryQueryDto) {
+    return this.userService.listDirectory(query);
+  }
+
+  @Get('directory/saves')
+  listSaves(@Req() req: AuthenticatedRequest) {
+    return this.userService.listSavedMemberIds(req.user.sub);
+  }
+
+  @Post('directory/saves/:id')
+  saveMember(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.userService.saveMember(req.user.sub, id);
+  }
+
+  @Delete('directory/saves/:id')
+  unsaveMember(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.userService.unsaveMember(req.user.sub, id);
   }
 
   @Get(':id')
