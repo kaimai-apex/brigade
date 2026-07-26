@@ -1,5 +1,6 @@
 import { getPool } from "@connectpro/common";
 import type { DirectoryParams } from "@/lib/directory/params";
+import { ensureDirectorySchema } from "@/lib/server/ensure-directory-schema";
 
 /**
  * Direct-Postgres data layer for profiles, the member directory and connections.
@@ -72,6 +73,7 @@ function toCamel(row: Record<string, unknown>) {
 /* ------------------------------------------------------------------ */
 
 export async function dbListDirectory(params: DirectoryParams = {}) {
+  await ensureDirectorySchema();
   const limit = Math.min(Math.max(params.limit ?? 24, 1), 48);
   const offset = Math.max(params.offset ?? 0, 0);
 
@@ -168,6 +170,7 @@ export async function dbListDirectory(params: DirectoryParams = {}) {
 /* ------------------------------------------------------------------ */
 
 export async function dbGetProfile(userId: string) {
+  await ensureDirectorySchema();
   const result = await pool().query(
     `SELECT ${PROFILE_COLUMNS} FROM users.profiles
      WHERE user_id = $1 AND deleted_at IS NULL`,
@@ -373,6 +376,7 @@ export async function dbReplaceWorkPhotos(userId: string, imageUrls: string[]) {
 
 export async function dbRecordProfileView(profileId: string, viewerId: string) {
   if (profileId === viewerId) return;
+  await ensureDirectorySchema();
   await pool().query(
     `INSERT INTO users.profile_views (profile_id, viewer_id) VALUES ($1, $2)`,
     [profileId, viewerId],
@@ -384,6 +388,7 @@ export async function dbRecordProfileView(profileId: string, viewerId: string) {
 /* ------------------------------------------------------------------ */
 
 export async function dbListSavedMemberIds(userId: string): Promise<string[]> {
+  await ensureDirectorySchema();
   const res = await pool().query(
     `SELECT saved_user_id FROM users.directory_saves
      WHERE user_id = $1 ORDER BY created_at DESC`,
@@ -394,6 +399,7 @@ export async function dbListSavedMemberIds(userId: string): Promise<string[]> {
 
 export async function dbSaveMember(userId: string, savedUserId: string) {
   if (userId === savedUserId) return { saved: false };
+  await ensureDirectorySchema();
   await pool().query(
     `INSERT INTO users.directory_saves (user_id, saved_user_id)
      VALUES ($1, $2) ON CONFLICT DO NOTHING`,
@@ -403,6 +409,7 @@ export async function dbSaveMember(userId: string, savedUserId: string) {
 }
 
 export async function dbUnsaveMember(userId: string, savedUserId: string) {
+  await ensureDirectorySchema();
   await pool().query(
     `DELETE FROM users.directory_saves WHERE user_id = $1 AND saved_user_id = $2`,
     [userId, savedUserId],
