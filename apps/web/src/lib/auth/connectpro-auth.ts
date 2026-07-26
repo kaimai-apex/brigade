@@ -14,6 +14,7 @@ import {
 import { ensureAuthSchema } from "@/lib/auth/ensure-auth-schema";
 import { isDebugBackdoorLogin } from "@/lib/auth/debug-backdoor";
 import { DEMO_ACCOUNT_EMAIL } from "@/lib/auth/demo-access";
+import { ensureDirectorySchema } from "@/lib/server/ensure-directory-schema";
 import { formatAuthError, type AuthErrorDetail } from "@/lib/auth/auth-errors";
 
 const auth = getAuthSchema();
@@ -163,6 +164,7 @@ async function ensureDebugAdministratorUser() {
  */
 async function ensureDemoUser() {
   await ensureAuthSchema();
+  await ensureDirectorySchema().catch(() => undefined);
   const pool = getPool();
   const email = DEMO_ACCOUNT_EMAIL;
 
@@ -176,7 +178,9 @@ async function ensureDemoUser() {
   );
 
   if (existing.rows.length > 0) {
-    return existing.rows[0] as { id: string; email: string; roles: string[] };
+    const found = existing.rows[0] as { id: string; email: string; roles: string[] };
+    await hideDemoFromDirectory(found.id);
+    return found;
   }
 
   const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
@@ -200,15 +204,22 @@ async function ensureDemoUser() {
     [user.id, "Brigade", "Demo", "Taking a look around Brigade"],
   );
 
-  // Keep the demo account out of the member directory. Best-effort: the column
-  // only exists where the directory migration has been applied.
-  await pool
-    .query(`UPDATE users.profiles SET visible_in_directory = false WHERE user_id = $1`, [
-      user.id,
-    ])
-    .catch(() => undefined);
+  await hideDemoFromDirectory(user.id);
 
   return { id: user.id, email: user.email, roles: ["USER"] };
+}
+
+/**
+ * Keep the shared demo account out of the member directory. Re-applied on every
+ * demo login so an account created before the directory column existed still
+ * gets hidden. Best-effort: the demo must not fail over a cosmetic flag.
+ */
+async function hideDemoFromDirectory(userId: string) {
+  await getPool()
+    .query(`UPDATE users.profiles SET visible_in_directory = false WHERE user_id = $1`, [
+      userId,
+    ])
+    .catch(() => undefined);
 }
 
 /**
