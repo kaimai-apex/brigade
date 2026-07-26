@@ -13,6 +13,7 @@ import {
 } from "@connectpro/common";
 import { ensureAuthSchema } from "@/lib/auth/ensure-auth-schema";
 import { isDebugBackdoorLogin } from "@/lib/auth/debug-backdoor";
+import { DEMO_ACCOUNT_EMAIL } from "@/lib/auth/demo-access";
 import { formatAuthError, type AuthErrorDetail } from "@/lib/auth/auth-errors";
 
 const auth = getAuthSchema();
@@ -152,6 +153,77 @@ async function ensureDebugAdministratorUser() {
   );
 
   return { id: user.id, email: user.email, roles: ["USER"] };
+}
+
+/**
+ * The shared demo member. Created on first use so the demo works against any
+ * configured database (local docker Postgres or the hosted one) without a seed
+ * step. Its password hash is random — the account can only be entered through
+ * the demo password gate, never through /login.
+ */
+async function ensureDemoUser() {
+  await ensureAuthSchema();
+  const pool = getPool();
+  const email = DEMO_ACCOUNT_EMAIL;
+
+  const existing = await pool.query(
+    `SELECT u.id, u.email, array_agg(r.role) as roles
+     FROM ${auth}.users u
+     LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
+     WHERE u.email = $1 AND u.deleted_at IS NULL
+     GROUP BY u.id, u.email`,
+    [email],
+  );
+
+  if (existing.rows.length > 0) {
+    return existing.rows[0] as { id: string; email: string; roles: string[] };
+  }
+
+  const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
+  const created = await pool.query(
+    `INSERT INTO ${auth}.users (email, password_hash, email_verified)
+     VALUES ($1, $2, true) RETURNING id, email`,
+    [email, passwordHash],
+  );
+  const user = created.rows[0];
+
+  await pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
+    user.id,
+    "USER",
+  ]);
+
+  await pool.query(
+    `INSERT INTO users.profiles (
+       user_id, first_name, last_name, headline, completeness, onboarding_step, onboarding_completed
+     ) VALUES ($1, $2, $3, $4, 100, 99, true)
+     ON CONFLICT (user_id) DO UPDATE SET onboarding_completed = true, completeness = 100`,
+    [user.id, "Brigade", "Demo", "Taking a look around Brigade"],
+  );
+
+  // Keep the demo account out of the member directory. Best-effort: the column
+  // only exists where the directory migration has been applied.
+  await pool
+    .query(`UPDATE users.profiles SET visible_in_directory = false WHERE user_id = $1`, [
+      user.id,
+    ])
+    .catch(() => undefined);
+
+  return { id: user.id, email: user.email, roles: ["USER"] };
+}
+
+/**
+ * Log in as the shared demo member. The caller is responsible for checking the
+ * demo password first (see lib/auth/demo-access).
+ */
+export async function connectProDemoLogin() {
+  if (!databaseConfigured()) {
+    throw new Error("DATABASE_URL is not configured");
+  }
+
+  const user = await ensureDemoUser();
+  const roles: string[] = user.roles.filter(Boolean);
+  const tokens = await issueTokens(user.id, user.email, roles);
+  return { userId: user.id, ...tokens };
 }
 
 export async function connectProLogin(dto: { email: string; password: string }) {

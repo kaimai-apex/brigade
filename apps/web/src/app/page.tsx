@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { RoleDeck } from "@/components/landing/role-deck";
+import { isDemoAccessEnabled } from "@/lib/auth/demo-access";
 
 /**
  * Public landing — full-screen, waitlist-first. A single hero: "Find Your
@@ -9,6 +10,8 @@ import { RoleDeck } from "@/components/landing/role-deck";
  */
 
 export default function LandingPage() {
+  const demoOpen = isDemoAccessEnabled();
+
   return (
     <main className="brigade-landing">
       {/* Top bar */}
@@ -20,15 +23,15 @@ export default function LandingPage() {
           Brigade
         </Link>
         <nav className="flex items-center gap-2 sm:gap-3">
-          {process.env.NODE_ENV !== "production" && (
+          {demoOpen && (
             <Button
               asChild
               variant="outline"
               size="sm"
               className="rounded-full px-4"
             >
-              {/* DEV-ONLY: skip the waitlist, log in as a demo member, open the Directory. */}
-              <a href="/api/dev/login?next=/directory">Enter demo →</a>
+              {/* Password-gated walkthrough of the product. */}
+              <Link href="/demo">See the demo</Link>
             </Button>
           )}
           <Button
