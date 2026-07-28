@@ -1,4 +1,12 @@
-const COLORS = ["#e8b84b", "#1a3c34", "#c45c26", "#1e4d8c", "#8f9e7a", "#fff8e7"];
+// Applied via el.style.background, so CSS variables resolve normally.
+const COLORS = [
+  "var(--confetti-gold)",
+  "var(--confetti-forest)",
+  "var(--confetti-rust)",
+  "var(--confetti-cobalt)",
+  "var(--confetti-sage)",
+  "var(--confetti-cream)",
+];
 
 /** Burst brand-colored particles from an element (button celebration). */
 export function burstCelebration(origin: HTMLElement) {

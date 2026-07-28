@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandMenu } from "@/components/command-menu";
 import { cn } from "@/lib/utils";
 import "./globals.css";
+import { THEME_COLOR } from "@/lib/design/tokens";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -36,7 +37,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#e8b84b",
+  themeColor: THEME_COLOR,
 };
 
 export default function RootLayout({

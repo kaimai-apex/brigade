@@ -317,12 +317,12 @@ export const REACTIONS: {
   label: string;
   color: string;
 }[] = [
-  { type: 'like', emoji: '👍', label: 'Like', color: '#2d4a9e' },
-  { type: 'celebrate', emoji: '🎉', label: 'Celebrate', color: '#1c4b3d' },
-  { type: 'support', emoji: '🤝', label: 'Support', color: '#8b5cf6' },
-  { type: 'love', emoji: '❤️', label: 'Love', color: '#c8471f' },
-  { type: 'insightful', emoji: '💡', label: 'Insightful', color: '#e8b84b' },
-  { type: 'funny', emoji: '😄', label: 'Funny', color: '#0ea5e9' },
+  { type: 'like', emoji: '👍', label: 'Like', color: 'var(--brand-cobalt)' },
+  { type: 'celebrate', emoji: '🎉', label: 'Celebrate', color: 'var(--brand-forest)' },
+  { type: 'support', emoji: '🤝', label: 'Support', color: 'var(--brand-violet)' },
+  { type: 'love', emoji: '❤️', label: 'Love', color: 'var(--brand-rust)' },
+  { type: 'insightful', emoji: '💡', label: 'Insightful', color: 'var(--brand-gold)' },
+  { type: 'funny', emoji: '😄', label: 'Funny', color: 'var(--brand-sky)' },
 ];
 
 export type Post = {

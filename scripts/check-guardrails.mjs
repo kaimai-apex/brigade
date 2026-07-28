@@ -121,7 +121,51 @@ for await (const file of sources("packages/core/src")) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. next.config must not silence errors
+// 4. Colours live in the token file, nowhere else.
+//
+// Two files may hold a raw hex: app/tokens.css, and lib/design/tokens.ts for
+// the handful of values consumed outside CSS (a theme-color meta tag cannot
+// take a variable). Everywhere else uses var(--token), so a palette change is
+// one file rather than a grep.
+// ---------------------------------------------------------------------------
+const HEX = /#[0-9a-fA-F]{3,8}\b/;
+const COLOUR_ALLOWLIST = [
+  "apps/web/src/app/tokens.css",
+  "apps/web/src/lib/design/tokens.ts",
+];
+
+async function* styleSources(dir) {
+  let entries;
+  try {
+    entries = await readdir(path.join(ROOT, dir), { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const rel = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (["node_modules", ".next", "dist", ".turbo"].includes(entry.name)) continue;
+      yield* styleSources(rel);
+    } else if (/\.(ts|tsx|css)$/.test(entry.name)) {
+      yield rel;
+    }
+  }
+}
+
+for await (const file of styleSources("apps/web/src")) {
+  if (COLOUR_ALLOWLIST.includes(file)) continue;
+  const lines = readFileSync(path.join(ROOT, file), "utf8").split("\n");
+  lines.forEach((line, i) => {
+    if (HEX.test(line)) {
+      failures.push(
+        `${file}:${i + 1}: hard-coded colour — use a token from app/tokens.css. ${line.trim().slice(0, 60)}`,
+      );
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 5. next.config must not silence errors
 // ---------------------------------------------------------------------------
 for (const config of ["apps/web/next.config.ts", "apps/web/next.config.mjs", "apps/web/next.config.js"]) {
   const full = path.join(ROOT, config);

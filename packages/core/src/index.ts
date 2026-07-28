@@ -20,3 +20,4 @@ export * from "./services/moderation_services.ts";
 export * from "./services/post_services.ts";
 export * from "./services/fan_out_on_write_service.ts";
 export * from "./lib/feed_manager.ts";
+export * from "./services/maintenance_services.ts";

@@ -19,7 +19,7 @@ const TYPE_STYLES: Record<JobType, string> = {
   BOH: 'bg-rust/10 text-rust',
   FOH: 'bg-forest/10 text-forest',
   Management: 'bg-cobalt/10 text-cobalt',
-  Hotel: 'bg-gold/15 text-[#8a6d1f]',
+  Hotel: 'bg-gold/15 text-gold-ink',
   Events: 'bg-secondary text-secondary-foreground',
 };
 

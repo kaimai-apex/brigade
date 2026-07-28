@@ -43,7 +43,7 @@ function CardBody({ restaurant }: { restaurant: Restaurant }) {
               variant={isPrestige(a.source) ? 'default' : 'secondary'}
               className={
                 isPrestige(a.source)
-                  ? 'gap-1 bg-gold/15 text-[#8a6d1f]'
+                  ? 'gap-1 bg-gold/15 text-gold-ink'
                   : 'gap-1 bg-secondary text-secondary-foreground'
               }
             >

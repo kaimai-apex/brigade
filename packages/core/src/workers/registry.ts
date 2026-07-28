@@ -9,6 +9,13 @@ import {
   FanOutOnWriteService,
 } from "../services/fan_out_on_write_service.ts";
 import { FeedManager, homeKey, type RedisLike } from "../lib/feed_manager.ts";
+import {
+  IndexProfileService,
+  PurgeProfileService,
+  RevokeSessionsService,
+  logOnlyTransport,
+  type EmailTransport,
+} from "../services/maintenance_services.ts";
 
 /**
  * Workers are retry envelopes: each one loads by ID, calls a service, and
@@ -23,13 +30,20 @@ export class NotImplementedWorker extends Error {
 }
 
 export type RegistryOptions = {
-  /** Feed workers need Redis. Without it they are skipped rather than failing
-   *  loudly on every job — a deployment with no Redis should still run. */
+  /** Feed workers need Redis. Without it they dead-letter with an explicit
+   *  reason rather than silently doing nothing. */
   redis?: RedisLike | null;
+  /** Outbound mail. Defaults to logging, so a missing provider is visible
+   *  rather than a silent drop. */
+  email?: EmailTransport;
+  /** Where verification links point. */
+  appUrl?: string;
 };
 
 export function buildRegistry(pool: Pool, options: RegistryOptions = {}): WorkerRegistry {
   const redis = options.redis ?? null;
+  const sendEmail = options.email ?? logOnlyTransport;
+  const appUrl = options.appUrl ?? "https://joinbrigade.co";
 
   const registry: WorkerRegistry = {
     ProfileCompletenessWorker: {
@@ -165,15 +179,74 @@ export function buildRegistry(pool: Pool, options: RegistryOptions = {}): Worker
     };
   }
 
+  registry.ProfileIndexWorker = {
+    async perform(args) {
+      const profileId = String(args.profileId ?? "");
+      if (!profileId) return;
+      await runService(pool, (ctx) => new IndexProfileService().call({ ctx, profileId }));
+    },
+  };
+
+  registry.RevokeSessionsWorker = {
+    async perform(args) {
+      const profileId = String(args.profileId ?? "");
+      if (!profileId) return;
+      await runService(pool, (ctx) => new RevokeSessionsService().call({ ctx, profileId }));
+    },
+  };
+
+  registry.PurgeProfileWorker = {
+    async perform(args) {
+      const profileId = String(args.profileId ?? "");
+      if (!profileId) return;
+      await runService(pool, async (ctx) => {
+        const exists = await ctx.db.query(`SELECT 1 FROM brigade.profiles WHERE id = $1`, [
+          profileId,
+        ]);
+        if (!exists.rowCount) return;
+        await new PurgeProfileService().call({ ctx, profileId });
+      });
+    },
+  };
+
+  registry.SendVerificationEmailWorker = {
+    async perform(args) {
+      const verificationId = String(args.verificationId ?? "");
+      if (!verificationId) return;
+
+      // The token is never persisted in the clear, so it cannot be recovered
+      // here — the service that issued it passes it through the job. A job
+      // enqueued without one is from an older code path and is dropped rather
+      // than sending a link that cannot work.
+      const token = typeof args.token === "string" ? args.token : null;
+      if (!token) return;
+
+      const found = await pool.query<{ email: string; state: string }>(
+        `SELECT coalesce(v.email_domain, '') AS email, v.state::text
+         FROM brigade.employment_verifications v WHERE v.id = $1`,
+        [verificationId],
+      );
+      const row = found.rows[0];
+      if (!row || row.state !== "pending") return;
+
+      const to = typeof args.workEmail === "string" ? args.workEmail : null;
+      if (!to) return;
+
+      await sendEmail({
+        to,
+        subject: "Confirm your work email for Brigade",
+        text:
+          `Confirm that you work where your Brigade profile says you do:\n\n` +
+          `${appUrl}/verify/employment?id=${verificationId}&token=${token}\n\n` +
+          `This link expires in 24 hours. If you did not request it, ignore this email.`,
+      });
+    },
+  };
+
   // Phases that are not built yet fail fast and loudly with a single attempt,
   // rather than retrying five times or — worse — silently succeeding. A job
   // that quietly does nothing leaves the system subtly wrong with no signal.
-  const deferred: [string, string][] = [
-    ["ProfileIndexWorker", "Phase 5 (search indexing)"],
-    ["SendVerificationEmailWorker", "outbound email is not wired up"],
-    ["RevokeSessionsWorker", "session revocation needs the OAuth provider decision"],
-    ["PurgeProfileWorker", "GDPR erasure pipeline"],
-  ];
+  const deferred: [string, string][] = [];
 
   if (!redis) {
     deferred.push(

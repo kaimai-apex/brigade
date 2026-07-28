@@ -32,6 +32,11 @@ import {
   BlockCanonicalEmailService,
 } from "../src/services/moderation_services.ts";
 import { Permission } from "../src/policies/profile_policy.ts";
+import {
+  IndexProfileService,
+  PurgeProfileService,
+  RevokeSessionsService,
+} from "../src/services/maintenance_services.ts";
 import { buildRegistry } from "../src/workers/registry.ts";
 import { drain } from "../src/lib/queue.ts";
 
@@ -538,6 +543,101 @@ async function main() {
     .then(() => "allowed")
     .catch((e: Error) => e.message);
   check("the moderation log cannot be rewritten", String(immutable).includes("append-only"));
+
+  console.log("\nSearch indexing");
+  await pool.query(
+    `INSERT INTO brigade.experiences (profile_id, company_name, title, start_date, is_current)
+     VALUES ($1, 'Noma Copenhagen', 'Chef de Partie', '2021-01-01', true)`,
+    [jordan],
+  );
+  // The profiles trigger only sees that table's own columns, so before the
+  // indexer runs the new employer is unsearchable.
+  const beforeIndex = await pool.query(
+    `SELECT 1 FROM brigade.profiles
+     WHERE id = $1 AND search_vector @@ websearch_to_tsquery('simple', 'noma')`,
+    [jordan],
+  );
+  check("a new employer is not searchable until indexed", beforeIndex.rowCount === 0);
+
+  await runService(pool, (ctx) => new IndexProfileService().call({ ctx, profileId: jordan }));
+  const afterIndex = await pool.query(
+    `SELECT 1 FROM brigade.profiles
+     WHERE id = $1 AND search_vector @@ websearch_to_tsquery('simple', 'noma')`,
+    [jordan],
+  );
+  check("indexing makes employers searchable", afterIndex.rowCount === 1);
+
+  console.log("\nSession revocation");
+  const jordanUser = await pool.query<{ user_id: string }>(
+    `SELECT user_id::text FROM brigade.profiles WHERE id = $1`,
+    [jordan],
+  );
+  await pool.query(
+    `INSERT INTO brigade.session_activations (user_id, session_id) VALUES ($1, 'sess-1'), ($1, 'sess-2')`,
+    [jordanUser.rows[0]!.user_id],
+  );
+  const revoked = await runService(pool, (ctx) =>
+    new RevokeSessionsService().call({ ctx, profileId: jordan }),
+  );
+  check("suspending drops every live session", revoked.revoked === 2, String(revoked.revoked));
+
+  console.log("\nErasure");
+  const doomedProfile = await signUp("tobedeleted", "To Be Deleted");
+  await pool.query(
+    `INSERT INTO brigade.experiences (profile_id, company_name, title, start_date)
+     VALUES ($1, 'Somewhere', 'Chef', '2019-01-01')`,
+    [doomedProfile],
+  );
+  const hashBefore = await pool.query<{ canonical_email_hash: string }>(
+    `SELECT u.canonical_email_hash FROM brigade.profiles p
+     JOIN brigade.users u ON u.id = p.user_id WHERE p.id = $1`,
+    [doomedProfile],
+  );
+
+  await runService(pool, (ctx) => new PurgeProfileService().call({ ctx, profileId: doomedProfile }));
+
+  const purged = await pool.query<{
+    display_name: string;
+    bio: string | null;
+    username: string;
+    deleted_at: Date | null;
+    email: string;
+    canonical_email_hash: string | null;
+  }>(
+    `SELECT p.display_name, p.bio, p.username::text, p.deleted_at, u.email::text, u.canonical_email_hash
+     FROM brigade.profiles p JOIN brigade.users u ON u.id = p.user_id WHERE p.id = $1`,
+    [doomedProfile],
+  );
+  const row = purged.rows[0];
+  check("personal details are erased", row?.display_name === "Deleted member" && row?.bio === null);
+  check("the email address is gone", row?.email.endsWith("@invalid") === true);
+  check("the username is released but cannot collide", row?.username.startsWith("deleted_") === true);
+  check("the tombstone remains rather than a hard delete", row?.deleted_at !== null);
+  check(
+    "the ban hash survives erasure — otherwise deletion is a ban-evasion tool",
+    row?.canonical_email_hash === hashBefore.rows[0]?.canonical_email_hash,
+  );
+  const experiencesGone = await pool.query(
+    `SELECT 1 FROM brigade.experiences WHERE profile_id = $1`,
+    [doomedProfile],
+  );
+  check("structured profile content is deleted outright", experiencesGone.rowCount === 0);
+
+  console.log("\nNo placeholder workers remain");
+  const withRedis = buildRegistry(pool, { redis: redis as never });
+  const placeholders: string[] = [];
+  for (const [name, handler] of Object.entries(withRedis)) {
+    try {
+      await handler.perform({});
+    } catch (error) {
+      if (error instanceof Error && error.name === "NotImplementedWorker") placeholders.push(name);
+    }
+  }
+  check(
+    "every registered worker is implemented when Redis is present",
+    placeholders.length === 0,
+    placeholders.join(","),
+  );
 
   console.log(`\n${passed} passed, ${failed} failed`);
   await redis.quit();

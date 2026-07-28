@@ -152,10 +152,16 @@ export class StartEmploymentEmailVerificationService extends BaseService<
     const verificationId = inserted.rows[0]?.id;
     if (!verificationId) throw new ServiceError("Could not start verification", "verification_failed");
 
+    // The token and address travel on the job because the row deliberately
+    // stores only their hashes. That means a live token sits in brigade.jobs
+    // until the mail is sent — acceptable because it is single-use, expires in
+    // 24 hours, and PurgeFinishedJobs (the scheduler) clears finished rows. If
+    // the jobs table ever needs to be readable by a wider audience than the
+    // users table, move this to a separate secrets store.
     ctx.enqueue({
       queue: "mailers",
       worker: "SendVerificationEmailWorker",
-      args: { verificationId },
+      args: { verificationId, token, workEmail: email },
     });
 
     return { verificationId, token, expiresAt };

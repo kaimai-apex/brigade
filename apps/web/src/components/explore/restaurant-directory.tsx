@@ -159,7 +159,7 @@ export function RestaurantDirectory({
             className={cn(
               'h-9 rounded-full border px-3 text-sm font-semibold transition',
               filters.accolade === 'Michelin'
-                ? 'border-gold bg-gold/20 text-[#8a6d1f]'
+                ? 'border-gold bg-gold/20 text-gold-ink'
                 : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50',
             )}
           >

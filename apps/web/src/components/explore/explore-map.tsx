@@ -21,17 +21,17 @@ const PAD = 28;
 
 const LAYERS: { value: MapLayer; label: string; emoji: string; color: string }[] =
   [
-    { value: 'restaurants', label: 'Restaurants', emoji: '🍽️', color: '#c8471f' },
-    { value: 'schools', label: 'Schools', emoji: '🎓', color: '#2d4a9e' },
-    { value: 'suppliers', label: 'Suppliers', emoji: '🛒', color: '#1c4b3d' },
-    { value: 'jobs', label: 'Jobs', emoji: '💼', color: '#e8b84b' },
+    { value: 'restaurants', label: 'Restaurants', emoji: '🍽️', color: 'var(--brand-rust)' },
+    { value: 'schools', label: 'Schools', emoji: '🎓', color: 'var(--brand-cobalt)' },
+    { value: 'suppliers', label: 'Suppliers', emoji: '🛒', color: 'var(--brand-forest)' },
+    { value: 'jobs', label: 'Jobs', emoji: '💼', color: 'var(--brand-gold)' },
   ];
 
 const COLOR: Record<MapLayer, string> = {
-  restaurants: '#c8471f',
-  schools: '#2d4a9e',
-  suppliers: '#1c4b3d',
-  jobs: '#e8b84b',
+  restaurants: 'var(--brand-rust)',
+  schools: 'var(--brand-cobalt)',
+  suppliers: 'var(--brand-forest)',
+  jobs: 'var(--brand-gold)',
 };
 
 export function ExploreMap({
@@ -119,7 +119,7 @@ export function ExploreMap({
             >
               <span
                 className="size-2.5 rounded-full"
-                style={{ background: on ? l.color : '#d4d4d4' }}
+                style={{ background: on ? l.color : 'var(--neutral-300)' }}
               />
               {l.emoji} {l.label}
               <span className="text-xs text-ink/45">{count}</span>
@@ -154,7 +154,7 @@ export function ExploreMap({
         </div>
       )}
 
-      <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-[#eef2ea]">
+      <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-[color:var(--brand-sage-wash)]">
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="h-auto w-full"
@@ -167,7 +167,7 @@ export function ExploreMap({
               <path
                 d="M 40 0 L 0 0 0 40"
                 fill="none"
-                stroke="#dbe3d6"
+                stroke="var(--brand-sage-line)"
                 strokeWidth="1"
               />
             </pattern>
@@ -183,9 +183,9 @@ export function ExploreMap({
                   cx={x}
                   cy={y}
                   r="46"
-                  fill="#c8471f"
+                  fill="var(--brand-rust)"
                   fillOpacity="0.08"
-                  stroke="#c8471f"
+                  stroke="var(--brand-rust)"
                   strokeOpacity="0.35"
                   strokeDasharray="4 4"
                 />
@@ -207,7 +207,7 @@ export function ExploreMap({
                 <circle
                   r={isSel ? 8 : 5.5}
                   fill={COLOR[p.layer]}
-                  stroke="#fff"
+                  stroke="var(--brand-white)"
                   strokeWidth="1.5"
                 />
                 {isSel && (

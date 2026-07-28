@@ -18,28 +18,28 @@ const CARDS: ValueCard[] = [
     title: ['Build Your', 'Network'],
     art: '/hero/hero-host.png',
     blurb: 'Connect with trusted hospitality professionals.',
-    dot: '#1c4b3d',
+    dot: 'var(--brand-forest)',
   },
   {
     className: 'bg-rust text-paper',
     title: ['Learn', 'Together'],
     art: '/hero/chef-chef.png',
     blurb: 'Share knowledge, advice, and industry insights.',
-    dot: '#c8471f',
+    dot: 'var(--brand-rust)',
   },
   {
     className: 'bg-gold text-ink',
     title: ['Discover', 'Opportunities'],
     art: '/hero/hero-manager.png',
     blurb: 'Find jobs, collaborations, and referrals.',
-    dot: '#e8b84b',
+    dot: 'var(--brand-gold)',
   },
   {
     className: 'bg-cobalt text-paper',
     title: ['Build Your', 'Brigade'],
     art: '/hero/chef-cook.png',
     blurb: "Create trusted teams you'll work with again.",
-    dot: '#2d4a9e',
+    dot: 'var(--brand-cobalt)',
   },
 ];
 
