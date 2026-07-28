@@ -89,6 +89,17 @@ jobs:
         if: env.HAS_VERCEL_TOKEN != 'true'
         run: pnpm --filter @connectpro/web build
 
+      # WCAG 2.0 AA is enforceable for Ontario organisations under AODA, and
+      # retrofitting accessibility costs roughly ten times what building with
+      # it does. Public pages only for now — authenticated pages need a
+      # fixture session.
+      - name: Accessibility (axe-core)
+        run: |
+          npx playwright install --with-deps chromium
+          pnpm --filter @connectpro/web start &
+          npx wait-on http://localhost:3100 --timeout 60000
+          pnpm check:a11y
+
   schema:
     runs-on: ubuntu-latest
     services:

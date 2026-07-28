@@ -28,7 +28,9 @@
     "worker": "node --experimental-strip-types packages/core/src/bin/worker.ts",
     "scheduler": "node --experimental-strip-types packages/core/src/bin/scheduler.ts",
     "dev:streaming": "pnpm --filter @brigade/streaming dev",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "check:a11y": "node scripts/check-a11y.mjs",
+    "generate:countries": "node scripts/generate-country-codes.mjs"
   },
   "devDependencies": {
     "@swc-node/register": "^1.11.1",
@@ -37,7 +39,10 @@
     "dotenv-cli": "^8.0.0",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "axe-core": "^4.10.2",
+    "playwright": "^1.49.1",
+    "wait-on": "^8.0.1"
   },
   "engines": {
     "node": ">=22",

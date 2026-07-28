@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -36,7 +36,10 @@ export default function MyBrigadesPage() {
   const [name, setName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
-  async function load() {
+  // Memoised so the effect can depend on it honestly. Declaring the dependency
+  // without this would rebuild `load` every render and re-fetch in a loop —
+  // which is why the rule was being suppressed rather than satisfied.
+  const load = useCallback(async () => {
     if (!session?.userId) return;
     setLoading(true);
     try {
@@ -46,11 +49,11 @@ export default function MyBrigadesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [session?.userId]);
 
   useEffect(() => {
     void load();
-  }, [session?.userId]);
+  }, [load]);
 
   function peerId(c: Connection) {
     return session?.userId === c.senderId ? c.receiverId : c.senderId;

@@ -1,6 +1,7 @@
+import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
 import { getPool } from "@connectpro/common";
 import { ensureWaitlistSchema } from "@/lib/waitlist/ensure-waitlist-schema";
-import { COUNTRY_CODES } from "@/lib/waitlist/country-codes";
+import { DIAL_CODES, countryByIso } from "@/lib/waitlist/country-codes";
 import { subscribeToKit } from "@/lib/waitlist/subscribe-to-kit";
 
 /**
@@ -19,13 +20,14 @@ import { subscribeToKit } from "@/lib/waitlist/subscribe-to-kit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[\d\s().+-]{6,24}$/;
-const VALID_CODES = new Set<string>(COUNTRY_CODES.map((c) => c.code));
 
 export type JoinWaitlistInput = {
   email?: string;
   name?: string;
   phone?: string;
   phoneCountry?: string;
+  /** ISO 3166-1 alpha-2. Optional: older clients send only the dialing code. */
+  phoneCountryIso?: string;
   source?: string;
 };
 
@@ -51,13 +53,30 @@ export class JoinWaitlistService {
     if (!name || name.length < 2) {
       return { ok: false, status: 400, message: "Enter your name." };
     }
-    if (!VALID_CODES.has(phoneCountry)) {
+    if (!DIAL_CODES.has(phoneCountry)) {
       return { ok: false, status: 400, message: "Pick a valid country code." };
     }
 
     const phoneDigits = phoneRaw.replace(/\D/g, "");
     if (!phoneRaw || !PHONE_RE.test(phoneRaw) || phoneDigits.length < 6) {
       return { ok: false, status: 400, message: "Enter a valid phone number." };
+    }
+
+    // When the client tells us which country was picked, check the number
+    // against that country's real numbering plan rather than a digit count.
+    // Deliberately advisory: libphonenumber's metadata lags new ranges, and
+    // rejecting a real number is a lost signup, so only clearly-invalid
+    // numbers for a known country are refused.
+    const iso = input.phoneCountryIso?.trim().toUpperCase();
+    if (iso && countryByIso(iso)) {
+      const parsed = parsePhoneNumberFromString(phoneRaw, iso as CountryCode);
+      if (parsed && !parsed.isPossible()) {
+        return {
+          ok: false,
+          status: 400,
+          message: `That does not look like a valid ${countryByIso(iso)!.name} phone number.`,
+        };
+      }
     }
     if (!email || !EMAIL_RE.test(email)) {
       return { ok: false, status: 400, message: "Enter a valid email address." };

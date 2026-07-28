@@ -431,7 +431,11 @@
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.7;
+  /* Full opacity, not 0.7. At 11px this counts as normal text for WCAG, and
+     muted white on the rust card measured 3.12:1 against a 4.5:1 requirement.
+     The size, weight and tracking already make it read as a quiet masthead;
+     the opacity was doing nothing the type wasn't. */
+  opacity: 1;
 }
 .fan-art {
   align-self: flex-end;

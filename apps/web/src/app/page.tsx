@@ -83,7 +83,7 @@ export default function LandingPage() {
       </div>
 
       {/* Footer strip */}
-      <div className="relative z-10 flex items-center justify-center gap-2 px-5 pb-5 text-xs text-ink/45">
+      <div className="relative z-10 flex items-center justify-center gap-2 px-5 pb-5 text-xs text-ink/60">
         <span>&copy; {new Date().getFullYear()} Brigade</span>
         <span aria-hidden>·</span>
         <span>Every seat at the table.</span>
