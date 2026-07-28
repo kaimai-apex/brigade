@@ -18,7 +18,13 @@
     "infra:down": "docker compose down",
     "infra:logs": "docker compose logs -f",
     "seed:demo": "node scripts/seed-demo.mjs",
-    "ingest:explore": "node scripts/ingest-explore.mjs"
+    "ingest:explore": "node scripts/ingest-explore.mjs",
+    "typecheck": "turbo typecheck",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "check:licenses": "node scripts/check-licenses.mjs",
+    "check:guardrails": "node scripts/check-guardrails.mjs",
+    "verify": "pnpm check:guardrails && pnpm check:architecture && pnpm typecheck && pnpm lint",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "@swc-node/register": "^1.11.1",
@@ -27,5 +33,9 @@
     "dotenv-cli": "^8.0.0",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
   }
 }

@@ -1,0 +1,6 @@
+{
+  "_comment": "Violations that predate the architecture rule. This list may only SHRINK — check-architecture.mjs fails if an entry here no longer violates anything, so fixing one forces removing it. Each entry is 'file::rule'.",
+  "allowed": [
+    "apps/web/src/app/api/waitlist/route.ts::Controllers may not contain DB writes"
+  ]
+}

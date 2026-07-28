@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./tokens.css";
 
 /* ---------------------------------------------------------------------------
    shadcn/ui semantic tokens, bridged to the Brigade brand palette.
@@ -9,50 +10,51 @@
 :root {
   --radius: 0.75rem;
 
-  --background: #ffffff;
-  --foreground: #1a1a17;
+  --background: var(--brand-white);
+  --foreground: var(--brand-ink);
 
-  --card: #ffffff;
-  --card-foreground: #1a1a17;
-  --popover: #ffffff;
-  --popover-foreground: #1a1a17;
+  --card: var(--brand-white);
+  --card-foreground: var(--brand-ink);
+  --popover: var(--brand-white);
+  --popover-foreground: var(--brand-ink);
 
-  --primary: #1a1a17; /* ink */
-  --primary-foreground: #fbf8f1; /* paper */
+  --primary: var(--brand-ink);
+  --primary-foreground: var(--brand-paper-warm);
 
-  --secondary: #e8ecdd; /* pale sage — soft chips */
-  --secondary-foreground: #1c4b3d; /* forest */
+  --secondary: var(--brand-sage-pale); /* soft chips */
+  --secondary-foreground: var(--brand-forest);
 
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
+  --muted: var(--neutral-100);
+  --muted-foreground: var(--neutral-500);
 
-  --accent: #f5f5f5;
-  --accent-foreground: #1c4b3d; /* forest */
+  --accent: var(--neutral-100);
+  --accent-foreground: var(--brand-forest);
 
-  --destructive: #c8471f; /* rust */
-  --destructive-foreground: #fbf8f1;
+  --destructive: var(--brand-rust);
+  --destructive-foreground: var(--brand-paper-warm);
 
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #e8b84b; /* gold — focus */
+  --border: var(--neutral-200);
+  --input: var(--neutral-200);
+  --ring: var(--brand-gold); /* focus */
 
-  --chart-1: #c8471f;
-  --chart-2: #1c4b3d;
-  --chart-3: #2d4a9e;
-  --chart-4: #e8b84b;
-  --chart-5: #c7d2b4;
+  --chart-1: var(--brand-rust);
+  --chart-2: var(--brand-forest);
+  --chart-3: var(--brand-cobalt);
+  --chart-4: var(--brand-gold);
+  --chart-5: var(--brand-sage);
 }
 
 @theme inline {
   /* Brigade named colors */
-  --color-cream: #f4efe2;
-  --color-forest: #1c4b3d;
-  --color-cobalt: #2d4a9e;
-  --color-rust: #c8471f;
-  --color-sage: #c7d2b4;
-  --color-ink: #1a1a17;
-  --color-gold: #e8b84b;
-  --color-paper: #ffffff;
+  --color-cream: var(--brand-cream);
+  --color-forest: var(--brand-forest);
+  --color-cobalt: var(--brand-cobalt);
+  --color-rust: var(--brand-rust);
+  --color-sage: var(--brand-sage);
+  --color-ink: var(--brand-ink);
+  --color-gold: var(--brand-gold);
+  --color-gold-ink: var(--brand-gold-ink);
+  --color-paper: var(--brand-paper);
 
   --font-display: var(--font-fraunces);
   --font-body: var(--font-archivo);
@@ -126,28 +128,28 @@
 .blob-forest {
   width: 150px;
   height: 150px;
-  background: #1c4b3d;
+  background: var(--brand-forest);
   top: 6%;
   right: 8%;
 }
 .blob-gold {
   width: 110px;
   height: 110px;
-  background: #e8b84b;
+  background: var(--brand-gold);
   bottom: 14%;
   left: 2%;
 }
 .blob-rust {
   width: 70px;
   height: 70px;
-  background: #c8471f;
+  background: var(--brand-rust);
   bottom: 2%;
   right: 22%;
 }
 .blob-cobalt {
   width: 100px;
   height: 100px;
-  background: #2d4a9e;
+  background: var(--brand-cobalt);
   top: 0;
   left: 4%;
 }
@@ -370,7 +372,7 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--brand-white);
   color: var(--color-ink);
 }
 

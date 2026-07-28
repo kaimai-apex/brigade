@@ -4,41 +4,114 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Build-time only. Real values live in Vercel; these exist so env validation
+  # and the Next build can run in CI without secrets.
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+  NEXT_PUBLIC_API_URL: http://localhost:3000
+  JWT_SECRET: ci-build-only-not-a-real-secret
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile || pnpm install
+      - run: pnpm install --frozen-lockfile
 
-      - name: Build packages
+      # Cheapest checks first — they need no build and fail fast.
+      - name: Guardrails (no mock data, build errors not silenced)
+        run: pnpm check:guardrails
+
+      - name: Architecture boundaries
+        run: pnpm check:architecture
+
+      # Required. Brigade's design is informed by reading AGPL software, so a
+      # GPL-family dependency arriving through the package tree is the one way
+      # that exposure could still happen. See docs/ARCHITECTURE.md.
+      - name: License scan
+        run: pnpm check:licenses
+
+      - name: Build shared packages
         run: pnpm --filter @connectpro/common build
 
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Lint
-        run: pnpm lint || true
+        run: pnpm lint
 
-      - name: Build services
-        run: |
-          for svc in auth-service user-service connection-service post-service feed-service api-gateway; do
-            pnpm --filter @connectpro/$svc build || true
-          done
+  build:
+    runs-on: ubuntu-latest
+    needs: verify
+    env:
+      HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
 
-      - name: Build web app
-        run: pnpm --filter @connectpro/web build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @connectpro/common build
+
+      # main must always be deployable. With VERCEL_TOKEN configured this builds
+      # exactly the way Vercel does, which catches the class of failure that only
+      # appears in their environment; without it, fall back to the plain Next
+      # build so the gate still exists.
+      - name: Vercel build
+        if: env.HAS_VERCEL_TOKEN == 'true'
         env:
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
-          NEXT_PUBLIC_API_URL: http://localhost:3000
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          pnpm dlx vercel@latest pull --yes --environment=preview --token="${{ secrets.VERCEL_TOKEN }}"
+          pnpm dlx vercel@latest build --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Next build (fallback)
+        if: env.HAS_VERCEL_TOKEN != 'true'
+        run: pnpm --filter @connectpro/web build
+
+  schema:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: brigade
+          POSTGRES_PASSWORD: brigade
+          POSTGRES_DB: brigade_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Every migration applies from scratch, in order, on the same Postgres
+      # major version as production.
+      - name: Apply migrations
+        env:
+          PGPASSWORD: brigade
+        run: |
+          for f in packages/core/db/migrations/*.sql; do
+            echo "applying $f"
+            psql -h localhost -U brigade -d brigade_test -v ON_ERROR_STOP=1 -q -f "$f"
+          done

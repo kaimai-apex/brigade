@@ -185,6 +185,19 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  packages/core:
+    dependencies:
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   services/analytics-service:
     dependencies:
       '@connectpro/common':

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Cheap gates before anything leaves the machine. Bypass with --no-verify only
+# when you know why. CI runs the same checks plus the build.
+set -e
+echo "pre-push: guardrails"
+node scripts/check-guardrails.mjs
+echo "pre-push: architecture"
+node scripts/check-architecture.mjs
+echo "pre-push: typecheck"
+pnpm -s typecheck

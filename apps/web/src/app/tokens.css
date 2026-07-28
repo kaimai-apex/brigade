@@ -1,0 +1,54 @@
+/* ===========================================================================
+   Brigade design tokens — the ONLY file in the app allowed to hold a raw hex
+   value. Everything else references these custom properties.
+   Enforced by scripts/check-guardrails.mjs (run in CI and on pre-push).
+
+   The one exception is src/lib/design/tokens.ts, which mirrors a handful of
+   these for the few places that cannot take a CSS variable (the theme-color
+   meta tag, canvas drawing). Keep the two files in sync.
+   ======================================================================== */
+
+:root {
+  /* -------------------------------------------------------------------
+     Back-of-house palette — the "high end, exclusive, elegant" direction.
+     Grounded in the kitchen, not the dining room: cool near-black, chef
+     white, burner blue.
+
+     NOT YET APPLIED. Landed here so the palette is reviewable before any
+     UI is built against it. The live brand below is unchanged until this
+     is confirmed or replaced.
+     ------------------------------------------------------------------- */
+  --ink: #12161c; /* primary surface — near-black, blue cast, not warm */
+  --bone: #edeeec; /* text on ink — cool chef-white, deliberately not cream */
+  --steel: #8a9099; /* secondary text, rules, dividers */
+  --flame: #3a6fb0; /* single accent, the blue of a gas burner — interactive only */
+  --brass: #b08d57; /* verification marks and member status ONLY — never a button */
+
+  /* -------------------------------------------------------------------
+     Live brand palette — what the app renders today.
+     ------------------------------------------------------------------- */
+  --brand-white: #ffffff;
+  --brand-paper: #ffffff;
+  --brand-cream: #f4efe2;
+  --brand-ink: #1a1a17;
+  --brand-forest: #1c4b3d;
+  --brand-cobalt: #2d4a9e;
+  --brand-rust: #c8471f;
+  --brand-sage: #c7d2b4;
+  --brand-gold: #e8b84b;
+  --brand-gold-ink: #8a6d1f; /* legible gold for text on pale gold */
+  --brand-paper-warm: #fbf8f1;
+  --brand-sage-pale: #e8ecdd;
+  --brand-sage-line: #dbe3d6;
+  --brand-sage-wash: #eef2ea;
+
+  /* Accent colours used by reactions and the explore map */
+  --brand-violet: #8b5cf6;
+  --brand-sky: #0ea5e9;
+
+  /* Neutrals */
+  --neutral-100: #f5f5f5;
+  --neutral-200: #e5e5e5;
+  --neutral-300: #d4d4d4;
+  --neutral-500: #737373;
+}
