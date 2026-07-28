@@ -11,3 +11,8 @@ export * from "./serializers/profile_serializer.ts";
 export * from "./workers/base_worker.ts";
 export * from "./workers/registry.ts";
 export * from "./lib/queue.ts";
+export * from "./services/relationships_service.ts";
+export * from "./services/list_directory_service.ts";
+export * from "./services/verify_employment_service.ts";
+export * from "./lib/api.ts";
+export * from "./lib/directory_scopes.ts";
