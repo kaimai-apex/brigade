@@ -1,4 +1,4 @@
-import type { QueueName } from "../services/base_service.js";
+import type { QueueName } from "../services/base_service.ts";
 
 /**
  * A worker is a retry envelope around a service, and nothing more.

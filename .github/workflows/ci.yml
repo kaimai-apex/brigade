@@ -115,3 +115,15 @@ jobs:
             echo "applying $f"
             psql -h localhost -U brigade -d brigade_test -v ON_ERROR_STOP=1 -q -f "$f"
           done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The service layer, exercised against the schema that was just built.
+      # Tests target the services rather than HTTP endpoints — that is the
+      # whole point of having a service layer.
+      - name: Service layer spec
+        env:
+          CORE_DATABASE_URL: postgresql://brigade:brigade@localhost:5432/brigade_test
+        run: node --experimental-strip-types packages/core/spec/service_layer.spec.ts

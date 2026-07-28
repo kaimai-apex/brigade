@@ -18,6 +18,20 @@ const CONTROLLERS = "apps/web/src/app/api";
 
 const WRITE_SQL = /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|ALTER\s+TABLE|DROP\s+TABLE)\b/i;
 
+/**
+ * Strip comments before matching.
+ *
+ * Without this, a rule fires on its own explanation — a doc comment saying
+ * "serializers never query" trips the no-query rule. A lint rule that flags
+ * prose is one people learn to disable, so the checks only ever look at code.
+ * Line positions are preserved so reported line numbers stay accurate.
+ */
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (_m, p) => p);
+}
+
 /** @type {{name: string, applies: (f: string) => boolean, check: (src: string, f: string) => string[]}[]} */
 const RULES = [
   {
@@ -58,8 +72,20 @@ const RULES = [
     name: "Serializers may not perform queries",
     applies: (f) => f.startsWith(`${CORE}/serializers`),
     check: (src) =>
-      /\b(query|execute|findMany|SELECT\s)\b/i.test(src)
-        ? ["appears to query; serializers receive preloaded data (N+1 defence)"]
+      /\.(query|execute|findMany|findFirst)\s*\(/.test(src) || /\bSELECT\s+[\w*]/i.test(src)
+        ? ["performs a query; serializers receive preloaded data (N+1 defence)"]
+        : [],
+  },
+  {
+    // Exit criterion for the service layer: NotifyService is the ONLY place a
+    // notification is created. Scattered across a dozen services, muting,
+    // batching, digests and per-type preferences each have to be implemented a
+    // dozen times — and one will be missed.
+    name: "Notifications are created only by NotifyService",
+    applies: (f) => !f.endsWith("notify_service.ts"),
+    check: (src) =>
+      /INSERT\s+INTO\s+brigade\.notifications/i.test(src)
+        ? ["writes brigade.notifications directly; call NotifyService instead"]
         : [],
   },
   {
@@ -93,7 +119,7 @@ async function* walk(dir) {
 const violations = [];
 for (const dir of [CORE, CONTROLLERS]) {
   for await (const file of walk(dir)) {
-    const src = readFileSync(path.join(ROOT, file), "utf8");
+    const src = stripComments(readFileSync(path.join(ROOT, file), "utf8"));
     for (const rule of RULES) {
       if (!rule.applies(file)) continue;
       for (const detail of rule.check(src, file)) {

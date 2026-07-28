@@ -1,19 +1,20 @@
 import type { Pool } from "pg";
-import type { Enqueued, ServiceContext } from "./base_service.js";
+import { enqueue } from "../lib/queue.ts";
+import type { Enqueued, ServiceContext } from "./base_service.ts";
 
 /**
- * Runs a service inside a transaction and flushes its enqueued jobs only after
- * that transaction commits.
+ * Runs a service inside a transaction, writing its enqueued jobs in that same
+ * transaction.
  *
- * The ordering is the point. Enqueue inside the transaction and a rollback
- * leaves a job pointing at a row that was never created; enqueue before the
- * commit and a fast worker can start before the row is visible. Collecting the
- * jobs and flushing them afterwards removes both failure modes.
+ * This is the payoff of a Postgres-backed queue. With an external broker you
+ * have to choose between enqueueing before the commit (a fast worker can start
+ * before the row is visible) and after it (a crash in between loses the job).
+ * Writing the job row transactionally removes the choice: the job and the data
+ * it refers to become visible at the same instant, or neither does.
  */
 export async function runService<T>(
   pool: Pool,
   body: (ctx: ServiceContext) => Promise<T>,
-  flush: (jobs: Enqueued[]) => Promise<void>,
 ): Promise<T> {
   const client = await pool.connect();
   const jobs: Enqueued[] = [];
@@ -26,14 +27,8 @@ export async function runService<T>(
         jobs.push(job);
       },
     });
+    await enqueue(client, jobs);
     await client.query("COMMIT");
-
-    // A failure here must not undo committed work — the jobs are recoverable
-    // (workers are idempotent and schedulers reconcile), the transaction is not.
-    await flush(jobs).catch((error) => {
-      console.error("[core] failed to flush jobs after commit", { error, jobs });
-    });
-
     return result;
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);

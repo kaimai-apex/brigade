@@ -53,14 +53,24 @@ export interface ServiceContext {
 }
 
 export class ServiceError extends Error {
+  // Written out rather than declared as constructor parameter properties: those
+  // need a TypeScript transform, and this package runs directly under Node's
+  // type stripping with no build step.
+  readonly code: string;
+  readonly status: number;
+  readonly details?: Record<string, string[]>;
+
   constructor(
     message: string,
-    readonly code: string,
-    readonly status = 422,
-    readonly details?: Record<string, string[]>,
+    code: string,
+    status = 422,
+    details?: Record<string, string[]>,
   ) {
     super(message);
     this.name = "ServiceError";
+    this.code = code;
+    this.status = status;
+    this.details = details;
   }
 }
 

@@ -1,4 +1,4 @@
-import { BaseService, ForbiddenError, ServiceError, type ServiceContext } from "./base_service.js";
+import { BaseService, ForbiddenError, ServiceError, type ServiceContext } from "./base_service.ts";
 
 /**
  * BlockService is the one that is easy to get half-right, and a leaky block is
