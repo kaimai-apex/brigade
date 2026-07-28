@@ -16,3 +16,7 @@ export * from "./services/list_directory_service.ts";
 export * from "./services/verify_employment_service.ts";
 export * from "./lib/api.ts";
 export * from "./lib/directory_scopes.ts";
+export * from "./services/moderation_services.ts";
+export * from "./services/post_services.ts";
+export * from "./services/fan_out_on_write_service.ts";
+export * from "./lib/feed_manager.ts";

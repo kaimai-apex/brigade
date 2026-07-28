@@ -280,11 +280,15 @@ async function main() {
       .filter((r) => r.worker === "ProfileCompletenessWorker")
       .every((r) => r.state === "succeeded"),
   );
+  // This registry was built without Redis. Feed work then dead-letters with an
+  // explicit reason rather than silently succeeding — a deployment missing its
+  // cache should fail loudly, not leave every feed quietly empty.
   check(
-    "unimplemented feed workers dead-letter with an explicit reason",
+    "without Redis, feed workers dead-letter with an explicit reason",
     workerStates.rows
       .filter((r) => r.worker === "BootstrapFeedWorker")
-      .every((r) => r.state === "dead" && r.last_error.includes("Phase 4")),
+      .every((r) => r.state === "dead" && r.last_error.includes("no Redis configured")),
+    JSON.stringify(workerStates.rows.filter((r) => r.worker === "BootstrapFeedWorker")),
   );
 
   console.log("\nCompleteness");

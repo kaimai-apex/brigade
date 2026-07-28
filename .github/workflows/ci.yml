@@ -92,6 +92,12 @@ jobs:
   schema:
     runs-on: ubuntu-latest
     services:
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s
+          --health-timeout 5s --health-retries 5
       postgres:
         image: postgres:16
         env:
@@ -126,6 +132,8 @@ jobs:
       - name: Core specs
         env:
           CORE_DATABASE_URL: postgresql://brigade:brigade@localhost:5432/brigade_test
+          CORE_REDIS_URL: redis://localhost:6379
         run: |
           node --experimental-strip-types packages/core/spec/service_layer.spec.ts
           node --experimental-strip-types packages/core/spec/directory_and_verification.spec.ts
+          node --experimental-strip-types packages/core/spec/feeds_and_moderation.spec.ts

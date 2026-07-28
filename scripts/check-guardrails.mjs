@@ -97,7 +97,31 @@ for (const dir of SOURCE_DIRS) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. next.config must not silence errors
+// 3. packages/core runs under Node's type stripping, with no build step.
+//
+// Strip-only mode cannot handle syntax that needs a real transform. The failure
+// is a runtime crash at import time rather than a type error, so tsc does not
+// catch it — this does.
+// ---------------------------------------------------------------------------
+const STRIP_UNSAFE = [
+  [/constructor\s*\([^)]*\b(private|public|protected|readonly)\s+\w/s, "constructor parameter property"],
+  [/^\s*enum\s+\w/m, "enum (use a const object with `as const`)"],
+  [/\bnamespace\s+\w+\s*\{/, "namespace"],
+];
+
+for await (const file of sources("packages/core/src")) {
+  const src = readFileSync(path.join(ROOT, file), "utf8");
+  for (const [pattern, what] of STRIP_UNSAFE) {
+    if (pattern.test(src)) {
+      failures.push(
+        `${file}: uses a ${what}, which Node's type stripping cannot run. Write it out explicitly.`,
+      );
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. next.config must not silence errors
 // ---------------------------------------------------------------------------
 for (const config of ["apps/web/next.config.ts", "apps/web/next.config.mjs", "apps/web/next.config.js"]) {
   const full = path.join(ROOT, config);
