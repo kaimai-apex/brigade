@@ -24,7 +24,11 @@
     "check:licenses": "node scripts/check-licenses.mjs",
     "check:guardrails": "node scripts/check-guardrails.mjs",
     "verify": "pnpm check:guardrails && pnpm check:architecture && pnpm typecheck && pnpm lint",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "worker": "node --experimental-strip-types packages/core/src/bin/worker.ts",
+    "scheduler": "node --experimental-strip-types packages/core/src/bin/scheduler.ts",
+    "dev:streaming": "pnpm --filter @brigade/streaming dev",
+    "db:migrate": "node scripts/migrate.mjs"
   },
   "devDependencies": {
     "@swc-node/register": "^1.11.1",
@@ -32,7 +36,8 @@
     "concurrently": "^9.1.2",
     "dotenv-cli": "^8.0.0",
     "turbo": "^2.5.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "pg": "^8.13.1"
   },
   "engines": {
     "node": ">=22",

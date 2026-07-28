@@ -113,18 +113,26 @@ jobs:
 
       # Every migration applies from scratch, in order, on the same Postgres
       # major version as production.
-      - name: Apply migrations
-        env:
-          PGPASSWORD: brigade
-        run: |
-          for f in packages/core/db/migrations/*.sql; do
-            echo "applying $f"
-            psql -h localhost -U brigade -d brigade_test -v ON_ERROR_STOP=1 -q -f "$f"
-          done
-
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Through the real migration runner, so the thing that runs on deploy is
+      # the thing CI exercises.
+      - name: Apply migrations
+        env:
+          DATABASE_URL: postgresql://brigade:brigade@localhost:5432/brigade_test
+        run: pnpm db:migrate
+
+      - name: Migrations are idempotent
+        env:
+          DATABASE_URL: postgresql://brigade:brigade@localhost:5432/brigade_test
+        run: pnpm db:migrate | grep -q "nothing to do"
 
       # The service layer, exercised against the schema that was just built.
       # Tests target the services rather than HTTP endpoints — that is the
@@ -137,3 +145,4 @@ jobs:
           node --experimental-strip-types packages/core/spec/service_layer.spec.ts
           node --experimental-strip-types packages/core/spec/directory_and_verification.spec.ts
           node --experimental-strip-types packages/core/spec/feeds_and_moderation.spec.ts
+          node --experimental-strip-types streaming/spec/streaming.spec.ts
