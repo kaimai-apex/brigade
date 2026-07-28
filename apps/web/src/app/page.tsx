@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { RoleDeck } from "@/components/landing/role-deck";
-import { isDemoAccessEnabled } from "@/lib/auth/demo-access";
 
 /**
  * Public landing — full-screen, waitlist-first. A single hero: "Find Your
@@ -10,8 +9,6 @@ import { isDemoAccessEnabled } from "@/lib/auth/demo-access";
  */
 
 export default function LandingPage() {
-  const demoOpen = isDemoAccessEnabled();
-
   return (
     <main className="brigade-landing">
       {/* Top bar */}
@@ -22,18 +19,10 @@ export default function LandingPage() {
         >
           Brigade
         </Link>
+        {/* No demo link. /demo still exists and still needs the password, but
+            nothing points at it — it is for sharing deliberately, not for
+            visitors to find. */}
         <nav className="flex items-center gap-2 sm:gap-3">
-          {demoOpen && (
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="rounded-full px-4"
-            >
-              {/* Password-gated walkthrough of the product. */}
-              <Link href="/demo">See the demo</Link>
-            </Button>
-          )}
           <Button
             asChild
             variant="gold"
