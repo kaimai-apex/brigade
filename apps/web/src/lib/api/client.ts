@@ -265,12 +265,21 @@ export class ApiClient {
     );
   }
 
+  // Direct-DB, like the directory and connections: notification-service is not
+  // deployed to the hosted site, so proxying these to the gateway made every
+  // notification vanish in production.
   getNotifications() {
-    return this.request<{ data: Notification[] }>('/api/v1/notifications');
+    return this.localRequest<{ data: Notification[] }>('/api/notifications');
   }
 
   markNotificationRead(id: string) {
-    return this.request(`/api/v1/notifications/${id}/read`, { method: 'POST' });
+    return this.localRequest(`/api/notifications/${id}/read`, { method: 'POST' });
+  }
+
+  markAllNotificationsRead() {
+    return this.localRequest<{ updated: number }>('/api/notifications/read-all', {
+      method: 'POST',
+    });
   }
 
   getRecommendedPeople() {

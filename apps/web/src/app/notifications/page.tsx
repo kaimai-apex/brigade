@@ -44,6 +44,11 @@ function notificationCopy(n: Notification): { title: string; preview?: string } 
   if (n.type.includes('comment')) {
     return { title: `${actor} commented on your post`, preview };
   }
+  // Before the generic connection branch — an acceptance also contains
+  // "connection" and would otherwise read as a fresh invitation.
+  if (n.type.includes('accept')) {
+    return { title: `${actor} joined your Brigade`, preview };
+  }
   if (n.type.includes('connection') || n.type.includes('brigade')) {
     return { title: `${actor} invited you to their Brigade`, preview };
   }
@@ -88,9 +93,10 @@ export default function NotificationsPage() {
   }
 
   async function markAllRead() {
-    const unread = items.filter((n) => !n.readAt);
-    if (unread.length === 0) return;
-    await Promise.all(unread.map((n) => api.markNotificationRead(n.id)));
+    if (items.every((n) => n.readAt)) return;
+    // One statement server-side. This used to fire a request per unread row,
+    // so the longer you left the bell alone the heavier clearing it became.
+    await api.markAllNotificationsRead();
     toast.success('All caught up');
     await load();
   }

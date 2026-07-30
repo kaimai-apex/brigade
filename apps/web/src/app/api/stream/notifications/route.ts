@@ -1,6 +1,6 @@
-import { cookies } from 'next/headers';
 import { getConnectProSession } from '@/lib/connectpro/server';
 import { sseFromRedis } from '@/lib/server/sse';
+import { dbListNotifications } from '@/lib/server/notify-db';
 
 /**
  * Live notification stream — true push via the Redis channel notif:<userId>
@@ -8,30 +8,20 @@ import { sseFromRedis } from '@/lib/server/sse';
  * event primes the unread count.
  */
 
-const GATEWAY = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const session = await getConnectProSession();
   if (!session?.userId) return new Response('Unauthorized', { status: 401 });
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get('connectpro_access_token')?.value;
-
   return sseFromRedis(`notif:${session.userId}`, {
+    // Primed from Postgres directly. This used to call the gateway, which does
+    // not exist on the hosted site, so the badge always primed to 0 there even
+    // when unread notifications were waiting.
     prime: async () => {
       try {
-        const res = await fetch(`${GATEWAY}/api/v1/notifications`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          cache: 'no-store',
-        });
-        if (!res.ok) return { event: 'init', unread: 0 };
-        const json = (await res.json()) as {
-          data?: { readAt?: string | null }[];
-        };
-        const unread = (json.data ?? []).filter((n) => !n.readAt).length;
-        return { event: 'init', unread };
+        const rows = await dbListNotifications(session.userId, 100);
+        return { event: 'init', unread: rows.filter((n) => !n.readAt).length };
       } catch {
         return { event: 'init', unread: 0 };
       }
