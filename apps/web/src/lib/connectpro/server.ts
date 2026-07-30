@@ -6,7 +6,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 export type ConnectProSession = {
   userId: string;
   accessToken: string;
+  /** From the JWT, so it cannot be forged without the signing secret. */
+  roles: string[];
 };
+
+/** Matches the roles analytics-service's admin controller accepts. */
+const ADMIN_ROLES = ['SYSTEM_ADMIN', 'MODERATOR'];
+
+export function isAdmin(session: ConnectProSession | null): boolean {
+  return Boolean(session?.roles.some((role) => ADMIN_ROLES.includes(role)));
+}
 
 export async function getConnectProSession(): Promise<ConnectProSession | null> {
   const cookieStore = await cookies();
@@ -22,7 +31,11 @@ export async function getConnectProSession(): Promise<ConnectProSession | null> 
     if (cookieUserId && cookieUserId !== payload.sub) {
       return null;
     }
-    return { userId: payload.sub, accessToken };
+    return {
+      userId: payload.sub,
+      accessToken,
+      roles: Array.isArray(payload.roles) ? payload.roles : [],
+    };
   } catch {
     return null;
   }
