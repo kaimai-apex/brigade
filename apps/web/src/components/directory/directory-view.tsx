@@ -221,8 +221,11 @@ export function DirectoryView({
             </div>
           )}
 
-          {/* Controls row: mobile filters + count + sort + view toggle */}
-          <div className="flex items-center gap-2">
+          {/* Controls row: mobile filters + count + sort + view toggle.
+              Wraps because at 375px the four controls total ~395px — unwrapped
+              they widened the document and gave every page a horizontal scroll,
+              since the fixed bottom tab bar then stretched to match. */}
+          <div className="flex flex-wrap items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="lg:hidden">

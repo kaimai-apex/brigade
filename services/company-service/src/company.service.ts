@@ -27,7 +27,7 @@ export class CompanyService implements OnModuleDestroy {
   async list(limit = 50) {
     const result = await this.pool.query(
       `SELECT c.*,
-        (SELECT count(*) FROM jobs.company_followers cf WHERE cf.company_id = c.id) as follower_count
+        (SELECT count(*)::int FROM jobs.company_followers cf WHERE cf.company_id = c.id) as follower_count
        FROM jobs.companies c
        WHERE c.deleted_at IS NULL
        ORDER BY c.created_at DESC
@@ -103,7 +103,7 @@ export class CompanyService implements OnModuleDestroy {
 
   async get(companyIdOrSlug: string) {
     const result = await this.pool.query(
-      `SELECT c.*, (SELECT count(*) FROM jobs.company_followers cf WHERE cf.company_id = c.id) as follower_count
+      `SELECT c.*, (SELECT count(*)::int FROM jobs.company_followers cf WHERE cf.company_id = c.id) as follower_count
        FROM jobs.companies c
        WHERE c.deleted_at IS NULL
          AND (c.id::text = $1 OR c.slug = $1)`,
@@ -167,11 +167,11 @@ export class CompanyService implements OnModuleDestroy {
   async analytics(companyId: string, userId: string) {
     await this.assertOwner(companyId, userId);
     const followers = await this.pool.query(
-      'SELECT count(*) FROM jobs.company_followers WHERE company_id = $1',
+      'SELECT count(*)::int AS count FROM jobs.company_followers WHERE company_id = $1',
       [companyId],
     );
     const jobs = await this.pool.query(
-      'SELECT count(*) FROM jobs.jobs WHERE company_id = $1 AND deleted_at IS NULL',
+      'SELECT count(*)::int AS count FROM jobs.jobs WHERE company_id = $1 AND deleted_at IS NULL',
       [companyId],
     );
     return {
@@ -192,7 +192,12 @@ export class CompanyService implements OnModuleDestroy {
       logoUrl: row.logo_url,
       ownerUserId: row.owner_user_id ?? null,
       createdBy: row.owner_user_id ?? null,
-      followerCount: row.follower_count,
+      // The count is cast ::int in SQL (as everywhere else in this codebase),
+      // because node-pg hands back bare bigint as a *string* — which broke both
+      // arithmetic ("1" + 1 rendered "11" on follow) and the strict count === 1
+      // test in pluralize(), which printed "1 followers". Number() guards the
+      // legacy shape without re-introducing that.
+      followerCount: Number(row.follower_count ?? 0),
       createdAt: row.created_at,
     };
   }
