@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Compass,
   LogOut,
+  GraduationCap,
   MessageSquare,
   Newspaper,
   Search,
@@ -50,6 +51,14 @@ const NAV_ITEMS = [
     match: (p: string) => p.startsWith('/directory') || p.startsWith('/discover'),
   },
   {
+    href: '/mentors',
+    label: 'Mentors',
+    icon: GraduationCap,
+    // /mentorship is the mentor's own admin page, not the directory, so it
+    // deliberately does not light this tab.
+    match: (p: string) => p.startsWith('/mentors'),
+  },
+  {
     href: '/messages',
     label: 'Messages',
     icon: MessageSquare,
@@ -81,6 +90,23 @@ function AccountMenuItems({
       <DropdownMenuItem asChild>
         <Link href="/settings/profile">
           <Settings className="size-4" /> Edit profile
+        </Link>
+      </DropdownMenuItem>
+      {/* The bottom tab bar holds five tabs; a sixth is too narrow to hit at
+          375px. These live here so mentoring is still reachable on a phone. */}
+      <DropdownMenuItem asChild>
+        <Link href="/mentors">
+          <GraduationCap className="size-4" /> Mentors
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/sessions">
+          <GraduationCap className="size-4" /> Your sessions
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/mentorship">
+          <GraduationCap className="size-4" /> Your mentoring
         </Link>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
