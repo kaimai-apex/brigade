@@ -112,6 +112,17 @@ The suspension writes `suspended_at` and enqueues `RevokeSessionsWorker`. If the
 account is still acting, that job did not run — see failure mode 1. Until it
 does, the account keeps its session until the token expires.
 
+### 7. `pnpm verify` fails with exit 139 and no error message
+
+Node segfaulting in its own shutdown, not a failing check — note that every step
+printed its success line first. Node's `process.exit()` runs static destructors
+that crash against the allocator in current macOS; the repo's own scripts avoid
+it by setting `process.exitCode`.
+
+Re-run it: a genuine failure repeats and names a file, this does not. If it
+starts happening often, run the repo's Node version — `.nvmrc` pins 22, and CI
+uses it. Full write-up in `scripts/README-exit-codes.md`.
+
 ---
 
 ## Things that are true and worth remembering

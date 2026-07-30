@@ -149,27 +149,29 @@ const seen = new Set(violations.map(key));
 const unexpected = violations.filter((v) => !baseline.includes(key(v)));
 const stale = baseline.filter((entry) => !seen.has(entry));
 
+// Report, then set the exit code and let the event loop drain. This used to
+// end in process.exit(), which crashed at random — see
+// scripts/README-exit-codes.md for the stack trace and the measurement.
 if (unexpected.length === 0 && stale.length === 0) {
   const suffix = baseline.length ? `, ${baseline.length} baselined` : "";
   console.log(`architecture: OK (${RULES.length} rules${suffix})`);
-  process.exit(0);
-}
-
-if (unexpected.length) {
-  console.error(`architecture: ${unexpected.length} new violation(s)\n`);
-  for (const v of unexpected) {
-    console.error(`  ${v.file}`);
-    console.error(`    ${v.rule}`);
-    console.error(`    → ${v.detail}\n`);
+} else {
+  if (unexpected.length) {
+    console.error(`architecture: ${unexpected.length} new violation(s)\n`);
+    for (const v of unexpected) {
+      console.error(`  ${v.file}`);
+      console.error(`    ${v.rule}`);
+      console.error(`    → ${v.detail}\n`);
+    }
   }
-}
 
-if (stale.length) {
-  console.error(
-    `architecture: ${stale.length} baseline entr(ies) no longer violate anything.\n` +
-      `Remove them from .architecture-baseline.json — the baseline only shrinks.\n`,
-  );
-  for (const entry of stale) console.error(`  ${entry}`);
-}
+  if (stale.length) {
+    console.error(
+      `architecture: ${stale.length} baseline entr(ies) no longer violate anything.\n` +
+        `Remove them from .architecture-baseline.json — the baseline only shrinks.\n`,
+    );
+    for (const entry of stale) console.error(`  ${entry}`);
+  }
 
-process.exit(1);
+  process.exitCode = 1;
+}

@@ -50,6 +50,9 @@ async function* packages(dir, depth = 0) {
 
 if (!existsSync(MODULES)) {
   console.error("license-scan: node_modules not found — run pnpm install first");
+  // A genuine early abort: nothing below can run without node_modules, so this
+  // one keeps process.exit(). It is reached only when the checkout is already
+  // broken, not on the routine path the crash affects.
   process.exit(1);
 }
 
@@ -86,11 +89,12 @@ if (notable.length) {
   for (const n of notable) console.log(`  ${n}`);
 }
 
+// exitCode rather than process.exit() — see scripts/README-exit-codes.md.
 if (offenders.length) {
   console.error(`\nlicense-scan: ${offenders.length} forbidden license(s) in the dependency tree\n`);
   for (const o of offenders) console.error(`  ${o}`);
   console.error("\nGPL-family and source-available licenses are not permitted — see docs/ARCHITECTURE.md.");
-  process.exit(1);
+  process.exitCode = 1;
+} else {
+  console.log(`license-scan: OK (${scanned} packages scanned, 0 forbidden)`);
 }
-
-console.log(`license-scan: OK (${scanned} packages scanned, 0 forbidden)`);

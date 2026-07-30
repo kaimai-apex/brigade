@@ -181,7 +181,11 @@ for (const config of ["apps/web/next.config.ts", "apps/web/next.config.mjs", "ap
 if (failures.length) {
   console.error(`guardrails: ${failures.length} violation(s)\n`);
   for (const f of failures) console.error(`  ${f}`);
-  process.exit(1);
+  // Set the code and let the loop drain rather than calling process.exit():
+  // see scripts/README-exit-codes.md. Same status, no random SIGSEGV.
+  process.exitCode = 1;
+} else {
+  console.log(
+    "guardrails: OK (no fake-data deps, no mock data in source, build errors not silenced)",
+  );
 }
-
-console.log("guardrails: OK (no fake-data deps, no mock data in source, build errors not silenced)");
