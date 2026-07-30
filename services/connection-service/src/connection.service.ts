@@ -28,6 +28,17 @@ export class ConnectionService implements OnModuleInit, OnModuleDestroy {
 
   async sendRequest(senderId: string, receiverId: string) {
     if (senderId === receiverId) throw new ConflictError('Cannot connect with yourself');
+    // connections.connections carries no foreign key to users.profiles — no FK
+    // in this database crosses a schema, because each service owns its own.
+    // That makes the existence check this service's job: without it a typo'd or
+    // stale id produces a perfectly valid-looking pending invitation addressed
+    // to nobody, which no later query can distinguish from a real one.
+    const receiver = await this.pool.query(
+      'SELECT 1 FROM users.profiles WHERE user_id = $1',
+      [receiverId],
+    );
+    if (receiver.rows.length === 0) throw new NotFoundError('Member not found');
+
     const existing = await this.pool.query(
       `SELECT id, status FROM connections.connections
        WHERE (sender_id = $1 AND receiver_id = $2)

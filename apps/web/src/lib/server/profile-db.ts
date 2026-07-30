@@ -1,6 +1,7 @@
 import { getPool } from "@connectpro/common";
 import type { DirectoryParams } from "@/lib/directory/params";
 import { ensureDirectorySchema } from "@/lib/server/ensure-directory-schema";
+import { dbNotify } from "@/lib/server/notify-db";
 
 /**
  * Direct-Postgres data layer for profiles, the member directory and connections.
@@ -425,14 +426,44 @@ export async function dbSendConnectionRequest(senderId: string, receiverId: stri
   if (senderId === receiverId) {
     throw new Error("You cannot invite yourself");
   }
+  // connections.connections carries no foreign keys, so nothing in the database
+  // rejects an invitation addressed to a user that does not exist. Check here,
+  // or the API cheerfully returns 201 for a typo'd id.
+  const receiver = await pool().query(
+    "SELECT first_name, last_name FROM users.profiles WHERE user_id = $1",
+    [receiverId],
+  );
+  if (receiver.rows.length === 0) {
+    throw new Error("That member does not exist");
+  }
+
   const res = await pool().query(
     `INSERT INTO connections.connections (sender_id, receiver_id, status)
      VALUES ($1, $2, 'pending')
      ON CONFLICT (sender_id, receiver_id) DO UPDATE SET updated_at = now()
-     RETURNING id, sender_id, receiver_id, status`,
+     RETURNING id, sender_id, receiver_id, status,
+               (xmax = 0) AS inserted`,
     [senderId, receiverId],
   );
   const row = res.rows[0];
+
+  // Only on a genuinely new invitation — re-sending must not spam the receiver.
+  if (row.inserted) {
+    const sender = await pool().query(
+      "SELECT first_name, last_name, headline FROM users.profiles WHERE user_id = $1",
+      [senderId],
+    );
+    const s = sender.rows[0];
+    await dbNotify(receiverId, "connection_request", {
+      connectionId: row.id,
+      actorId: senderId,
+      // `actorName` is the key the notifications renderer reads; anything else
+      // silently degrades to "Brigade Member".
+      actorName: s ? `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim() : undefined,
+      actorHeadline: s?.headline ?? undefined,
+    });
+  }
+
   return {
     id: row.id,
     senderId: row.sender_id,
@@ -473,9 +504,26 @@ export async function dbRespondToConnection(
 ) {
   const res = await pool().query(
     `UPDATE connections.connections SET status = $1, updated_at = now()
-     WHERE id = $2 AND receiver_id = $3 RETURNING id, status`,
+     WHERE id = $2 AND receiver_id = $3 RETURNING id, status, sender_id`,
     [status, connectionId, userId],
   );
   if (res.rows.length === 0) throw new Error("Invitation not found");
+
+  // Tell the sender they were accepted. A rejection is deliberately silent —
+  // there is nothing kind or useful in notifying someone they were turned down.
+  if (status === "accepted") {
+    const accepter = await pool().query(
+      "SELECT first_name, last_name, headline FROM users.profiles WHERE user_id = $1",
+      [userId],
+    );
+    const a = accepter.rows[0];
+    await dbNotify(res.rows[0].sender_id, "connection_accepted", {
+      connectionId: res.rows[0].id,
+      actorId: userId,
+      actorName: a ? `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim() : undefined,
+      actorHeadline: a?.headline ?? undefined,
+    });
+  }
+
   return { id: res.rows[0].id, status: res.rows[0].status };
 }
