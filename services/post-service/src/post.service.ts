@@ -201,6 +201,15 @@ export class PostService implements OnModuleDestroy {
         authorId: post.rows[0].author_id,
       });
     }
+    // Always announce the change, including a type swap that leaves like_count
+    // alone. The cached feed embeds the reaction breakdown and the viewer's own
+    // reaction, so without this the reader sees its own reaction vanish on the
+    // next load and stay gone until the 5-minute TTL lapses.
+    await this.kafka.publish('post-reacted', 'post.reacted', {
+      postId,
+      userId,
+      authorId: post.rows[0].author_id,
+    });
     return { success: true, reaction };
   }
 
@@ -219,6 +228,7 @@ export class PostService implements OnModuleDestroy {
         'UPDATE posts.posts SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1',
         [postId],
       );
+      await this.kafka.publish('post-reacted', 'post.reacted', { postId, userId });
     }
     return { success: true };
   }

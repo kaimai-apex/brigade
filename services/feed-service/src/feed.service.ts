@@ -18,6 +18,10 @@ interface PostCreatedPayload {
   createdAt: string;
 }
 
+interface PostReactedPayload {
+  postId: string;
+}
+
 @Injectable()
 export class FeedService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool;
@@ -35,10 +39,13 @@ export class FeedService implements OnModuleInit, OnModuleDestroy {
     await this.redis.connect();
     await this.kafka.subscribe(
       'feed-service',
-      ['post-created', 'connection-created', 'user-followed'],
+      ['post-created', 'post-reacted', 'connection-created', 'user-followed'],
       async (event) => {
         if (event.type === 'post.created') {
           await this.fanoutPost(event as DomainEvent<PostCreatedPayload>);
+        }
+        if (event.type === 'post.reacted') {
+          await this.invalidateForPost(event as DomainEvent<PostReactedPayload>);
         }
       },
     );
@@ -75,6 +82,24 @@ export class FeedService implements OnModuleInit, OnModuleDestroy {
       );
       await this.redis.del(`feed:${userId}`);
     }
+  }
+
+  /**
+   * Drop the cached feed of everyone who has this post in their timeline.
+   *
+   * The cached payload embeds each post's reaction breakdown and the viewer's
+   * own reaction, so a reaction makes every copy of it stale — not just the
+   * reactor's. Feeds are a rebuildable cache: deleting is always safe, the next
+   * read repopulates from Postgres.
+   */
+  private async invalidateForPost(event: DomainEvent<PostReactedPayload>) {
+    const { postId } = event.payload;
+    if (!postId) return;
+    const holders = await this.pool.query(
+      'SELECT user_id FROM posts.home_timeline WHERE post_id = $1',
+      [postId],
+    );
+    await Promise.all(holders.rows.map((r) => this.redis.del(`feed:${r.user_id}`)));
   }
 
   async getFeed(userId: string, limit = 20) {
