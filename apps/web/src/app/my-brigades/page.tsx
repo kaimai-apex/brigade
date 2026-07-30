@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,8 +10,10 @@ import {
   createBrigade,
   deleteBrigade,
   listBrigades,
+  importLegacyTeams,
   type Brigade,
 } from '@/lib/brigades/storage';
+import { usePersonNames } from '@/hooks/use-person-names';
 import { AppPage } from '@/components/layout/app-shell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +22,6 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-
-function initials(text: string) {
-  const parts = text.trim().split(' ').filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return text.slice(0, 2).toUpperCase() || '?';
-}
 
 export default function MyBrigadesPage() {
   const { session } = useAuth();
@@ -43,9 +39,28 @@ export default function MyBrigadesPage() {
     if (!session?.userId) return;
     setLoading(true);
     try {
-      const res = await api.getConnections('accepted');
+      // One-time move of anything left in localStorage by the old
+      // implementation, before the first read — otherwise the page would come
+      // up empty and look like the teams had been thrown away.
+      try {
+        const imported = await importLegacyTeams(session.userId);
+        if (imported > 0) {
+          toast.success(
+            imported === 1
+              ? 'Moved your saved Brigade to your account'
+              : `Moved ${imported} saved Brigades to your account`,
+          );
+        }
+      } catch {
+        toast.error('Could not move your locally saved Brigades — they are still on this device');
+      }
+
+      const [res, teams] = await Promise.all([
+        api.getConnections('accepted'),
+        listBrigades(),
+      ]);
       setConnections(res.data);
-      setBrigades(listBrigades(session.userId));
+      setBrigades(teams);
     } finally {
       setLoading(false);
     }
@@ -59,28 +74,52 @@ export default function MyBrigadesPage() {
     return session?.userId === c.senderId ? c.receiverId : c.senderId;
   }
 
+  // Every id shown anywhere on this page: the people you can pick, plus the
+  // members already in a saved Brigade. The picker used to render a truncated
+  // UUID, which made choosing a team guesswork.
+  const personIds = useMemo(
+    () => [
+      ...connections.map((c) => peerId(c)),
+      ...brigades.flatMap((b) => b.memberIds),
+    ],
+    // peerId only reads session.userId, which is in the dep list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [connections, brigades, session?.userId],
+  );
+  const { label, initialsFor } = usePersonNames(personIds);
+
   function toggleMember(userId: string) {
     setSelectedMembers((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
     );
   }
 
-  function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!session?.userId || !name.trim()) return;
-    createBrigade(session.userId, name, selectedMembers);
-    toast.success(`Brigade "${name.trim()}" created`);
-    setName('');
-    setSelectedMembers([]);
-    setCreating(false);
-    setBrigades(listBrigades(session.userId));
+    // Not `label` — that name belongs to the usePersonNames lookup above.
+    const brigadeName = name.trim();
+    try {
+      await createBrigade(brigadeName, selectedMembers);
+      toast.success(`Brigade "${brigadeName}" created`);
+      setName('');
+      setSelectedMembers([]);
+      setCreating(false);
+      setBrigades(await listBrigades());
+    } catch (error) {
+      // The form keeps its contents so the work is not lost on a failed save.
+      toast.error(error instanceof Error ? error.message : 'Could not create Brigade');
+    }
   }
 
-  function handleDelete(brigadeId: string) {
-    if (!session?.userId) return;
-    deleteBrigade(session.userId, brigadeId);
-    setBrigades(listBrigades(session.userId));
-    toast('Brigade removed');
+  async function handleDelete(brigadeId: string) {
+    try {
+      await deleteBrigade(brigadeId);
+      setBrigades(await listBrigades());
+      toast('Brigade removed');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not remove Brigade');
+    }
   }
 
   return (
@@ -148,12 +187,10 @@ export default function MyBrigadesPage() {
                           >
                             <Avatar size="sm">
                               <AvatarFallback className="bg-secondary text-xs font-semibold text-forest">
-                                {initials(id)}
+                                {initialsFor(id)}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="truncate text-sm font-semibold">
-                              {id.slice(0, 8)}…
-                            </span>
+                            <span className="truncate text-sm font-semibold">{label(id)}</span>
                           </button>
                         </li>
                       );
@@ -206,7 +243,7 @@ export default function MyBrigadesPage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {brigade.memberIds.map((id) => (
                     <Badge key={id} variant="secondary">
-                      {id.slice(0, 8)}…
+                      {label(id)}
                     </Badge>
                   ))}
                 </div>
