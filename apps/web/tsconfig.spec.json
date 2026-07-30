@@ -1,0 +1,13 @@
+{
+  // The specs run under `node --experimental-strip-types`, which resolves
+  // imports exactly as written and therefore needs the ".ts" extension. The app
+  // itself is bundled by Next and must not use those specifiers, so the spec
+  // tree gets its own config rather than loosening the app's.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": ["spec/**/*.ts", "src/lib/mentorship/**/*.ts"],
+  "exclude": ["node_modules"]
+}
