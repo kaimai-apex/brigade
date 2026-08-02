@@ -25,7 +25,7 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
         {showAuth && (
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <Link
-              href="/login?next=/mentorship"
+              href="/login?next=/mentorship/setup"
               className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] md:inline-flex"
             >
               Become a mentor

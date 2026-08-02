@@ -45,11 +45,11 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
   const active = { q, role, city, expertise, sort };
   const filterCount = [role, city, expertise].filter(Boolean).length + (sort !== "price" ? 1 : 0);
 
-  const emptyCtaHref = ownMentor
-    ? "/sessions"
-    : session
-      ? "/mentorship"
-      : "/login?next=/mentorship";
+  // Where "become a mentor" leads depends on how far along the reader is.
+  // Sending someone who already has a mentor page back through setup, or a
+  // logged-out visitor to a page that will bounce them, both waste the click.
+  const setupHref = session ? "/mentorship/setup" : "/login?next=/mentorship/setup";
+  const emptyCtaHref = ownMentor ? "/sessions" : setupHref;
   const emptyCtaLabel = ownMentor ? "Manage your sessions" : "Become a mentor";
 
   return (
@@ -137,6 +137,30 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
               </li>
             ))}
           </ul>
+        )}
+
+        {/* The other side of the marketplace. Shown to anyone who is not
+            already a mentor — this page is where someone realises they could
+            be doing this too, and there was previously no way in from here
+            unless the directory happened to be empty. */}
+        {!ownMentor && (
+          <section className="mt-16 rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-wash)] p-8">
+            <div className="flex flex-wrap items-center justify-between gap-6">
+              <div className="max-w-[52ch]">
+                <h2 className="text-[22px] font-semibold text-[var(--mk-text)]">
+                  Teach what you know
+                </h2>
+                <p className="mt-2 text-[15px] text-[var(--mk-muted)]">
+                  You set the price and the hours. Brigade handles booking, payment and
+                  reminders, and keeps 20% of each session. Setting up takes about ten
+                  minutes.
+                </p>
+              </div>
+              <Link href={setupHref} className="mk-btn mk-btn-dark">
+                Become a mentor
+              </Link>
+            </div>
+          </section>
         )}
 
         {(facets.expertise.length > 0 || facets.cities.length > 0) && (

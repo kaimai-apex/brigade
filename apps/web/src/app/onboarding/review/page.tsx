@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function ReviewPage() {
   const profile = await getCurrentUserProfile();
@@ -114,6 +115,23 @@ export default async function ReviewPage() {
             Publish profile & join the Directory
           </Button>
         </form>
+      </Card>
+
+      {/* The natural next step, offered at the moment someone has just finished
+          describing their career. Deliberately after the publish button and
+          visually separate — it is an invitation, not part of onboarding, and
+          nobody should think their profile is unfinished without it. */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Want to mentor as well?</CardTitle>
+          <CardDescription>
+            Chefs and hospitality leaders sell one-to-one sessions on Brigade. You set the
+            price and the hours; we handle booking and payment and keep 20%.
+          </CardDescription>
+        </CardHeader>
+        <Button asChild variant="outline">
+          <Link href="/mentorship/setup">Set up mentoring</Link>
+        </Button>
       </Card>
     </>
   );

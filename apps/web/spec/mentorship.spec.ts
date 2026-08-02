@@ -11,8 +11,18 @@ import {
   splitPrice,
   formatMoney,
   assertSellablePrice,
+  refundForCancellation,
   PLATFORM_FEE_BPS,
 } from "../src/lib/mentorship/pricing.ts";
+import {
+  verifyWebhookSignature,
+  signWebhookPayload,
+  generateConfirmationCode,
+  isConfirmationCode,
+  WebhookSignatureError,
+} from "../src/lib/mentorship/webhook-signature.ts";
+import { evaluateReadiness } from "../src/lib/mentorship/readiness.ts";
+import { buildIcs, escapeIcsText, foldIcsLine } from "../src/lib/mentorship/calendar.ts";
 import {
   generateSlots,
   isSlotAvailable,
@@ -320,5 +330,308 @@ group("Booking validation");
   );
 }
 
+// ---------------------------------------------------------------------------
+group("Cancellation refunds");
+
+{
+  const startsAt = new Date("2026-08-10T12:00:00.000Z");
+
+  const early = refundForCancellation({
+    priceCents: 15000,
+    startsAt,
+    now: new Date("2026-08-08T12:00:00.000Z"),
+    cancelledBy: "mentee",
+  });
+  check("cancelling well ahead refunds in full", early.refundCents === 15000);
+
+  const lateButOutside = refundForCancellation({
+    priceCents: 15000,
+    startsAt,
+    // Exactly 24 hours: the boundary must be inclusive, or a policy that says
+    // "up to 24 hours before" is a lie at precisely 24 hours.
+    now: new Date("2026-08-09T12:00:00.000Z"),
+    cancelledBy: "mentee",
+  });
+  check("the 24-hour boundary refunds in full", lateButOutside.refundCents === 15000);
+
+  const inside = refundForCancellation({
+    priceCents: 15000,
+    startsAt,
+    now: new Date("2026-08-09T13:00:00.000Z"),
+    cancelledBy: "mentee",
+  });
+  check("cancelling inside the window refunds nothing", inside.refundCents === 0);
+
+  const byMentor = refundForCancellation({
+    priceCents: 15000,
+    startsAt,
+    now: new Date("2026-08-10T11:00:00.000Z"),
+    cancelledBy: "mentor",
+  });
+  check(
+    "a mentor cancelling at the last minute still refunds in full",
+    byMentor.refundCents === 15000,
+  );
+
+  const alreadyBack = refundForCancellation({
+    priceCents: 15000,
+    refundedCents: 15000,
+    startsAt,
+    now: new Date("2026-08-01T12:00:00.000Z"),
+    cancelledBy: "mentee",
+  });
+  check("an already-refunded booking does not pay out twice", alreadyBack.refundCents === 0);
+
+  const partial = refundForCancellation({
+    priceCents: 15000,
+    refundedCents: 5000,
+    startsAt,
+    now: new Date("2026-08-01T12:00:00.000Z"),
+    cancelledBy: "mentee",
+  });
+  check("only the outstanding amount comes back", partial.refundCents === 10000);
+}
+
+// ---------------------------------------------------------------------------
+group("Webhook signatures");
+
+{
+  const secret = "whsec_" + "a".repeat(32);
+  const payload = JSON.stringify({ id: "evt_1", type: "checkout.session.completed" });
+  const now = 1_800_000_000;
+  const header = signWebhookPayload(payload, secret, now);
+
+  check("a correctly signed payload verifies", (() => {
+    try {
+      verifyWebhookSignature({ payload, header, secret, nowSeconds: now });
+      return true;
+    } catch {
+      return false;
+    }
+  })());
+
+  function rejects(name: string, input: Parameters<typeof verifyWebhookSignature>[0]) {
+    let threw = false;
+    try {
+      verifyWebhookSignature(input);
+    } catch (error) {
+      threw = error instanceof WebhookSignatureError;
+    }
+    check(name, threw);
+  }
+
+  rejects("a tampered body is rejected", {
+    payload: payload.replace("evt_1", "evt_2"),
+    header,
+    secret,
+    nowSeconds: now,
+  });
+  rejects("the wrong secret is rejected", {
+    payload,
+    header,
+    secret: "whsec_" + "b".repeat(32),
+    nowSeconds: now,
+  });
+  rejects("a missing header is rejected", {
+    payload,
+    header: null,
+    secret,
+    nowSeconds: now,
+  });
+  rejects("a header with no signature is rejected", {
+    payload,
+    header: `t=${now}`,
+    secret,
+    nowSeconds: now,
+  });
+  rejects("a header with no timestamp is rejected", {
+    payload,
+    header: "v1=abc",
+    secret,
+    nowSeconds: now,
+  });
+  // The replay window is the only thing stopping a captured, correctly-signed
+  // request from being resent forever.
+  rejects("an old signature is rejected", {
+    payload,
+    header,
+    secret,
+    nowSeconds: now + 400,
+  });
+  rejects("a future-dated signature is rejected", {
+    payload,
+    header,
+    secret,
+    nowSeconds: now - 400,
+  });
+  check("a signature just inside the window is accepted", (() => {
+    try {
+      verifyWebhookSignature({ payload, header, secret, nowSeconds: now + 299 });
+      return true;
+    } catch {
+      return false;
+    }
+  })());
+
+  // Stripe signs with both secrets during a rotation, so any v1 matching is a match.
+  const rotated = `${header},v1=${"f".repeat(64)}`;
+  check("a header carrying several signatures matches on any of them", (() => {
+    try {
+      verifyWebhookSignature({ payload, header: rotated, secret, nowSeconds: now });
+      return true;
+    } catch {
+      return false;
+    }
+  })());
+
+  // A non-hex or wrong-length candidate must fail cleanly rather than throwing
+  // out of timingSafeEqual.
+  rejects("a malformed signature value is rejected without crashing", {
+    payload,
+    header: `t=${now},v1=not-hex`,
+    secret,
+    nowSeconds: now,
+  });
+}
+
+// ---------------------------------------------------------------------------
+group("Confirmation codes");
+
+{
+  const codes = Array.from({ length: 500 }, () => generateConfirmationCode());
+  check("every code matches the documented shape", codes.every(isConfirmationCode));
+  check(
+    "the ambiguous characters are never used",
+    codes.every((code) => !/[OIS015]/.test(code.slice(4))),
+  );
+  check("500 codes collided none of the time", new Set(codes).size === 500);
+  check("a hand-typed lowercase code is not accepted", !isConfirmationCode("brg-abcdef"));
+  check("a wrong-length code is not accepted", !isConfirmationCode("BRG-ABCDE"));
+}
+
+// ---------------------------------------------------------------------------
+group("Publish readiness");
+
+{
+  const complete = {
+    headline: "Private chef, 15 years",
+    bio: "Bring a menu, leave with margins.",
+    expertise: ["Food costing"],
+    activeSessionCount: 1,
+    hasPaidSession: true,
+    weeklyWindowCount: 2,
+    defaultMeetingUrl: "https://calendly.com/chef",
+    payoutsEnabled: true,
+    paymentsConfigured: true,
+  };
+
+  check("a finished mentor can publish", evaluateReadiness(complete).canPublish);
+
+  check(
+    "no sessions blocks publishing",
+    !evaluateReadiness({ ...complete, activeSessionCount: 0 }).canPublish,
+  );
+  check(
+    "no hours blocks publishing",
+    !evaluateReadiness({ ...complete, weeklyWindowCount: 0 }).canPublish,
+  );
+  check(
+    "no headline blocks publishing",
+    !evaluateReadiness({ ...complete, headline: "   " }).canPublish,
+  );
+  check(
+    "selling for money without payouts blocks publishing",
+    !evaluateReadiness({ ...complete, payoutsEnabled: false }).canPublish,
+  );
+
+  // The two cases where demanding Stripe would block someone for no reason.
+  check(
+    "a free-only mentor can publish without payouts",
+    evaluateReadiness({ ...complete, hasPaidSession: false, payoutsEnabled: false })
+      .canPublish,
+  );
+  check(
+    "payouts are not required when the deployment has no Stripe at all",
+    evaluateReadiness({ ...complete, payoutsEnabled: false, paymentsConfigured: false })
+      .canPublish,
+  );
+
+  check(
+    "a missing meeting link is advisory, not blocking",
+    evaluateReadiness({ ...complete, defaultMeetingUrl: null }).canPublish,
+  );
+  check(
+    "but it still counts against the progress figure",
+    evaluateReadiness({ ...complete, defaultMeetingUrl: null }).percentComplete < 100,
+  );
+  check("a finished mentor reads as 100%", evaluateReadiness(complete).percentComplete === 100);
+
+  const blocked = evaluateReadiness({
+    ...complete,
+    activeSessionCount: 0,
+    weeklyWindowCount: 0,
+  });
+  check("blocking items are listed for the message", blocked.blocking.length === 2);
+}
+
+// ---------------------------------------------------------------------------
+group("Calendar files");
+
+{
+  const ics = buildIcs(
+    {
+      bookingId: "abc-123",
+      title: "Menu & costing 1:1 · Marco Bianchi",
+      description: "Line one\nLine two",
+      startsAt: new Date("2026-08-10T13:00:00.000Z"),
+      endsAt: new Date("2026-08-10T14:00:00.000Z"),
+      location: "https://meet.google.com/xyz",
+    },
+    new Date("2026-08-01T00:00:00.000Z"),
+  );
+
+  check("it is a calendar", ics.startsWith("BEGIN:VCALENDAR\r\n"));
+  check("every line ends CRLF", !/[^\r]\n/.test(ics));
+  check("the start time is UTC basic format", ics.includes("DTSTART:20260810T130000Z"));
+  check("the end time is there too", ics.includes("DTEND:20260810T140000Z"));
+  check("the UID is stable per booking", ics.includes("UID:booking-abc-123@joinbrigade.co"));
+  check("the meeting link is carried", ics.includes("https://meet.google.com/xyz"));
+
+  // Unescaped, these would end the property early and produce a broken file.
+  check("newlines in the description are escaped", ics.includes("Line one\\nLine two"));
+  check("commas are escaped", escapeIcsText("a,b") === "a\\,b");
+  check("semicolons are escaped", escapeIcsText("a;b") === "a\\;b");
+  check("backslashes are escaped first", escapeIcsText("a\\,b") === "a\\\\\\,b");
+
+  const long = foldIcsLine("DESCRIPTION:" + "x".repeat(200));
+  check("long lines are folded", long.includes("\r\n "));
+  // Continuation segments carry the leading space they were joined with, so
+  // every segment as it appears on the wire must fit the same 75-octet limit.
+  check(
+    "no folded segment exceeds 75 octets",
+    long.split("\r\n").every((segment) => new TextEncoder().encode(segment).length <= 75),
+  );
+  check("a short line is left alone", foldIcsLine("SUMMARY:hi") === "SUMMARY:hi");
+
+  // Splitting a multi-byte character across the fold produces mojibake.
+  const multibyte = foldIcsLine("SUMMARY:" + "é".repeat(60));
+  check(
+    "folding never splits a multi-byte character",
+    multibyte.split("\r\n ").join("").slice("SUMMARY:".length) === "é".repeat(60),
+  );
+
+  const cancelled = buildIcs({
+    bookingId: "abc-123",
+    title: "x",
+    description: "y",
+    startsAt: new Date("2026-08-10T13:00:00.000Z"),
+    endsAt: new Date("2026-08-10T14:00:00.000Z"),
+    cancelled: true,
+  });
+  check("a cancelled session says so", cancelled.includes("STATUS:CANCELLED"));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
-process.exit(failed === 0 ? 0 : 1);
+// process.exitCode rather than process.exit(): Node can SIGSEGV in its own
+// static-destructor teardown when exit() is called. See scripts/README-exit-codes.md.
+process.exitCode = failed === 0 ? 0 : 1;

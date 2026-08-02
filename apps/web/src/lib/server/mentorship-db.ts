@@ -1,6 +1,8 @@
-import { getPool } from "@connectpro/common";
+import { getAuthSchema, getPool } from "@connectpro/common";
 import { ensureMentorshipSchema } from "@/lib/server/ensure-mentorship-schema";
 import { splitPrice, assertSellablePrice, PLATFORM_FEE_BPS } from "@/lib/mentorship/pricing";
+import { generateConfirmationCode } from "@/lib/mentorship/webhook-signature";
+import { HOLD_WINDOW_MINUTES } from "@/lib/mentorship/holds";
 import {
   generateSlots,
   isSlotAvailable,
@@ -32,6 +34,13 @@ export interface Mentor {
   payoutsEnabled: boolean;
   /** The mentor's standing meeting room, copied onto bookings on acceptance. */
   defaultMeetingUrl: string | null;
+  /** What they teach, authored by them — not their profile's expertise areas. */
+  expertise: string[];
+  /** How far through setup they got, so the flow resumes instead of restarting. */
+  onboardingStep: number;
+  /** Stripe connected account id, once onboarding has been started. */
+  payoutAccountId: string | null;
+  payoutsOnboardedAt: string | null;
 }
 
 export interface SessionType {
@@ -56,6 +65,12 @@ function mapMentor(row: Record<string, unknown>): Mentor {
     bookingHorizonDays: Number(row.booking_horizon_days),
     payoutsEnabled: Boolean(row.payouts_enabled),
     defaultMeetingUrl: (row.default_meeting_url as string) ?? null,
+    expertise: Array.isArray(row.expertise) ? (row.expertise as string[]) : [],
+    onboardingStep: Number(row.onboarding_step ?? 0),
+    payoutAccountId: (row.payout_account_id as string) ?? null,
+    payoutsOnboardedAt: row.payouts_onboarded_at
+      ? new Date(row.payouts_onboarded_at as string).toISOString()
+      : null,
   };
 }
 
@@ -87,7 +102,9 @@ export async function dbGetMentor(userId: string): Promise<Mentor | null> {
 /** Create-or-update; becoming a mentor is idempotent. */
 export async function dbUpsertMentor(
   userId: string,
-  patch: Partial<Omit<Mentor, "userId" | "payoutsEnabled">>,
+  patch: Partial<
+    Omit<Mentor, "userId" | "payoutsEnabled" | "payoutAccountId" | "payoutsOnboardedAt">
+  >,
 ): Promise<Mentor> {
   await ensureMentorshipSchema();
 
@@ -104,6 +121,8 @@ export async function dbUpsertMentor(
   if (patch.defaultMeetingUrl !== undefined) {
     columns.default_meeting_url = patch.defaultMeetingUrl;
   }
+  if (patch.expertise !== undefined) columns.expertise = patch.expertise;
+  if (patch.onboardingStep !== undefined) columns.onboarding_step = patch.onboardingStep;
 
   const keys = Object.keys(columns);
   if (keys.length === 0) {
@@ -115,7 +134,16 @@ export async function dbUpsertMentor(
     return (await dbGetMentor(userId))!;
   }
 
-  const assignments = keys.map((k, i) => `${k} = $${i + 2}`).join(", ");
+  // onboarding_step is a high-water mark, not a cursor. Stepping back to
+  // re-read the pricing page must not tell the flow there is more left to do
+  // than there is, so the stored value only ever climbs.
+  const assignments = keys
+    .map((k, i) =>
+      k === "onboarding_step"
+        ? `${k} = GREATEST(mentors.${k}, $${i + 2})`
+        : `${k} = $${i + 2}`,
+    )
+    .join(", ");
   const insertCols = keys.join(", ");
   const insertVals = keys.map((_, i) => `$${i + 2}`).join(", ");
   const res = await pool().query(
@@ -125,6 +153,48 @@ export async function dbUpsertMentor(
      RETURNING *`,
     [userId, ...keys.map((k) => columns[k])],
   );
+  return mapMentor(res.rows[0]);
+}
+
+/**
+ * Remember which Stripe account belongs to this mentor.
+ *
+ * Written as soon as the account is created, before the mentor has finished
+ * Stripe's hosted form. If it were only stored on the way back, a mentor who
+ * abandoned onboarding would get a brand new connected account on every
+ * attempt, and Stripe would accumulate orphans nobody can reconcile.
+ */
+export async function dbSetPayoutAccount(userId: string, accountId: string): Promise<void> {
+  await ensureMentorshipSchema();
+  await pool().query(
+    `UPDATE mentorship.mentors SET payout_account_id = $2, updated_at = now()
+     WHERE user_id = $1`,
+    [userId, accountId],
+  );
+}
+
+/**
+ * Record what Stripe says about the account.
+ *
+ * `enabled` must come from reading the account back, never from the mentor
+ * having landed on the return URL — that only means they closed the form, not
+ * that Stripe accepted them.
+ */
+export async function dbSetPayoutsEnabled(userId: string, enabled: boolean): Promise<Mentor> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `UPDATE mentorship.mentors
+        SET payouts_enabled = $2,
+            payouts_onboarded_at = CASE
+              WHEN $2 AND payouts_onboarded_at IS NULL THEN now()
+              ELSE payouts_onboarded_at
+            END,
+            updated_at = now()
+      WHERE user_id = $1
+      RETURNING *`,
+    [userId, enabled],
+  );
+  if (res.rows.length === 0) throw new Error("You have not set up mentoring yet");
   return mapMentor(res.rows[0]);
 }
 
@@ -166,6 +236,68 @@ export async function dbCreateSessionType(
       input.priceCents,
     ],
   );
+  return mapSessionType(res.rows[0]);
+}
+
+/**
+ * Change what a session is, or what it costs.
+ *
+ * Editing the row rather than versioning it is safe because every booking
+ * freezes its own price, fee rate and split at the moment it is made — a past
+ * session still explains itself after the mentor puts their rate up.
+ */
+export async function dbUpdateSessionType(
+  id: string,
+  mentorUserId: string,
+  patch: {
+    title?: string;
+    description?: string | null;
+    durationMinutes?: number;
+    priceCents?: number;
+    active?: boolean;
+  },
+): Promise<SessionType> {
+  await ensureMentorshipSchema();
+
+  const columns: Record<string, unknown> = {};
+  if (patch.title !== undefined) {
+    if (!patch.title.trim()) throw new Error("Give the session a title");
+    columns.title = patch.title.trim();
+  }
+  if (patch.description !== undefined) {
+    columns.description = patch.description?.trim() || null;
+  }
+  if (patch.durationMinutes !== undefined) {
+    if (patch.durationMinutes < 15 || patch.durationMinutes > 480) {
+      throw new Error("A session runs between 15 minutes and 8 hours");
+    }
+    columns.duration_minutes = patch.durationMinutes;
+  }
+  if (patch.priceCents !== undefined) {
+    assertSellablePrice(patch.priceCents);
+    columns.price_cents = patch.priceCents;
+  }
+  if (patch.active !== undefined) columns.active = patch.active;
+
+  const keys = Object.keys(columns);
+  if (keys.length === 0) {
+    const current = (await dbListSessionTypes(mentorUserId, { activeOnly: false })).find(
+      (t) => t.id === id,
+    );
+    if (!current) throw new Error("That session does not exist");
+    return current;
+  }
+
+  const assignments = keys.map((k, i) => `${k} = $${i + 3}`).join(", ");
+  // Ownership is in the WHERE clause, so this cannot reprice someone else's
+  // session even with a guessed id.
+  const res = await pool().query(
+    `UPDATE mentorship.session_types SET ${assignments}, updated_at = now()
+      WHERE id = $1 AND mentor_user_id = $2
+      RETURNING *`,
+    [id, mentorUserId, ...keys.map((k) => columns[k])],
+  );
+  if (res.rows.length === 0) throw new Error("That session does not exist");
   return mapSessionType(res.rows[0]);
 }
 
@@ -325,9 +457,9 @@ export async function dbDeleteException(id: string, mentorUserId: string): Promi
 const MAX_PENDING_PER_MENTEE = 8;
 
 /**
- * Release unpaid bookings older than the 30-minute checkout window. Safe to
- * call often — it only touches `pending_payment` rows past the TTL. Without
- * this, abandoned holds occupy the EXCLUDE gist forever.
+ * Release unpaid bookings past the hold window. Safe to call often — it only
+ * touches `pending_payment` rows past the TTL. Without this, abandoned holds
+ * occupy the EXCLUDE gist forever.
  */
 export async function dbExpireStalePendingBookings(): Promise<number> {
   await ensureMentorshipSchema();
@@ -338,9 +470,44 @@ export async function dbExpireStalePendingBookings(): Promise<number> {
            cancelled_by = NULL,
            updated_at = now()
      WHERE status = 'pending_payment'
-       AND created_at < now() - interval '30 minutes'`,
+       AND created_at < now() - ($1 || ' minutes')::interval`,
+    [String(HOLD_WINDOW_MINUTES)],
   );
   return res.rowCount ?? 0;
+}
+
+/**
+ * A booking whose payment arrived after Brigade had already released the slot.
+ *
+ * This should be unreachable — the hold outlives the checkout window by design
+ * — but "should be unreachable" is not a plan for someone else's money. The
+ * webhook looks for this case explicitly so the charge can be refunded rather
+ * than silently kept for a session that will not happen.
+ */
+export async function dbFindPaidAfterRelease(
+  checkoutSessionId: string,
+): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT * FROM mentorship.bookings
+      WHERE checkout_session_id = $1 AND status = 'cancelled' AND paid_at IS NULL`,
+    [checkoutSessionId],
+  );
+  return res.rows[0] ? mapBooking(res.rows[0]) : null;
+}
+
+/**
+ * The billing email for Stripe's receipt.
+ *
+ * Read from the auth schema at charge time rather than copied onto the booking:
+ * a receipt should go to where the person reads mail today.
+ */
+export async function dbGetBillingEmail(userId: string): Promise<string | null> {
+  const res = await pool().query(
+    `SELECT email FROM ${getAuthSchema()}.users WHERE id = $1`,
+    [userId],
+  );
+  return (res.rows[0]?.email as string) ?? null;
 }
 
 async function dbBusyRanges(mentorUserId: string) {
@@ -406,6 +573,12 @@ export interface Booking {
   mentorPayoutCents: number;
   meetingUrl: string | null;
   paymentIntentId: string | null;
+  checkoutSessionId: string | null;
+  paidAt: string | null;
+  receiptUrl: string | null;
+  confirmationCode: string | null;
+  refundedCents: number;
+  createdAt: string;
 }
 
 function mapBooking(row: Record<string, unknown>): Booking {
@@ -423,6 +596,12 @@ function mapBooking(row: Record<string, unknown>): Booking {
     mentorPayoutCents: Number(row.mentor_payout_cents),
     meetingUrl: (row.meeting_url as string) ?? null,
     paymentIntentId: (row.payment_intent_id as string) ?? null,
+    checkoutSessionId: (row.checkout_session_id as string) ?? null,
+    paidAt: row.paid_at ? new Date(row.paid_at as string).toISOString() : null,
+    receiptUrl: (row.receipt_url as string) ?? null,
+    confirmationCode: (row.confirmation_code as string) ?? null,
+    refundedCents: Number(row.refunded_cents ?? 0),
+    createdAt: new Date(row.created_at as string).toISOString(),
   };
 }
 
@@ -542,6 +721,253 @@ export async function dbListBookingsForMentor(mentorUserId: string): Promise<Boo
     [mentorUserId],
   );
   return res.rows.map(mapBooking);
+}
+
+/** One booking, whoever is asking. */
+export async function dbGetBooking(id: string): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query("SELECT * FROM mentorship.bookings WHERE id = $1", [id]);
+  return res.rows[0] ? mapBooking(res.rows[0]) : null;
+}
+
+/**
+ * A booking, but only for the two people it concerns.
+ *
+ * Receipts carry a meeting link and a price, so the row is filtered by
+ * participation in SQL rather than fetched and then checked — there is no
+ * moment where the wrong person is holding the data.
+ */
+export async function dbGetBookingForViewer(
+  id: string,
+  viewerId: string,
+): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT * FROM mentorship.bookings
+      WHERE id = $1 AND (mentee_user_id = $2 OR mentor_user_id = $2)`,
+    [id, viewerId],
+  );
+  return res.rows[0] ? mapBooking(res.rows[0]) : null;
+}
+
+export interface BookingDetail extends Booking {
+  sessionTitle: string;
+  sessionDescription: string | null;
+  durationMinutes: number;
+  mentorName: string;
+  menteeName: string;
+  /** The mentor's zone, so the receipt can say what time it is for them too. */
+  mentorTimezone: string;
+}
+
+/**
+ * One booking with everything a receipt has to state, in a single query.
+ *
+ * Scoped to the two participants in SQL rather than fetched and then checked:
+ * this row carries a price and a meeting link, so there is no point at which
+ * the wrong person is holding it.
+ */
+export async function dbGetBookingDetail(
+  id: string,
+  viewerId: string,
+): Promise<BookingDetail | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT b.*,
+            st.title       AS session_title,
+            st.description AS session_description,
+            st.duration_minutes,
+            m.timezone     AS mentor_timezone,
+            trim(concat_ws(' ', mp.first_name, mp.last_name)) AS mentor_name,
+            trim(concat_ws(' ', ep.first_name, ep.last_name)) AS mentee_name
+       FROM mentorship.bookings b
+       JOIN mentorship.session_types st ON st.id = b.session_type_id
+       JOIN mentorship.mentors m        ON m.user_id = b.mentor_user_id
+       LEFT JOIN users.profiles mp      ON mp.user_id = b.mentor_user_id
+       LEFT JOIN users.profiles ep      ON ep.user_id = b.mentee_user_id
+      WHERE b.id = $1 AND (b.mentee_user_id = $2 OR b.mentor_user_id = $2)`,
+    [id, viewerId],
+  );
+  const row = res.rows[0];
+  if (!row) return null;
+
+  return {
+    ...mapBooking(row),
+    sessionTitle: row.session_title as string,
+    sessionDescription: (row.session_description as string) ?? null,
+    durationMinutes: Number(row.duration_minutes),
+    mentorTimezone: row.mentor_timezone as string,
+    mentorName: (row.mentor_name as string) || "This mentor",
+    menteeName: (row.mentee_name as string) || "This member",
+  };
+}
+
+/** Correlate the Stripe Checkout Session with the booking it is paying for. */
+export async function dbAttachCheckoutSession(
+  bookingId: string,
+  checkoutSessionId: string,
+): Promise<void> {
+  await ensureMentorshipSchema();
+  await pool().query(
+    `UPDATE mentorship.bookings SET checkout_session_id = $2, updated_at = now()
+      WHERE id = $1`,
+    [bookingId, checkoutSessionId],
+  );
+}
+
+/**
+ * The payment settled: turn the hold into a real session.
+ *
+ * Idempotent by construction. The WHERE clause requires `pending_payment`, so a
+ * redelivered webhook updates zero rows and the caller sees `null` — meaning
+ * "already handled", not "failed". That matters because Stripe will deliver
+ * this event more than once and a second confirmation would notify both people
+ * twice.
+ *
+ * The mentor's standing meeting room is COPIED here rather than joined at read
+ * time: changing your Zoom link next year must not rewrite the link on a
+ * session that already happened.
+ */
+export async function dbMarkBookingPaid(input: {
+  checkoutSessionId: string;
+  paymentIntentId: string | null;
+  receiptUrl: string | null;
+}): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+
+  // Retried on the astronomically unlikely code collision; the unique index is
+  // what makes that a retry rather than a duplicate.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await pool().query(
+        `UPDATE mentorship.bookings b
+            SET status = 'confirmed',
+                paid_at = now(),
+                payment_intent_id = COALESCE($2, b.payment_intent_id),
+                receipt_url = COALESCE($3, b.receipt_url),
+                confirmation_code = COALESCE(b.confirmation_code, $4),
+                meeting_url = COALESCE(b.meeting_url, m.default_meeting_url),
+                updated_at = now()
+           FROM mentorship.mentors m
+          WHERE b.checkout_session_id = $1
+            AND b.status = 'pending_payment'
+            AND m.user_id = b.mentor_user_id
+        RETURNING b.*`,
+        [
+          input.checkoutSessionId,
+          input.paymentIntentId,
+          input.receiptUrl,
+          generateConfirmationCode(),
+        ],
+      );
+      return res.rows[0] ? mapBooking(res.rows[0]) : null;
+    } catch (error) {
+      // 23505 = unique_violation on the confirmation code.
+      if ((error as { code?: string }).code === "23505" && attempt < 4) continue;
+      throw error;
+    }
+  }
+  return null;
+}
+
+/**
+ * Confirm a free session.
+ *
+ * A zero-price session has nothing for Stripe to do, but it still needs a
+ * confirmation code and the meeting link, so it goes through the same
+ * transition rather than a parallel one that could drift.
+ */
+export async function dbConfirmFreeBooking(bookingId: string): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await pool().query(
+        `UPDATE mentorship.bookings b
+            SET status = 'confirmed',
+                confirmation_code = COALESCE(b.confirmation_code, $2),
+                meeting_url = COALESCE(b.meeting_url, m.default_meeting_url),
+                updated_at = now()
+           FROM mentorship.mentors m
+          WHERE b.id = $1
+            AND b.status = 'pending_payment'
+            AND b.price_cents = 0
+            AND m.user_id = b.mentor_user_id
+        RETURNING b.*`,
+        [bookingId, generateConfirmationCode()],
+      );
+      return res.rows[0] ? mapBooking(res.rows[0]) : null;
+    } catch (error) {
+      if ((error as { code?: string }).code === "23505" && attempt < 4) continue;
+      throw error;
+    }
+  }
+  return null;
+}
+
+/** Write down what was given back, after Stripe has agreed to it. */
+export async function dbRecordRefund(
+  bookingId: string,
+  refundId: string,
+  amountCents: number,
+): Promise<void> {
+  await ensureMentorshipSchema();
+  await pool().query(
+    `UPDATE mentorship.bookings
+        SET refunded_cents = $3, refund_id = $2, updated_at = now()
+      WHERE id = $1`,
+    [bookingId, refundId, amountCents],
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Webhook idempotency                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Claim a Stripe event for processing.
+ *
+ * Returns false when this event has been seen before. The INSERT is the lock:
+ * two concurrent deliveries of the same event race on the primary key and
+ * exactly one wins, which is stronger than checking-then-inserting.
+ */
+export async function dbClaimWebhookEvent(id: string, type: string): Promise<boolean> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `INSERT INTO mentorship.webhook_events (id, type) VALUES ($1, $2)
+     ON CONFLICT (id) DO NOTHING`,
+    [id, type],
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
+/** Mark the claimed event done, or record why it was not. */
+export async function dbFinishWebhookEvent(id: string, error?: string): Promise<void> {
+  await ensureMentorshipSchema();
+  if (error) {
+    // Clear processed_at and keep the reason, so a failed event is visibly
+    // unfinished rather than looking handled.
+    await pool().query(
+      "UPDATE mentorship.webhook_events SET error = $2, processed_at = NULL WHERE id = $1",
+      [id, error.slice(0, 500)],
+    );
+    return;
+  }
+  await pool().query(
+    "UPDATE mentorship.webhook_events SET processed_at = now(), error = NULL WHERE id = $1",
+    [id],
+  );
+}
+
+/**
+ * Release a claim so Stripe's retry can have another go.
+ *
+ * Without this, a handler that throws would leave the event marked as seen and
+ * every retry would be skipped as a duplicate — the booking would stay unpaid
+ * forever with no way back.
+ */
+export async function dbReleaseWebhookEvent(id: string): Promise<void> {
+  await ensureMentorshipSchema();
+  await pool().query("DELETE FROM mentorship.webhook_events WHERE id = $1", [id]);
 }
 
 /** Reject anything that is not an https URL a browser can actually open. */

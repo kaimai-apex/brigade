@@ -22,6 +22,10 @@ const PUBLIC_PAGES = new Set([
 const PUBLIC_APIS = new Set([
   "/api/waitlist",
   "/api/demo/login",
+  // Stripe has no Brigade session. Its authentication is the signed
+  // Stripe-Signature header, which the route verifies against the endpoint
+  // secret before reading a single field of the body.
+  "/api/stripe/webhook",
   "/api/auth/session",
   "/api/auth/logout",
   "/api/auth/refresh-token",

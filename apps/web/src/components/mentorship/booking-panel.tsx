@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatMoney, splitPrice } from "@/lib/mentorship/pricing";
+import { CHECKOUT_WINDOW_MINUTES } from "@/lib/mentorship/holds";
 import type { SessionType } from "@/lib/server/mentorship-db";
 import { cn } from "@/lib/utils";
 
@@ -76,7 +77,11 @@ export function BookingPanel({
           startsAt: chosen,
         }),
       });
-      const json = (await res.json()) as { message?: string };
+      const json = (await res.json()) as {
+        message?: string;
+        checkoutUrl?: string | null;
+        id?: string;
+      };
       if (!res.ok) {
         if (res.status === 401 || res.status === 404) {
           toast.message("Log in to book this session");
@@ -89,7 +94,22 @@ export function BookingPanel({
         if (res.status === 409) await loadSlots();
         return;
       }
+
+      // Paid session: the slot is held, but it is not a booking until the
+      // charge settles. Hand off to Stripe rather than showing a success the
+      // mentee has not earned yet. `location.assign` rather than the router —
+      // Checkout is not part of this app.
+      if (json.checkoutUrl) {
+        window.location.assign(json.checkoutUrl);
+        return;
+      }
+
+      // Free session, or a deployment with payments switched off.
       toast.success(`Reserved with ${mentorName}`);
+      if (json.id) {
+        router.push(`/sessions/${json.id}`);
+        return;
+      }
       await loadSlots();
     } catch {
       toast.error("Could not book");
@@ -236,8 +256,19 @@ export function BookingPanel({
             disabled={!chosen || booking}
             onClick={book}
           >
-            {booking ? "Reserving…" : "Reserve this time"}
+            {booking
+              ? "Reserving…"
+              : paymentsEnabled && (selected?.priceCents ?? 0) > 0
+                ? `Continue to payment · ${formatMoney(selected!.priceCents, currency)}`
+                : "Reserve this time"}
           </button>
+          {paymentsEnabled && (selected?.priceCents ?? 0) > 0 && (
+            <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">
+              Payment is taken by Stripe. The time is held for you for{" "}
+              {CHECKOUT_WINDOW_MINUTES} minutes while you check out, and the session is only
+              confirmed once the payment goes through.
+            </p>
+          )}
           {!paymentsEnabled && (
             <p className="mt-2 text-[13px] text-[var(--mk-badge-gold-text)]">
               Payments are not switched on yet, so this reserves the time but does not

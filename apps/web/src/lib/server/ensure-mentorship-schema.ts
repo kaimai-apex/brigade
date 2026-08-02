@@ -51,6 +51,16 @@ export function ensureMentorshipSchema() {
     await pool.query(
       "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS default_meeting_url TEXT",
     );
+    // Migration 016 — the mentor's own card, and payout onboarding state.
+    await pool.query(
+      "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS expertise TEXT[] NOT NULL DEFAULT '{}'",
+    );
+    await pool.query(
+      "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS onboarding_step SMALLINT NOT NULL DEFAULT 0",
+    );
+    await pool.query(
+      "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS payouts_onboarded_at TIMESTAMPTZ",
+    );
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mentorship.session_types (
@@ -157,6 +167,56 @@ export function ensureMentorshipSchema() {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_bookings_mentee
         ON mentorship.bookings (mentee_user_id, starts_at DESC)
+    `);
+
+    // Migration 016 — what actually settled.
+    for (const column of [
+      "checkout_session_id TEXT",
+      "paid_at TIMESTAMPTZ",
+      "receipt_url TEXT",
+      "confirmation_code TEXT",
+      "refunded_cents INT NOT NULL DEFAULT 0",
+      "refund_id TEXT",
+    ]) {
+      await pool.query(
+        `ALTER TABLE mentorship.bookings ADD COLUMN IF NOT EXISTS ${column}`,
+      );
+    }
+    // Never give back more than was taken. Dropped first because ADD
+    // CONSTRAINT has no IF NOT EXISTS and this runs on every cold start.
+    await pool.query(
+      "ALTER TABLE mentorship.bookings DROP CONSTRAINT IF EXISTS bookings_refund_check",
+    );
+    await pool.query(`
+      ALTER TABLE mentorship.bookings ADD CONSTRAINT bookings_refund_check
+        CHECK (refunded_cents >= 0 AND refunded_cents <= price_cents)
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_confirmation_code
+        ON mentorship.bookings (confirmation_code)
+        WHERE confirmation_code IS NOT NULL
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_bookings_checkout_session
+        ON mentorship.bookings (checkout_session_id)
+        WHERE checkout_session_id IS NOT NULL
+    `);
+
+    // Stripe redelivers events until it sees a 2xx, and sometimes after. The
+    // primary key is what stops a second delivery confirming — or later,
+    // refunding — the same booking twice.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mentorship.webhook_events (
+        id           TEXT PRIMARY KEY,
+        type         TEXT        NOT NULL,
+        received_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        processed_at TIMESTAMPTZ,
+        error        TEXT
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_webhook_events_received
+        ON mentorship.webhook_events (received_at DESC)
     `);
   })();
 
