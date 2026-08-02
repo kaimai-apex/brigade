@@ -75,7 +75,7 @@ export function RailCard({ mentor }: { mentor: MentorListing }) {
 
   return (
     <Link href={`/mentors/${mentor.userId}`} className="group w-[208px] shrink-0 snap-start">
-      <div className="relative overflow-hidden rounded-2xl bg-[#eef1f2]">
+      <div className="relative overflow-hidden rounded-2xl bg-[var(--mk-avatar-bg)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={resolveAvatarUrl(mentor.avatarUrl, mentor.userId)}
@@ -124,9 +124,9 @@ export function ExploreCard({ mentor }: { mentor: MentorListing }) {
   return (
     <Link
       href={`/mentors/${mentor.userId}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--mk-line)] bg-white transition-shadow hover:shadow-[var(--mk-shadow-lift)]"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] transition-shadow hover:shadow-[var(--mk-shadow-lift)]"
     >
-      <div className="relative overflow-hidden bg-[#eef1f2]">
+      <div className="relative overflow-hidden bg-[var(--mk-avatar-bg)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={resolveAvatarUrl(mentor.avatarUrl, mentor.userId)}

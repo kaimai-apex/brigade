@@ -75,4 +75,35 @@
   --brand-canvas: #faf8f3; /* section background behind white cards */
   --brand-ink-muted: #6b665c; /* secondary text — warm, not grey */
   --brand-ink-subtle: #918b7e; /* tertiary text: counts, timestamps */
+
+  /* -------------------------------------------------------------------
+     ADPList-style mentorship marketplace palette (--mk-*).
+     Cool editorial neutrals for directory / booking surfaces.
+     ------------------------------------------------------------------- */
+  --mk-text: #1a1f23;
+  --mk-muted: #55636b;
+  --mk-subtle: #7a8a93;
+  --mk-line: #e9edee;
+  --mk-ink: #05051b;
+  --mk-ink-hover: #1a1a3a;
+  --mk-surface: #ffffff;
+  --mk-canvas: #fafbfb;
+  --mk-teal: #0e7c7b;
+  --mk-wash: #f4f6f7;
+  --mk-wash-strong: #edeff0;
+  --mk-chip-line: #d7dee1;
+  --mk-chip-line-strong: #9aa8ae;
+  --mk-icon: #2b3238;
+  --mk-avatar-bg: #eef1f2;
+  --mk-badge-gold-bg: #fdf3d4;
+  --mk-badge-gold-text: #7a5b00;
+  --mk-badge-violet-bg: #efebff;
+  --mk-badge-violet-text: #4a2fcb;
+  --mk-badge-green-bg: #e3f8ec;
+  --mk-badge-green-text: #0b6b3a;
+  --mk-warn-bg: #fff6e6;
+  --mk-mask-black: #000000;
+  --mk-dot-rose: #e11d48;
+  --mk-chip-violet-bg: #f3efff;
+  --mk-chip-violet-text: #5b32e0;
 }

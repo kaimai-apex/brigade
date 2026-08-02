@@ -63,7 +63,7 @@ export function MentorSearch({
 
   return (
     <div className="flex flex-wrap items-stretch gap-3">
-      <div className="relative flex min-w-[280px] flex-1 items-center rounded-2xl border border-[var(--mk-line)] bg-white px-4">
+      <div className="relative flex min-w-[280px] flex-1 items-center rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] px-4">
         <Search className="size-[19px] shrink-0 text-[var(--mk-muted)]" aria-hidden />
         <input
           type="search"
@@ -76,14 +76,14 @@ export function MentorSearch({
         <button
           type="button"
           onClick={() => setValue(value || "help me land a private chef role")}
-          className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#F3EFFF] px-3.5 py-2 text-[14px] font-medium text-[#5B32E0] sm:inline-flex"
+          className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[var(--mk-chip-violet-bg)] px-3.5 py-2 text-[14px] font-medium text-[var(--mk-chip-violet-text)] sm:inline-flex"
         >
           <Sparkles className="size-4" aria-hidden />
           Try AI Search
         </button>
       </div>
 
-      <div className="flex items-center gap-3 rounded-2xl border border-[var(--mk-line)] bg-white px-4 py-3">
+      <div className="flex items-center gap-3 rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] px-4 py-3">
         <span className="mk-badge mk-badge-gold">New</span>
         <span className="text-[15px] font-semibold text-[var(--mk-text)]">
           Display paid sessions
@@ -98,11 +98,11 @@ export function MentorSearch({
           aria-label="Display paid sessions"
           onClick={() => setPaidOnly((v) => !v)}
           className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-            paidOnly ? "bg-[var(--mk-ink)]" : "bg-[#D7DEE1]"
+            paidOnly ? "bg-[var(--mk-ink)]" : "bg-[var(--mk-chip-line)]"
           }`}
         >
           <span
-            className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${
+            className={`absolute top-0.5 size-5 rounded-full bg-[var(--mk-surface)] shadow transition-transform ${
               paidOnly ? "translate-x-[22px]" : "translate-x-0.5"
             }`}
           />
@@ -110,16 +110,16 @@ export function MentorSearch({
       </div>
 
       <details className="relative">
-        <summary className="flex h-full cursor-pointer list-none items-center gap-2.5 rounded-2xl border border-[var(--mk-line)] bg-white px-5 text-[15px] font-medium text-[var(--mk-text)] hover:bg-[#F4F6F7] [&::-webkit-details-marker]:hidden">
+        <summary className="flex h-full cursor-pointer list-none items-center gap-2.5 rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] px-5 text-[15px] font-medium text-[var(--mk-text)] hover:bg-[var(--mk-wash)] [&::-webkit-details-marker]:hidden">
           <SlidersHorizontal className="size-5" aria-hidden />
           Filters
           {filterCount > 0 && (
-            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--mk-ink)] px-1.5 text-[11px] font-semibold text-white">
+            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--mk-ink)] px-1.5 text-[11px] font-semibold text-[var(--brand-white)]">
               {filterCount}
             </span>
           )}
         </summary>
-        <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-[var(--mk-line)] bg-white p-3 shadow-[var(--mk-shadow-lift)]">
+        <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] p-3 shadow-[var(--mk-shadow-lift)]">
           <p className="px-1 text-[12px] font-semibold uppercase tracking-wide text-[var(--mk-subtle)]">
             Sort
           </p>
@@ -136,8 +136,8 @@ export function MentorSearch({
                 href={sortHref(sort)}
                 className={`rounded-lg px-3 py-2 text-[14px] ${
                   (filters.sort ?? "price") === sort
-                    ? "bg-[#EDEFF0] font-semibold text-[var(--mk-text)]"
-                    : "text-[var(--mk-muted)] hover:bg-[#F4F6F7]"
+                    ? "bg-[var(--mk-wash-strong)] font-semibold text-[var(--mk-text)]"
+                    : "text-[var(--mk-muted)] hover:bg-[var(--mk-wash)]"
                 }`}
               >
                 {label}

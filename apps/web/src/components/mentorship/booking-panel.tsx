@@ -127,15 +127,15 @@ export function BookingPanel({
                 className={cn(
                   "w-full rounded-xl border p-4 text-left transition-colors",
                   active
-                    ? "border-[var(--mk-ink)] bg-[var(--mk-ink)] text-white"
-                    : "border-[var(--mk-line)] hover:bg-[#F4F6F7]",
+                    ? "border-[var(--mk-ink)] bg-[var(--mk-ink)] text-[var(--brand-white)]"
+                    : "border-[var(--mk-line)] hover:bg-[var(--mk-wash)]",
                 )}
               >
                 <p className="text-[16px] font-medium leading-snug">{type.title}</p>
                 <p
                   className={cn(
                     "mt-1 text-[13px]",
-                    active ? "text-white/70" : "text-[var(--mk-muted)]",
+                    active ? "text-[var(--brand-white)]/70" : "text-[var(--mk-muted)]",
                   )}
                 >
                   {type.durationMinutes} minutes
@@ -145,8 +145,8 @@ export function BookingPanel({
                     className={cn(
                       "inline-flex h-9 items-center rounded-lg px-4 text-[14px] font-semibold",
                       active
-                        ? "bg-white/15 text-white"
-                        : "shadow-[inset_0_0_0_1px_#d7dee1] text-[var(--mk-text)]",
+                        ? "bg-[var(--mk-surface)]/15 text-[var(--brand-white)]"
+                        : "shadow-[inset_0_0_0_1px_var(--mk-chip-line)] text-[var(--mk-text)]",
                     )}
                   >
                     Book
@@ -159,7 +159,7 @@ export function BookingPanel({
                   <p
                     className={cn(
                       "mt-2 text-[14px]",
-                      active ? "text-white/85" : "text-[var(--mk-muted)]",
+                      active ? "text-[var(--brand-white)]/85" : "text-[var(--mk-muted)]",
                     )}
                   >
                     {type.description}
@@ -198,7 +198,7 @@ export function BookingPanel({
                     className={cn(
                       "w-full rounded-lg border px-2 py-2 text-[14px] transition-colors",
                       active
-                        ? "border-[var(--mk-ink)] bg-[var(--mk-ink)] text-white"
+                        ? "border-[var(--mk-ink)] bg-[var(--mk-ink)] text-[var(--brand-white)]"
                         : "border-[var(--mk-line)] hover:border-[var(--mk-ink)]",
                     )}
                   >
@@ -221,11 +221,11 @@ export function BookingPanel({
       )}
 
       {isSelf ? (
-        <p className="mt-4 rounded-lg bg-[#F4F6F7] p-3 text-[14px] text-[var(--mk-muted)]">
+        <p className="mt-4 rounded-lg bg-[var(--mk-wash)] p-3 text-[14px] text-[var(--mk-muted)]">
           This is your own mentor page.
         </p>
       ) : paused ? (
-        <p className="mt-4 rounded-lg bg-[#FFF6E6] p-3 text-[13px] text-[#7A5B00]">
+        <p className="mt-4 rounded-lg bg-[var(--mk-warn-bg)] p-3 text-[13px] text-[var(--mk-badge-gold-text)]">
           This mentor has paused new bookings.
         </p>
       ) : (
@@ -239,7 +239,7 @@ export function BookingPanel({
             {booking ? "Reserving…" : "Reserve this time"}
           </button>
           {!paymentsEnabled && (
-            <p className="mt-2 text-[13px] text-[#7A5B00]">
+            <p className="mt-2 text-[13px] text-[var(--mk-badge-gold-text)]">
               Payments are not switched on yet, so this reserves the time but does not
               charge you. The mentor confirms directly.
             </p>

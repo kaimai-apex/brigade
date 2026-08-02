@@ -17,7 +17,7 @@ export function HomeHero({
   mentorCount: number;
 }) {
   return (
-    <section className="relative flex min-h-[860px] flex-col items-center overflow-hidden bg-[var(--brand-paper-warm,#F7F2EA)] pb-16 pt-[108px] lg:min-h-[92vh]">
+    <section className="relative flex min-h-[860px] flex-col items-center overflow-hidden bg-[var(--brand-paper-warm)] pb-16 pt-[108px] lg:min-h-[92vh]">
       {/* Color blobs — same atmosphere as the original Brigade hero art */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <span className="art-blob blob-cobalt opacity-90" />
@@ -29,11 +29,11 @@ export function HomeHero({
       <div className="relative z-10 w-full max-w-[900px] px-5 text-center">
         <Odometer value={minutesShared} />
 
-        <h1 className="mk-serif-display mt-8 text-balance text-[var(--brand-ink,#1A1A17)]">
+        <h1 className="mk-serif-display mt-8 text-balance text-[var(--brand-ink,var(--brand-ink))]">
           The fastest way to get unstuck in hospitality
         </h1>
 
-        <p className="mx-auto mt-6 max-w-[640px] text-[17px] leading-relaxed text-[var(--brand-ink-muted,#4A4A45)] md:text-[19px]">
+        <p className="mx-auto mt-6 max-w-[640px] text-[17px] leading-relaxed text-[var(--brand-ink-muted,var(--brand-ink-muted))] md:text-[19px]">
           Meet a chef who already made the move you want to make.{' '}
           {Math.max(mentorCount, 1).toLocaleString('en-US')}+ mentors. Real kitchens.
           Book a 1:1 session.
@@ -54,9 +54,9 @@ function Odometer({ value }: { value: number }) {
   const chars = value.toLocaleString('en-US').split('');
 
   return (
-    <div className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-ink,#1A1A17)]/90 px-4 py-2 text-[14px] text-white/90 backdrop-blur-sm">
+    <div className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-ink,var(--brand-ink))]/90 px-4 py-2 text-[14px] text-[var(--brand-white)]/90 backdrop-blur-sm">
       <span>Knowledge shared</span>
-      <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 font-medium tabular-nums">
+      <span className="inline-flex items-center gap-2 rounded-full bg-[var(--mk-surface)]/15 px-3 py-1 font-medium tabular-nums">
         <span className="inline-flex">
           {chars.map((c, i) =>
             c === ',' ? (
@@ -105,7 +105,7 @@ function HeroSearch() {
         e.preventDefault();
         router.push(q.trim() ? `/mentors?q=${encodeURIComponent(q.trim())}` : '/mentors');
       }}
-      className="mx-auto mt-10 flex w-full max-w-[720px] items-center gap-3 rounded-full border border-black/8 bg-white p-2.5 pl-6 shadow-[0_16px_48px_rgba(16,24,40,0.12)]"
+      className="mx-auto mt-10 flex w-full max-w-[720px] items-center gap-3 rounded-full border border-black/8 bg-[var(--mk-surface)] p-2.5 pl-6 shadow-[0_16px_48px_rgba(16,24,40,0.12)]"
     >
       <label
         className="min-w-0 flex-1 cursor-text text-left"
@@ -126,7 +126,7 @@ function HeroSearch() {
       <button
         type="submit"
         aria-label="Search mentors"
-        className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--mk-ink)] text-white transition hover:scale-105"
+        className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--mk-ink)] text-[var(--brand-white)] transition hover:scale-105"
       >
         <Search className="size-5" />
       </button>

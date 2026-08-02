@@ -76,7 +76,7 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
         </nav>
 
         <header className="mt-6">
-          <div className="relative h-[180px] overflow-hidden rounded-2xl bg-[#eef1f2] md:h-[230px]">
+          <div className="relative h-[180px] overflow-hidden rounded-2xl bg-[var(--mk-avatar-bg)] md:h-[230px]">
             {cover ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={cover} alt="" className="h-full w-full object-cover" />
@@ -90,7 +90,7 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
               alt=""
               width={148}
               height={148}
-              className="size-[148px] shrink-0 rounded-2xl border-4 border-white bg-[#eef1f2] object-cover shadow-[var(--mk-shadow-card)]"
+              className="size-[148px] shrink-0 rounded-2xl border-4 border-[var(--brand-white)] bg-[var(--mk-avatar-bg)] object-cover shadow-[var(--mk-shadow-card)]"
             />
 
             <div className="min-w-0 flex-1 pb-2">

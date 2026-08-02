@@ -28,7 +28,7 @@ export function MarketingHeader() {
         <Link
           href="/"
           aria-label="Brigade home"
-          className="font-display text-[22px] font-black tracking-[-0.02em] text-[var(--brand-ink,#1A1A17)]"
+          className="font-display text-[22px] font-black tracking-[-0.02em] text-[var(--brand-ink,var(--brand-ink))]"
         >
           Brigade
         </Link>
@@ -36,19 +36,19 @@ export function MarketingHeader() {
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
           <Link
             href="/login?next=/mentorship"
-            className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink,#1A1A17)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink,#1A1A17)] md:inline-flex"
+            className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink,var(--brand-ink))]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink,var(--brand-ink))] md:inline-flex"
           >
             Become a mentor
           </Link>
           <Link
             href="/login"
-            className="hidden h-10 items-center rounded-xl px-4 text-[13px] font-semibold text-[var(--brand-ink,#1A1A17)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5 sm:inline-flex"
+            className="hidden h-10 items-center rounded-xl px-4 text-[13px] font-semibold text-[var(--brand-ink,var(--brand-ink))] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5 sm:inline-flex"
           >
             Log in
           </Link>
           <Link
             href="/waitlist"
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink,#05051B)] px-4 text-[13px] font-semibold text-white transition hover:bg-[#1a1a3a] sm:px-5"
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink,var(--mk-ink))] px-4 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:px-5"
           >
             Get started today
           </Link>

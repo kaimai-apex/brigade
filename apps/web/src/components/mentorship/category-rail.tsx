@@ -119,12 +119,12 @@ export function CategoryRail({
           <span
             className={cn(
               "relative grid h-12 w-12 place-items-center rounded-xl transition",
-              chip.pressed ? "bg-[#EDEFF0]" : "group-hover:bg-[#F4F6F7]",
+              chip.pressed ? "bg-[var(--mk-wash-strong)]" : "group-hover:bg-[var(--mk-wash)]",
             )}
           >
             <CategoryGlyph icon={chip.icon} />
             {chip.dot && (
-              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#E11D48]" />
+              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[var(--mk-dot-rose)]" />
             )}
           </span>
           <span
@@ -174,8 +174,8 @@ function CategoryGlyph({ icon }: { icon: string }) {
     <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
       <path
         d={d}
-        fill={stroked ? "none" : "#2B3238"}
-        stroke={stroked ? "#2B3238" : "none"}
+        fill={stroked ? "none" : "var(--mk-icon)"}
+        stroke={stroked ? "var(--mk-icon)" : "none"}
         strokeWidth={stroked ? 1.9 : 0}
         strokeLinecap="round"
         strokeLinejoin="round"
