@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getConnectProSession } from "@/lib/connectpro/server";
 import { dbGetMentor, dbListSessionTypes, dbGetSlots } from "@/lib/server/mentorship-db";
 
 /**
@@ -7,14 +6,12 @@ import { dbGetMentor, dbListSessionTypes, dbGetSlots } from "@/lib/server/mentor
  *
  * Slots are computed for a specific session type, since a 30-minute and a
  * 90-minute session divide the same availability window differently.
+ * Browse + slot preview is public; booking still requires a session.
  */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getConnectProSession();
-  if (!session) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
   const { id } = await params;
 
   try {

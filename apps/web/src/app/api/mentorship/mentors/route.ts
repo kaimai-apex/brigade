@@ -1,22 +1,23 @@
 import { NextResponse } from "next/server";
-import { getConnectProSession } from "@/lib/connectpro/server";
-import { dbListMentors } from "@/lib/server/mentorship-db";
+import { dbListMentors, type MentorSort } from "@/lib/server/mentorship-db";
 
-/** The mentor directory: GET /api/mentorship/mentors?q=&role=&maxPrice=&offset= */
+const SORTS = new Set<MentorSort>(["price", "name", "newest"]);
+
+/** Public mentor directory: GET /api/mentorship/mentors?q=&role=&city=&expertise=&sort=&maxPrice=&offset= */
 export async function GET(request: Request) {
-  const session = await getConnectProSession();
-  if (!session) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
   const params = new URL(request.url).searchParams;
   const maxPrice = Number(params.get("maxPrice"));
+  const sortRaw = params.get("sort") ?? "price";
+  const sort = SORTS.has(sortRaw as MentorSort) ? (sortRaw as MentorSort) : "price";
 
   try {
     const result = await dbListMentors({
       q: params.get("q") ?? undefined,
       role: params.get("role") ?? undefined,
+      city: params.get("city") ?? undefined,
+      expertise: params.get("expertise") ?? undefined,
       maxPriceCents: Number.isFinite(maxPrice) && maxPrice > 0 ? maxPrice : undefined,
+      sort,
       limit: Number(params.get("limit")) || 24,
       offset: Number(params.get("offset")) || 0,
     });

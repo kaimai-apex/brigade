@@ -64,15 +64,25 @@ export function getBannerById(id?: string | null): ProfileBanner {
   return PROFILE_BANNERS.find((b) => b.id === id || b.src === id) ?? DEFAULT_BANNER;
 }
 
+function isSafeUploadUrl(url: string): boolean {
+  return (
+    url.startsWith("/uploads/") &&
+    !url.includes("..") &&
+    !url.includes("//") &&
+    /^\/uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|jpeg|png|webp|gif)$/i.test(url)
+  );
+}
+
 export function resolveBannerUrl(coverUrl?: string | null, seed?: string | null): string {
   if (coverUrl?.trim()) {
-    const match = getBannerById(coverUrl.trim());
-    if (PROFILE_BANNERS.some((b) => b.id === coverUrl || b.src === coverUrl)) {
+    const trimmed = coverUrl.trim();
+    const match = getBannerById(trimmed);
+    if (PROFILE_BANNERS.some((b) => b.id === trimmed || b.src === trimmed)) {
       return match.src;
     }
-    // Custom uploaded URL
-    if (coverUrl.startsWith("http") || coverUrl.startsWith("/")) {
-      return coverUrl;
+    // Same-origin uploads only — never echo arbitrary http(s) cover URLs.
+    if (isSafeUploadUrl(trimmed)) {
+      return trimmed;
     }
     return match.src;
   }

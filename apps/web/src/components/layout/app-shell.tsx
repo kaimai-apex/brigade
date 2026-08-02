@@ -94,20 +94,22 @@ type PageHeaderProps = {
 
 /** Logged-in → AppNav; logged-out → PublicNav */
 export function PageHeader({ showAuth = true }: PageHeaderProps) {
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
   const user = useCurrentUser(session?.userId);
   const unread = useUnreadNotifications(Boolean(session));
 
-  if (session) {
-    return (
-      <>
-        <AppNav user={user ?? undefined} unreadNotifications={unread} />
-        <MobileTabBar />
-      </>
-    );
+  // While cookies hydrate, show the public nav so the mentorship landing
+  // SSR/first paint already has Log in / Waitlist. Authed users swap to AppNav.
+  if (loading || !session) {
+    return <PublicNav showAuth={showAuth} />;
   }
 
-  return <PublicNav showAuth={showAuth} />;
+  return (
+    <>
+      <AppNav user={user ?? undefined} unreadNotifications={unread} />
+      <MobileTabBar />
+    </>
+  );
 }
 
 type AppPageProps = {

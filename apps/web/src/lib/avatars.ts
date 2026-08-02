@@ -32,12 +32,25 @@ export function getDefaultAvatar(seed?: string | null): string {
   return DEFAULT_AVATARS[index];
 }
 
-/** Uploaded photo if present, otherwise a kitchen default avatar. */
+/**
+ * Same-origin uploads only — never echo arbitrary http(s) URLs from profile
+ * fields (stored XSS / tracking-pixel risk). Falls back to kitchen defaults.
+ */
+export function isSafeAvatarUrl(url: string): boolean {
+  if (url.startsWith("/uploads/") && !url.includes("..") && !url.includes("//")) {
+    return /^\/uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|jpeg|png|webp|gif)$/i.test(url);
+  }
+  if ((DEFAULT_AVATARS as readonly string[]).includes(url)) return true;
+  if (url.startsWith("/avatars/") && !url.includes("..")) return true;
+  return false;
+}
+
+/** Uploaded photo if present and safe, otherwise a kitchen default avatar. */
 export function resolveAvatarUrl(
   uploadedUrl?: string | null,
   seed?: string | null,
 ): string {
   const trimmed = uploadedUrl?.trim();
-  if (trimmed) return trimmed;
+  if (trimmed && isSafeAvatarUrl(trimmed)) return trimmed;
   return getDefaultAvatar(seed);
 }

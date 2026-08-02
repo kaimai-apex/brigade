@@ -9,7 +9,7 @@ export default function LoginPage() {
     <div className="min-h-dvh bg-white text-ink">
       <header className="flex h-12 items-center border-b border-neutral-100 px-4">
         <Link
-          href="/"
+          href="/mentors"
           className="font-display text-xl font-black tracking-tight text-ink"
         >
           Brigade

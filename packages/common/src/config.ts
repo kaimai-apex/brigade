@@ -28,16 +28,18 @@ function resolvePort(serviceName: string, defaultPort: number): number {
 export function loadConfig(serviceName: string, defaultPort: number): ServiceConfig {
   const nodeEnv = process.env.NODE_ENV ?? 'development';
   const jwtSecret = process.env.JWT_SECRET?.trim();
+  const allowInsecureFallback = process.env.ALLOW_INSECURE_JWT_FALLBACK === 'true';
 
   if (!jwtSecret) {
-    if (nodeEnv === 'production') {
+    // Fail closed for any shared/deployed environment. Local-only fallback
+    // requires an explicit opt-in so staging cannot silently mint forgeable tokens.
+    if (nodeEnv === 'production' || !allowInsecureFallback) {
       throw new Error(
-        `[${serviceName}] JWT_SECRET is required in production. Refusing to start with a default secret.`,
+        `[${serviceName}] JWT_SECRET is required. For local-only boot set ALLOW_INSECURE_JWT_FALLBACK=true.`,
       );
     }
-    // Local-only fallback — never use in deployed environments.
     console.warn(
-      `[${serviceName}] WARNING: JWT_SECRET unset; using insecure local-dev secret. Set JWT_SECRET before any shared/deployed use.`,
+      `[${serviceName}] WARNING: JWT_SECRET unset; using insecure local-dev secret (ALLOW_INSECURE_JWT_FALLBACK=true).`,
     );
   }
 

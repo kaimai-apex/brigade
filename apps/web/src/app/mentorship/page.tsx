@@ -200,7 +200,7 @@ export default function MentorshipPage() {
     return (
       <AppPage>
         <div className="mx-auto max-w-xl py-10 text-center">
-          <h1 className="text-hero">Teach what you know</h1>
+          <h1 className="mk-title">Teach what you know</h1>
           <p className="mt-3 text-ink/70">
             Private chefs and hospitality leaders sell one-to-one sessions on Brigade. You set
             the price and the hours. Brigade takes 20% of each booking; the rest is yours.
@@ -228,7 +228,7 @@ export default function MentorshipPage() {
     <AppPage>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-hero">Your mentoring</h1>
+          <h1 className="mk-title">Your mentoring</h1>
           <p className="mt-1 text-ink/60">
             {mentor.status === 'active'
               ? 'Live in the mentor directory.'

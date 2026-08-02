@@ -1,9 +1,17 @@
 /**
  * Debug-only login bypass.
  * MUST be explicitly enabled via DEBUG_LOGIN_BACKDOOR=true.
- * Never auto-enabled based on NODE_ENV alone.
+ * Never auto-enabled based on NODE_ENV alone. Always off in production.
  */
 export function isDebugBackdoorEnabled() {
+  if (process.env.NODE_ENV === 'production') {
+    if (process.env.DEBUG_LOGIN_BACKDOOR === 'true') {
+      console.error(
+        '[security] DEBUG_LOGIN_BACKDOOR=true is ignored in production. Refusing backdoor login.',
+      );
+    }
+    return false;
+  }
   return process.env.DEBUG_LOGIN_BACKDOOR === 'true';
 }
 

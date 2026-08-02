@@ -106,7 +106,7 @@ export default function SessionsPage() {
 
   return (
     <AppPage>
-      <h1 className="text-hero">Your sessions</h1>
+      <h1 className="mk-title">Your sessions</h1>
       <p className="mt-1 text-ink/60">Mentorship you have booked, and time you are teaching.</p>
 
       {nothing ? (

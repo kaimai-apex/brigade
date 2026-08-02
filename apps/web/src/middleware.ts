@@ -3,69 +3,141 @@ import { type NextRequest, NextResponse } from "next/server";
 /**
  * Access control, as an ALLOWLIST.
  *
- * This was previously a blocklist with an explicit route matcher, which meant
- * anything nobody remembered to list was public — /profile/:id, /posts/:id and
- * /hashtag/:tag among them. A blocklist fails open, and the failure is silent.
- *
- * Brigade is pre-launch: the public gets the landing page and the waitlist, and
- * nothing else. Everything else needs a session.
+ * Public: mentorship marketplace (the landing experience), waitlist, login,
+ * and the APIs those surfaces need. Everything else needs a verified session.
  */
 
-/** Pages anyone may load. */
+/** Exact public pages. */
 const PUBLIC_PAGES = new Set([
   "/",
   "/waitlist",
-  // Unlisted rather than public: no link points here, and it still needs the
-  // demo password. Reachable only by someone who knows both.
+  "/login",
   "/demo",
 ]);
 
 /**
- * Endpoints that must answer without a session.
- *
- * Deliberately short. Note what is absent: /api/auth/login and
- * /api/auth/signup, because there is no public sign-up while the product is
- * waitlist-only, and an open signup endpoint is how the seeding scripts worked
- * — which is exactly the hole to close.
+ * Exact public APIs. Mentorship browse is handled by prefix below so nested
+ * mentor IDs stay public while /api/mentorship/me and bookings stay private.
  */
 const PUBLIC_APIS = new Set([
   "/api/waitlist",
-  "/api/waitlist/kit-status",
   "/api/demo/login",
-  // Session plumbing: these read the caller's own cookies and are useless
-  // without them, but the app calls them on every load including logged-out.
   "/api/auth/session",
   "/api/auth/logout",
   "/api/auth/refresh-token",
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/mfa/verify",
 ]);
 
-function hasSessionCookies(request: NextRequest) {
-  // Access tokens expire in ~15m; refresh tokens keep the session alive. Accept
-  // either, so an expired access token does not bounce a logged-in user.
+/** Refresh tokens are 48 random bytes, hex-encoded (see connectpro-auth). */
+const REFRESH_HEX = /^[0-9a-f]{96}$/i;
+
+function base64UrlToBytes(input: string): Uint8Array {
+  const pad = "=".repeat((4 - (input.length % 4)) % 4);
+  const b64 = (input + pad).replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Copy into a fresh ArrayBuffer so Web Crypto's BufferSource typing accepts it. */
+function asBufferSource(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
+/**
+ * Edge-safe HS256 verify (jsonwebtoken is Node-only). Rejects MFA-challenge
+ * tokens and expired access tokens so a forged cookie cannot pass the gate.
+ */
+async function accessTokenIsValid(token: string, secret: string): Promise<boolean> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
+  try {
+    const header = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[0]))) as {
+      alg?: string;
+    };
+    if (header.alg !== "HS256") return false;
+
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+    const ok = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      asBufferSource(base64UrlToBytes(parts[2])),
+      new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
+    );
+    if (!ok) return false;
+
+    const payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[1]))) as {
+      sub?: string;
+      exp?: number;
+      purpose?: string;
+    };
+    if (payload.purpose === "mfa") return false;
+    if (typeof payload.sub !== "string" || !payload.sub) return false;
+    if (typeof payload.exp === "number" && payload.exp * 1000 <= Date.now()) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function hasVerifiedSession(request: NextRequest): Promise<boolean> {
+  const secret = process.env.JWT_SECRET?.trim();
   const access = request.cookies.get("connectpro_access_token")?.value;
   const refresh = request.cookies.get("connectpro_refresh_token")?.value;
-  return Boolean(access || refresh);
+
+  if (secret && access && (await accessTokenIsValid(access, secret))) {
+    return true;
+  }
+  if (refresh && REFRESH_HEX.test(refresh)) {
+    return true;
+  }
+  return false;
+}
+
+function isPublicPage(pathname: string): boolean {
+  if (PUBLIC_PAGES.has(pathname)) return true;
+  // Exact segment match — do not treat /mentorship as /mentors*.
+  if (pathname === "/mentors" || pathname.startsWith("/mentors/")) return true;
+  if (pathname.startsWith("/login/")) return true;
+  return false;
+}
+
+function isPublicApi(pathname: string): boolean {
+  if (PUBLIC_APIS.has(pathname)) return true;
+  // List + /:id only — not /api/mentorship/me or bookings.
+  if (
+    pathname === "/api/mentorship/mentors" ||
+    pathname.startsWith("/api/mentorship/mentors/")
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const authed = hasSessionCookies(request);
+  const authed = await hasVerifiedSession(request);
 
   if (pathname.startsWith("/api/")) {
-    if (PUBLIC_APIS.has(pathname) || authed) return NextResponse.next({ request });
-    // 404 rather than 401: an unauthenticated caller learns nothing about
-    // which endpoints exist.
+    if (isPublicApi(pathname) || authed) return NextResponse.next({ request });
     return new NextResponse("Not found", { status: 404 });
   }
 
-  if (PUBLIC_PAGES.has(pathname)) return NextResponse.next({ request });
+  if (isPublicPage(pathname)) return NextResponse.next({ request });
 
   if (!authed) {
-    // Home, not /login. There is no public login page to send anyone to, and a
-    // redirect to one would advertise that an app exists behind it.
     const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.search = "";
+    url.pathname = "/login";
+    url.search = `?next=${encodeURIComponent(pathname)}`;
     return NextResponse.redirect(url);
   }
 
@@ -86,11 +158,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Everything except Next's own assets and public files. Listing routes
-     * individually is what let pages slip through unprotected, so the matcher
-     * now excludes rather than enumerates.
-     */
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|hero/|uploads/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf)$).*)",
   ],
 };

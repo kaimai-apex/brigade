@@ -44,7 +44,7 @@ export function DirectoryQuickLook({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+      <DialogContent className="max-w-md gap-0 overflow-hidden p-0 [&_[data-slot=dialog-close]]:right-3 [&_[data-slot=dialog-close]]:top-3 [&_[data-slot=dialog-close]]:z-10 [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:bg-white/95 [&_[data-slot=dialog-close]]:p-1.5 [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]]:shadow-sm">
         <div className="relative aspect-[16/9] w-full bg-secondary/40">
           <Avatar className="size-full rounded-none">
             <AvatarImage
@@ -56,7 +56,7 @@ export function DirectoryQuickLook({
               {getInitials(profile.first_name, profile.last_name)}
             </AvatarFallback>
           </Avatar>
-          <div className="absolute right-3 top-3">
+          <div className="absolute right-12 top-3 z-10">
             <SaveButton userId={profile.id} name={name} initialSaved={saved} />
           </div>
         </div>

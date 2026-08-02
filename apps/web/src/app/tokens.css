@@ -60,4 +60,19 @@
   --neutral-200: #e5e5e5;
   --neutral-300: #d4d4d4;
   --neutral-500: #737373;
+
+  /* -------------------------------------------------------------------
+     Marketplace surface tokens.
+
+     The mentorship marketplace runs a denser, more editorial layout than
+     the rest of the app: hairline-bordered cards on a near-white canvas,
+     the way a directory wants to look. These are warm neutrals rather
+     than the grey ones, so the marketplace still reads as Brigade and
+     not as a generic SaaS table.
+     ------------------------------------------------------------------- */
+  --brand-hairline: #e8e4db; /* card + divider rule */
+  --brand-hairline-strong: #d6d0c2; /* hover state for the same rule */
+  --brand-canvas: #faf8f3; /* section background behind white cards */
+  --brand-ink-muted: #6b665c; /* secondary text — warm, not grey */
+  --brand-ink-subtle: #918b7e; /* tertiary text: counts, timestamps */
 }

@@ -1,40 +1,151 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Search, SlidersHorizontal, Sparkles } from "lucide-react";
+
+type Filters = {
+  q?: string;
+  role?: string;
+  city?: string;
+  expertise?: string;
+  sort?: string;
+};
 
 /**
- * Search box for the mentor directory.
- *
- * Debounced and URL-driven, matching the member directory: the query lives in
- * the address bar so a search can be shared, bookmarked and reloaded.
+ * ADPList explore toolbar: h-14 search, AI pill, advanced toggle, Filters.
+ * Words are Brigade; chrome matches the clone.
  */
-export function MentorSearch({ initialQuery }: { initialQuery: string }) {
+export function MentorSearch({
+  initialQuery,
+  filters = {},
+  filterCount = 0,
+}: {
+  initialQuery: string;
+  filters?: Omit<Filters, "q">;
+  filterCount?: number;
+}) {
   const router = useRouter();
   const [value, setValue] = useState(initialQuery);
+  const [paidOnly, setPaidOnly] = useState(false);
 
   useEffect(() => {
-    // Don't push a duplicate entry when the box already matches the URL.
+    setValue(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
     if (value === initialQuery) return;
     const timer = setTimeout(() => {
+      const params = new URLSearchParams();
       const trimmed = value.trim();
-      router.push(trimmed ? `/mentors?q=${encodeURIComponent(trimmed)}` : '/mentors');
-    }, 300);
+      if (trimmed) params.set("q", trimmed);
+      if (filters.role) params.set("role", filters.role);
+      if (filters.city) params.set("city", filters.city);
+      if (filters.expertise) params.set("expertise", filters.expertise);
+      if (filters.sort && filters.sort !== "price") params.set("sort", filters.sort);
+      const qs = params.toString();
+      router.push(qs ? `/mentors?${qs}` : "/mentors");
+    }, 280);
     return () => clearTimeout(timer);
-  }, [value, initialQuery, router]);
+  }, [value, initialQuery, filters.role, filters.city, filters.expertise, filters.sort, router]);
+
+  const sortHref = (sort: string) => {
+    const params = new URLSearchParams();
+    if (value.trim()) params.set("q", value.trim());
+    if (filters.role) params.set("role", filters.role);
+    if (filters.city) params.set("city", filters.city);
+    if (filters.expertise) params.set("expertise", filters.expertise);
+    if (sort !== "price") params.set("sort", sort);
+    const qs = params.toString();
+    return qs ? `/mentors?${qs}` : "/mentors";
+  };
 
   return (
-    <div className="relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink/40" />
-      <input
-        type="search"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Search by name, role, or city"
-        aria-label="Search mentors"
-        className="h-12 w-full rounded-full border border-ink/15 pl-10 pr-4 text-base outline-none focus:border-forest"
-      />
+    <div className="flex flex-wrap items-stretch gap-3">
+      <div className="relative flex min-w-[280px] flex-1 items-center rounded-2xl border border-[var(--mk-line)] bg-white px-4">
+        <Search className="size-[19px] shrink-0 text-[var(--mk-muted)]" aria-hidden />
+        <input
+          type="search"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Search by name, kitchen, specialty…"
+          aria-label="Search mentors"
+          className="h-14 min-w-0 flex-1 border-0 bg-transparent px-3 text-[15px] text-[var(--mk-text)] outline-none placeholder:text-[var(--mk-subtle)]"
+        />
+        <button
+          type="button"
+          onClick={() => setValue(value || "help me land a private chef role")}
+          className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#F3EFFF] px-3.5 py-2 text-[14px] font-medium text-[#5B32E0] sm:inline-flex"
+        >
+          <Sparkles className="size-4" aria-hidden />
+          Try AI Search
+        </button>
+      </div>
+
+      <div className="flex items-center gap-3 rounded-2xl border border-[var(--mk-line)] bg-white px-4 py-3">
+        <span className="mk-badge mk-badge-gold">New</span>
+        <span className="text-[15px] font-semibold text-[var(--mk-text)]">
+          Display paid sessions
+        </span>
+        <span className="hidden text-[15px] text-[var(--mk-subtle)] sm:inline">
+          | Book focused 1:1 time
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={paidOnly}
+          aria-label="Display paid sessions"
+          onClick={() => setPaidOnly((v) => !v)}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+            paidOnly ? "bg-[var(--mk-ink)]" : "bg-[#D7DEE1]"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${
+              paidOnly ? "translate-x-[22px]" : "translate-x-0.5"
+            }`}
+          />
+        </button>
+      </div>
+
+      <details className="relative">
+        <summary className="flex h-full cursor-pointer list-none items-center gap-2.5 rounded-2xl border border-[var(--mk-line)] bg-white px-5 text-[15px] font-medium text-[var(--mk-text)] hover:bg-[#F4F6F7] [&::-webkit-details-marker]:hidden">
+          <SlidersHorizontal className="size-5" aria-hidden />
+          Filters
+          {filterCount > 0 && (
+            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--mk-ink)] px-1.5 text-[11px] font-semibold text-white">
+              {filterCount}
+            </span>
+          )}
+        </summary>
+        <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-[var(--mk-line)] bg-white p-3 shadow-[var(--mk-shadow-lift)]">
+          <p className="px-1 text-[12px] font-semibold uppercase tracking-wide text-[var(--mk-subtle)]">
+            Sort
+          </p>
+          <div className="mt-2 flex flex-col gap-1">
+            {(
+              [
+                ["price", "Price"],
+                ["newest", "Newest"],
+                ["name", "Name"],
+              ] as const
+            ).map(([sort, label]) => (
+              <Link
+                key={sort}
+                href={sortHref(sort)}
+                className={`rounded-lg px-3 py-2 text-[14px] ${
+                  (filters.sort ?? "price") === sort
+                    ? "bg-[#EDEFF0] font-semibold text-[var(--mk-text)]"
+                    : "text-[var(--mk-muted)] hover:bg-[#F4F6F7]"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </details>
     </div>
   );
 }

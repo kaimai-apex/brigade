@@ -48,10 +48,11 @@ export function verifyMfaChallengeToken(
   return payload;
 }
 
-export function decodeToken(token: string): JwtPayload | null {
-  try {
-    return jwt.decode(token) as JwtPayload;
-  } catch {
-    return null;
-  }
+/**
+ * @deprecated Never use for auth decisions — decode without verify. Prefer
+ * verifyAccessToken. Kept only so accidental imports fail loudly at call sites
+ * that still expect a helper; always returns null.
+ */
+export function decodeToken(_token: string): JwtPayload | null {
+  return null;
 }

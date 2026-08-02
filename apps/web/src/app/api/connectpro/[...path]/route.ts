@@ -3,7 +3,46 @@ import { cookies } from 'next/headers';
 
 const GATEWAY = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
+/**
+ * First path segment under /api/v1/ — mirrors api-gateway SERVICE_ROUTES plus
+ * health. Anything else is rejected so the BFF cannot be used as an open proxy
+ * to arbitrary upstream hosts/paths.
+ */
+const ALLOWED_V1_SERVICES = new Set([
+  'auth',
+  'users',
+  'connections',
+  'follows',
+  'posts',
+  'feed',
+  'conversations',
+  'messages',
+  'notifications',
+  'search',
+  'jobs',
+  'applications',
+  'companies',
+  'media',
+  'analytics',
+  'recommendations',
+  'admin',
+  'restaurants',
+  'explore',
+  'health',
+]);
+
+function isAllowedProxyPath(pathSegments: string[]): boolean {
+  if (pathSegments.length < 3) return false;
+  if (pathSegments[0] !== 'api' || pathSegments[1] !== 'v1') return false;
+  if (pathSegments.some((s) => s.includes('..') || s.includes('\\') || s === '')) return false;
+  return ALLOWED_V1_SERVICES.has(pathSegments[2]);
+}
+
 async function proxy(request: NextRequest, pathSegments: string[]) {
+  if (!isAllowedProxyPath(pathSegments)) {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get('connectpro_access_token')?.value;
   const target = `${GATEWAY}/${pathSegments.join('/')}${request.nextUrl.search}`;

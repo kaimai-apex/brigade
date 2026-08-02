@@ -40,6 +40,7 @@ public/-.textClipping
 apps/web/public/uploads/
 .vercel/
 .cursor/
+.claude/skills/
 claude-skills-main/
 env.local
 .vercel

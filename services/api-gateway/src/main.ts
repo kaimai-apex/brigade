@@ -60,14 +60,20 @@ async function bootstrap() {
   const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3100,http://localhost:3000')
     .split(',')
     .map((o) => o.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    // Never allow '*' with credentials: true — browsers would treat any Origin
+    // as trusted and attach cookies. Explicit origins only.
+    .filter((o) => o !== '*');
+  if ((process.env.CORS_ORIGINS ?? '').includes('*')) {
+    log.warn('CORS_ORIGINS contained "*"; ignored because credentials are enabled');
+  }
   app.enableCors({
     origin: (
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void,
     ) => {
       // Allow non-browser / same-origin requests with no Origin header.
-      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
         return;
       }
@@ -89,7 +95,13 @@ async function bootstrap() {
     next();
   });
   app.useGlobalFilters(new GlobalExceptionFilter());
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
 
   const expressApp = app.getHttpAdapter().getInstance();
   // Express 5 / path-to-regexp v8 require a *named* wildcard — bare '*' throws

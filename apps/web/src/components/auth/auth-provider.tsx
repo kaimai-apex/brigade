@@ -23,19 +23,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    async function readSession(): Promise<AuthSession | null> {
+      const res = await fetch('/api/auth/session', { credentials: 'include' });
+      const data = (await res.json()) as {
+        session?: { userId: string; authenticated?: boolean };
+      };
+      if (!data.session?.userId) return null;
+      return { userId: data.session.userId };
+    }
+
     async function hydrate() {
       try {
-        const res = await fetch('/api/auth/session', { credentials: 'include' });
-        const data = (await res.json()) as {
-          session?: { userId: string; authenticated?: boolean };
-        };
-        if (data.session?.userId) {
-          const next: AuthSession = { userId: data.session.userId };
+        // Access tokens expire in ~15m while the refresh cookie lasts a week.
+        // Middleware already accepts a well-formed refresh cookie, so without
+        // this step the shell shows PublicNav ("Join Waitlist") on authed pages.
+        let next = await readSession();
+        if (!next) {
+          const refreshed = await fetch('/api/auth/refresh-token', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+          });
+          if (refreshed.ok) next = await readSession();
+        }
+        if (next) {
           saveSession(next);
           setSessionState(next);
           dispatch(setAuth({ userId: next.userId, accessToken: '' }));
         } else {
           clearSession();
+          setSessionState(null);
         }
       } catch {
         /* ignore */

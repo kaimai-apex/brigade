@@ -253,7 +253,11 @@ export function buildDirectoryQuery(
   }
 
   const where = clauses.join("\n  AND ");
-  const sort = params.sort ?? "relevance";
+  const sortKey = params.sort ?? "relevance";
+  // hasOwn so a polluted Object.prototype cannot inject ORDER BY SQL.
+  const sort = Object.hasOwn(ORDER_BY, sortKey)
+    ? ORDER_BY[sortKey as DirectorySort]
+    : ORDER_BY.relevance;
   const limit = Math.min(Math.max(params.limit ?? 24, 1), 48);
   const offset = Math.max(params.offset ?? 0, 0);
 
@@ -268,7 +272,7 @@ export function buildDirectoryQuery(
     // realtime uses cursors instead.
     sql: `SELECT p.*, s.connections_count, s.followers_count, s.following_count, s.posts_count
           ${from}
-          ORDER BY ${ORDER_BY[sort]}
+          ORDER BY ${sort}
           LIMIT ${limit} OFFSET ${offset}`,
     countSql: `SELECT count(*)::int AS total ${from}`,
     values,

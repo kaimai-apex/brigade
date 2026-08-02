@@ -35,17 +35,29 @@
   "devDependencies": {
     "@swc-node/register": "^1.11.1",
     "@swc/core": "^1.15.43",
+    "axe-core": "^4.10.2",
     "concurrently": "^9.1.2",
     "dotenv-cli": "^8.0.0",
+    "pg": "^8.13.1",
+    "playwright": "^1.49.1",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3",
-    "pg": "^8.13.1",
-    "axe-core": "^4.10.2",
-    "playwright": "^1.49.1",
     "wait-on": "^8.0.1"
   },
   "engines": {
     "node": ">=22",
     "pnpm": ">=9"
+  },
+  "pnpm": {
+    "overrides": {
+      "next": "15.5.22",
+      "multer": ">=2.2.0",
+      "sharp": ">=0.35.0",
+      "postcss": ">=8.5.18"
+    }
+  },
+  "dependencies": {
+    "@swc/helpers": "^0.5.23",
+    "thread-stream": "^4.2.0"
   }
 }

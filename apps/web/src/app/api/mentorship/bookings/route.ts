@@ -5,6 +5,7 @@ import {
   dbListBookingsForMentee,
   dbListBookingsForMentor,
   SlotUnavailableError,
+  TooManyPendingBookingsError,
 } from "@/lib/server/mentorship-db";
 import { dbNotify } from "@/lib/server/notify-db";
 import { getPool } from "@connectpro/common";
@@ -78,6 +79,9 @@ export async function POST(request: Request) {
     // Losing the race is an ordinary outcome, not a server fault.
     if (error instanceof SlotUnavailableError) {
       return NextResponse.json({ message: error.message }, { status: 409 });
+    }
+    if (error instanceof TooManyPendingBookingsError) {
+      return NextResponse.json({ message: error.message }, { status: 429 });
     }
     return NextResponse.json(
       { message: error instanceof Error ? error.message : "Could not book" },

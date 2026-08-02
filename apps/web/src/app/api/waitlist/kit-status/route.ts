@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { getConnectProSession, isAdmin } from "@/lib/connectpro/server";
 
 /**
  * Diagnostic: which Kit account + form production is wired to.
- * Open /api/waitlist/kit-status after setting KIT_API_KEY + KIT_FORM_ID.
+ * Requires an admin session — form inventory and subscriber counts are not
+ * public telemetry.
  *
- * This route is public, so subscriber emails are masked (e.g. "ri***@domain").
- * Counts + states are enough to diagnose sync/opt-in; full addresses live in
- * the Kit dashboard and the waitlist_signups table.
+ * Subscriber emails are still masked (e.g. "ri***@domain"). Full addresses
+ * live in the Kit dashboard and the waitlist_signups table.
  */
 function maskEmail(email: string | null | undefined): string | null {
   if (!email) return null;
@@ -17,6 +18,11 @@ function maskEmail(email: string | null | undefined): string | null {
 }
 
 export async function GET() {
+  const session = await getConnectProSession();
+  if (!isAdmin(session)) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
   const apiKey =
     process.env.KIT_API_KEY?.trim() ||
     process.env.CONVERTKIT_API_KEY?.trim() ||

@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { getConnectProSession } from "@/lib/connectpro/server";
 import { dbCancelBooking } from "@/lib/server/mentorship-db";
 import { dbNotify } from "@/lib/server/notify-db";
+import { getPaymentProvider } from "@/lib/server/payments";
 
 /**
  * Cancel: POST /api/mentorship/bookings/:id/cancel
  *
  * Either party may cancel. Ownership is enforced in the UPDATE's WHERE clause,
- * so this cannot be used to cancel a stranger's session.
+ * so this cannot be used to cancel a stranger's session. If a Stripe
+ * PaymentIntent was attached, it is voided best-effort so the hold does not
+ * stay open after the calendar slot is released.
  */
 export async function POST(
   _request: Request,
@@ -20,6 +23,11 @@ export async function POST(
 
   try {
     const booking = await dbCancelBooking(id, session.userId);
+
+    if (booking.paymentIntentId) {
+      await getPaymentProvider().cancelPaymentIntent(booking.paymentIntentId);
+    }
+
     // Tell whichever side did not press the button.
     const other =
       booking.mentorUserId === session.userId ? booking.menteeUserId : booking.mentorUserId;

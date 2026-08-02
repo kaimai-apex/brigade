@@ -46,6 +46,12 @@ export interface PaymentProvider {
     successUrl: string;
     cancelUrl: string;
   }): Promise<CheckoutSession>;
+
+  /**
+   * Best-effort cancel of an unpaid PaymentIntent when a booking is cancelled.
+   * No-op when payments are unconfigured or the intent is already settled.
+   */
+  cancelPaymentIntent(paymentIntentId: string): Promise<void>;
 }
 
 export class PaymentsNotConfiguredError extends Error {
@@ -71,6 +77,9 @@ class UnconfiguredPaymentProvider implements PaymentProvider {
   }
   async createCheckoutSession(): Promise<never> {
     throw new PaymentsNotConfiguredError();
+  }
+  async cancelPaymentIntent(): Promise<void> {
+    // Nothing to void — Stripe was never in the loop.
   }
 }
 
@@ -157,6 +166,16 @@ class StripeConnectProvider implements PaymentProvider {
     });
 
     return { url: session.url, paymentIntentId: session.payment_intent };
+  }
+
+  async cancelPaymentIntent(paymentIntentId: string): Promise<void> {
+    const id = paymentIntentId.trim();
+    if (!id || !/^pi_[A-Za-z0-9]+$/.test(id)) return;
+    try {
+      await this.call(`/payment_intents/${encodeURIComponent(id)}/cancel`, {});
+    } catch {
+      // Already cancelled/captured — cancellation still stands on our side.
+    }
   }
 }
 

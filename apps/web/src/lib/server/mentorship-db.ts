@@ -321,7 +321,30 @@ export async function dbDeleteException(id: string, mentorUserId: string): Promi
  * Read as one list because the slot generator does not care why an hour is
  * gone — only that it is.
  */
+/** Cap unpaid holds per mentee so abandoned checkouts cannot lock the grid. */
+const MAX_PENDING_PER_MENTEE = 8;
+
+/**
+ * Release unpaid bookings older than the 30-minute checkout window. Safe to
+ * call often — it only touches `pending_payment` rows past the TTL. Without
+ * this, abandoned holds occupy the EXCLUDE gist forever.
+ */
+export async function dbExpireStalePendingBookings(): Promise<number> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `UPDATE mentorship.bookings
+       SET status = 'cancelled',
+           cancelled_at = now(),
+           cancelled_by = NULL,
+           updated_at = now()
+     WHERE status = 'pending_payment'
+       AND created_at < now() - interval '30 minutes'`,
+  );
+  return res.rowCount ?? 0;
+}
+
 async function dbBusyRanges(mentorUserId: string) {
+  await dbExpireStalePendingBookings();
   const res = await pool().query(
     `SELECT starts_at, ends_at FROM mentorship.availability_exceptions
        WHERE mentor_user_id = $1 AND ends_at > now()
@@ -382,6 +405,7 @@ export interface Booking {
   platformFeeCents: number;
   mentorPayoutCents: number;
   meetingUrl: string | null;
+  paymentIntentId: string | null;
 }
 
 function mapBooking(row: Record<string, unknown>): Booking {
@@ -398,7 +422,15 @@ function mapBooking(row: Record<string, unknown>): Booking {
     platformFeeCents: Number(row.platform_fee_cents),
     mentorPayoutCents: Number(row.mentor_payout_cents),
     meetingUrl: (row.meeting_url as string) ?? null,
+    paymentIntentId: (row.payment_intent_id as string) ?? null,
   };
+}
+
+export class TooManyPendingBookingsError extends Error {
+  constructor() {
+    super("You already have too many unpaid bookings — finish or cancel one first");
+    this.name = "TooManyPendingBookingsError";
+  }
 }
 
 export class SlotUnavailableError extends Error {
@@ -422,6 +454,7 @@ export async function dbCreateBooking(
   input: { mentorUserId: string; sessionTypeId: string; startsAt: Date },
 ): Promise<Booking> {
   await ensureMentorshipSchema();
+  await dbExpireStalePendingBookings();
 
   if (menteeUserId === input.mentorUserId) {
     throw new Error("You cannot book your own session");
@@ -434,6 +467,15 @@ export async function dbCreateBooking(
     (t) => t.id === input.sessionTypeId,
   );
   if (!sessionType) throw new Error("That session is no longer offered");
+
+  const pending = await pool().query(
+    `SELECT count(*)::int AS n FROM mentorship.bookings
+      WHERE mentee_user_id = $1 AND status = 'pending_payment'`,
+    [menteeUserId],
+  );
+  if ((pending.rows[0]?.n as number) >= MAX_PENDING_PER_MENTEE) {
+    throw new TooManyPendingBookingsError();
+  }
 
   const [rules, busy] = await Promise.all([
     dbListAvailabilityRules(input.mentorUserId),
@@ -589,6 +631,30 @@ export interface MentorListing {
   /** Cheapest active session, for the "from $X" line. Null if nothing is sold. */
   fromPriceCents: number | null;
   sessionCount: number;
+  expertiseAreas: string[];
+  currentEmployer: string | null;
+  yearsExperience: number | null;
+  /** ISO timestamp — used for a real "New" badge, not a fake ranking. */
+  createdAt: string;
+}
+
+export type MentorSort = "price" | "name" | "newest";
+
+export interface MentorFacet {
+  value: string;
+  count: number;
+  state?: string | null;
+}
+
+export interface MentorFacets {
+  roles: MentorFacet[];
+  cities: MentorFacet[];
+  expertise: MentorFacet[];
+}
+
+export interface MentorRail {
+  expertise: string;
+  mentors: MentorListing[];
 }
 
 /**
@@ -600,56 +666,32 @@ export interface MentorListing {
 export async function dbListMentors(params: {
   q?: string;
   role?: string;
+  city?: string;
+  expertise?: string;
   maxPriceCents?: number;
+  sort?: MentorSort;
   limit?: number;
   offset?: number;
 }): Promise<{ data: MentorListing[]; total: number }> {
   await ensureMentorshipSchema();
 
-  // min_price is non-null exactly when the mentor has at least one active
-  // session type, which is the condition for being listable at all.
-  const where: string[] = ["m.status = 'active'", "st.min_price IS NOT NULL"];
-  const values: unknown[] = [];
-
-  if (params.q?.trim()) {
-    values.push(`%${params.q.trim()}%`);
-    const i = values.length;
-    where.push(
-      `(p.first_name ILIKE $${i} OR p.last_name ILIKE $${i} OR m.headline ILIKE $${i}
-        OR p.headline ILIKE $${i} OR p.role ILIKE $${i} OR p.city ILIKE $${i})`,
-    );
-  }
-  if (params.role?.trim()) {
-    values.push(params.role.trim());
-    where.push(`p.role = $${values.length}`);
-  }
-  if (typeof params.maxPriceCents === "number") {
-    values.push(params.maxPriceCents);
-    where.push(`st.min_price <= $${values.length}`);
-  }
-
+  const { where, values, priceJoin } = mentorListFilters(params);
   const whereSql = where.join(" AND ");
   const limit = Math.min(Math.max(params.limit ?? 24, 1), 48);
   const offset = Math.max(params.offset ?? 0, 0);
-
-  // One pre-aggregated join rather than a per-row subquery, so the price filter
-  // and the "from" price come from the same place.
-  const priceJoin = `
-    LEFT JOIN (
-      SELECT mentor_user_id, min(price_cents)::int AS min_price, count(*)::int AS session_count
-      FROM mentorship.session_types WHERE active GROUP BY mentor_user_id
-    ) st ON st.mentor_user_id = m.user_id`;
+  const orderBy = mentorListOrder(params.sort);
 
   const rows = await pool().query(
     `SELECT m.user_id, m.headline AS mentor_headline, m.timezone, m.currency,
-            st.min_price, st.session_count,
+            m.created_at, st.min_price, st.session_count,
             p.first_name, p.last_name, p.headline AS profile_headline,
-            p.role, p.city, p.state, p.country, p.avatar_url
+            p.role, p.city, p.state, p.country, p.avatar_url,
+            p.expertise_areas, p.current_employer, p.years_experience
      FROM mentorship.mentors m
      ${priceJoin}
      JOIN users.profiles p ON p.user_id = m.user_id
      WHERE ${whereSql}
-     ORDER BY st.min_price NULLS LAST, p.first_name
+     ORDER BY ${orderBy}
      LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
     [...values, limit, offset],
   );
@@ -665,20 +707,181 @@ export async function dbListMentors(params: {
 
   return {
     total: Number(totals.rows[0]?.total ?? 0),
-    data: rows.rows.map((r) => ({
-      userId: r.user_id as string,
-      firstName: (r.first_name as string) ?? null,
-      lastName: (r.last_name as string) ?? null,
-      headline: ((r.mentor_headline ?? r.profile_headline) as string) ?? null,
-      role: (r.role as string) ?? null,
-      city: (r.city as string) ?? null,
-      state: (r.state as string) ?? null,
-      country: (r.country as string) ?? null,
-      avatarUrl: (r.avatar_url as string) ?? null,
-      timezone: r.timezone as string,
-      currency: r.currency as string,
-      fromPriceCents: r.min_price === null ? null : Number(r.min_price),
-      sessionCount: Number(r.session_count ?? 0),
+    data: rows.rows.map(mapListing),
+  };
+}
+
+/**
+ * Facets among bookable mentors only — chips that would empty the grid are
+ * still shown with a count so the visitor can see what exists.
+ */
+export async function dbMentorFacets(): Promise<MentorFacets> {
+  await ensureMentorshipSchema();
+  const { where, values, priceJoin } = mentorListFilters({});
+  const whereSql = where.join(" AND ");
+  const from = `
+    FROM mentorship.mentors m
+    ${priceJoin}
+    JOIN users.profiles p ON p.user_id = m.user_id
+    WHERE ${whereSql}`;
+
+  const [roles, cities, expertise] = await Promise.all([
+    pool().query(
+      `SELECT p.role AS value, count(*)::int AS count ${from}
+       AND p.role IS NOT NULL AND p.role <> ''
+       GROUP BY p.role ORDER BY count DESC, p.role LIMIT 24`,
+      values,
+    ),
+    pool().query(
+      `SELECT p.city AS value, p.state, count(*)::int AS count ${from}
+       AND p.city IS NOT NULL AND p.city <> ''
+       GROUP BY p.city, p.state ORDER BY count DESC, p.city LIMIT 24`,
+      values,
+    ),
+    pool().query(
+      `SELECT unnest(p.expertise_areas) AS value, count(*)::int AS count ${from}
+       GROUP BY value ORDER BY count DESC, value LIMIT 24`,
+      values,
+    ),
+  ]);
+
+  return {
+    roles: roles.rows.map((r) => ({
+      value: r.value as string,
+      count: Number(r.count),
     })),
+    cities: cities.rows.map((r) => ({
+      value: r.value as string,
+      count: Number(r.count),
+      state: (r.state as string) ?? null,
+    })),
+    expertise: expertise.rows.map((r) => ({
+      value: r.value as string,
+      count: Number(r.count),
+    })),
+  };
+}
+
+/**
+ * "Popular in …" rails keyed by real expertise tags on active mentors.
+ * Empty groups are omitted — with a thin mentor pool that may mean one rail.
+ */
+export async function dbPopularMentorRails(limitPerRail = 12): Promise<MentorRail[]> {
+  const facets = await dbMentorFacets();
+  const rails: MentorRail[] = [];
+
+  for (const facet of facets.expertise.slice(0, 6)) {
+    const { data } = await dbListMentors({
+      expertise: facet.value,
+      sort: "newest",
+      limit: limitPerRail,
+    });
+    if (data.length === 0) continue;
+    rails.push({ expertise: facet.value, mentors: data });
+  }
+
+  // If nobody has expertise tags yet, fall back to role-based rails so the
+  // marketplace still has a discovery band when mentors exist.
+  if (rails.length === 0) {
+    for (const facet of facets.roles.slice(0, 4)) {
+      const { data } = await dbListMentors({
+        role: facet.value,
+        sort: "newest",
+        limit: limitPerRail,
+      });
+      if (data.length === 0) continue;
+      rails.push({ expertise: facet.value, mentors: data });
+    }
+  }
+
+  return rails;
+}
+
+function mentorListFilters(params: {
+  q?: string;
+  role?: string;
+  city?: string;
+  expertise?: string;
+  maxPriceCents?: number;
+}) {
+  // min_price is non-null exactly when the mentor has at least one active
+  // session type, which is the condition for being listable at all.
+  const where: string[] = ["m.status = 'active'", "st.min_price IS NOT NULL"];
+  const values: unknown[] = [];
+
+  if (params.q?.trim()) {
+    values.push(`%${params.q.trim()}%`);
+    const i = values.length;
+    where.push(
+      `(p.first_name ILIKE $${i} OR p.last_name ILIKE $${i} OR m.headline ILIKE $${i}
+        OR p.headline ILIKE $${i} OR p.role ILIKE $${i} OR p.city ILIKE $${i}
+        OR p.current_employer ILIKE $${i}
+        OR EXISTS (
+          SELECT 1 FROM unnest(COALESCE(p.expertise_areas, '{}'::text[])) AS ea(tag)
+          WHERE ea.tag ILIKE $${i}
+        ))`,
+    );
+  }
+  if (params.role?.trim()) {
+    values.push(params.role.trim());
+    where.push(`p.role = $${values.length}`);
+  }
+  if (params.city?.trim()) {
+    values.push(params.city.trim());
+    where.push(`p.city = $${values.length}`);
+  }
+  if (params.expertise?.trim()) {
+    values.push([params.expertise.trim()]);
+    where.push(`p.expertise_areas @> $${values.length}::text[]`);
+  }
+  if (typeof params.maxPriceCents === "number") {
+    values.push(params.maxPriceCents);
+    where.push(`st.min_price <= $${values.length}`);
+  }
+
+  const priceJoin = `
+    LEFT JOIN (
+      SELECT mentor_user_id, min(price_cents)::int AS min_price, count(*)::int AS session_count
+      FROM mentorship.session_types WHERE active GROUP BY mentor_user_id
+    ) st ON st.mentor_user_id = m.user_id`;
+
+  return { where, values, priceJoin };
+}
+
+function mentorListOrder(sort?: MentorSort): string {
+  switch (sort) {
+    case "name":
+      return "p.first_name NULLS LAST, p.last_name NULLS LAST";
+    case "newest":
+      return "m.created_at DESC";
+    case "price":
+    default:
+      return "st.min_price NULLS LAST, p.first_name NULLS LAST";
+  }
+}
+
+function mapListing(r: Record<string, unknown>): MentorListing {
+  const areas = r.expertise_areas;
+  return {
+    userId: r.user_id as string,
+    firstName: (r.first_name as string) ?? null,
+    lastName: (r.last_name as string) ?? null,
+    headline: ((r.mentor_headline ?? r.profile_headline) as string) ?? null,
+    role: (r.role as string) ?? null,
+    city: (r.city as string) ?? null,
+    state: (r.state as string) ?? null,
+    country: (r.country as string) ?? null,
+    avatarUrl: (r.avatar_url as string) ?? null,
+    timezone: r.timezone as string,
+    currency: r.currency as string,
+    fromPriceCents: r.min_price === null || r.min_price === undefined ? null : Number(r.min_price),
+    sessionCount: Number(r.session_count ?? 0),
+    expertiseAreas: Array.isArray(areas) ? (areas as string[]) : [],
+    currentEmployer: (r.current_employer as string) ?? null,
+    yearsExperience:
+      r.years_experience === null || r.years_experience === undefined
+        ? null
+        : Number(r.years_experience),
+    createdAt: new Date(r.created_at as string).toISOString(),
   };
 }

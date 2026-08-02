@@ -1,29 +1,45 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 
 type PublicNavProps = {
   showAuth?: boolean;
 };
 
+/**
+ * ADPList app header — 72px, white, Log in outline + dark "Get started today".
+ * Brigade wordmark only; layout/sizes match the ADPList clone.
+ */
 export function PublicNav({ showAuth = true }: PublicNavProps) {
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white">
-      <div className="mx-auto flex h-[52px] max-w-[1128px] items-center justify-between gap-4 px-4">
+    <header className="mk-header w-full">
+      <div className="mx-auto flex h-full max-w-[1320px] items-center gap-4 px-5 md:px-8">
         <Link
           href="/"
-          className="font-display text-xl font-black tracking-tight text-ink"
+          aria-label="Brigade home"
+          className="text-[22px] font-bold tracking-[-0.02em] text-[var(--mk-text)]"
         >
           Brigade
         </Link>
 
         {showAuth && (
-          <nav className="flex items-center gap-3">
-            <Button asChild variant="gold" size="sm" className="min-h-11 max-w-[9.5rem] px-3 text-[13px] sm:max-w-none sm:px-4 sm:text-sm">
-              <Link href="/waitlist">Join Waitlist</Link>
-            </Button>
-          </nav>
+          <div className="ml-auto flex items-center gap-2 md:gap-3">
+            <Link
+              href="/login?next=/mentorship"
+              className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] md:inline-flex"
+            >
+              Become a mentor
+            </Link>
+            <Link
+              href="/login"
+              className="mk-btn mk-btn-outline hidden md:inline-flex"
+            >
+              Log in
+            </Link>
+            <Link href="/waitlist" className="mk-btn mk-btn-dark">
+              Get started today
+            </Link>
+          </div>
         )}
       </div>
     </header>

@@ -8,6 +8,15 @@ const monorepoRoot = path.join(appDir, "../..");
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
+  // pino pulls optional native deps (thread-stream) that webpack can't resolve
+  // from the pnpm store layout — keep them as Node requires at runtime.
+  serverExternalPackages: [
+    "pino",
+    "pino-pretty",
+    "thread-stream",
+    "atomic-sleep",
+    "on-exit-leak-free",
+  ],
   async headers() {
     return [
       {
@@ -35,6 +44,21 @@ const nextConfig: NextConfig = {
     ];
   },
   webpack: (config, { dev }) => {
+    // pnpm nests pino deps; Next's webpack resolve starts from apps/web and
+    // misses thread-stream unless we include pino's node_modules in the path.
+    config.resolve.modules = [
+      path.join(monorepoRoot, "node_modules/.pnpm/pino@9.14.0/node_modules"),
+      path.join(monorepoRoot, "node_modules"),
+      path.join(appDir, "node_modules"),
+      ...(config.resolve.modules ?? ["node_modules"]),
+    ];
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "thread-stream": path.join(
+        monorepoRoot,
+        "node_modules/.pnpm/thread-stream@3.2.0/node_modules/thread-stream",
+      ),
+    };
     if (dev) {
       config.watchOptions = {
         ...config.watchOptions,

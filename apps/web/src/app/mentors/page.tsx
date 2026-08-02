@@ -1,15 +1,23 @@
-import Link from 'next/link';
-import { ServerAppPage } from '@/components/layout/server-app-page';
-import { getConnectProSession } from '@/lib/connectpro/server';
-import { dbListMentors, dbGetMentor } from '@/lib/server/mentorship-db';
-import { formatMoney } from '@/lib/mentorship/pricing';
-import { MentorSearch } from '@/components/mentorship/mentor-search';
-import { resolveAvatarUrl } from '@/lib/avatars';
-import { Button } from '@/components/ui/button';
+import Link from "next/link";
+import { MarketplaceShell } from "@/components/layout/marketplace-shell";
+import { getConnectProSession } from "@/lib/connectpro/server";
+import {
+  dbListMentors,
+  dbGetMentor,
+  dbMentorFacets,
+  dbPopularMentorRails,
+  type MentorSort,
+} from "@/lib/server/mentorship-db";
+import { MentorSearch } from "@/components/mentorship/mentor-search";
+import { CategoryRail } from "@/components/mentorship/category-rail";
+import { MentorRail } from "@/components/mentorship/mentor-rail";
+import { ExploreCard } from "@/components/mentorship/mentor-card";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+const SORTS = new Set<MentorSort>(["price", "name", "newest"]);
 
 function one(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -18,100 +26,160 @@ function one(value: string | string[] | undefined): string | undefined {
 export default async function MentorsPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const q = one(sp.q);
+  const role = one(sp.role);
+  const city = one(sp.city);
+  const expertise = one(sp.expertise);
+  const sortRaw = one(sp.sort) ?? "price";
+  const sort = SORTS.has(sortRaw as MentorSort) ? (sortRaw as MentorSort) : "price";
+  const filtering = Boolean(q || role || city || expertise);
+
   const session = await getConnectProSession();
 
-  const [{ data: mentors, total }, ownMentor] = await Promise.all([
-    dbListMentors({ q, limit: 24 }),
+  const [{ data: mentors, total }, ownMentor, facets, rails] = await Promise.all([
+    dbListMentors({ q, role, city, expertise, sort, limit: 36 }),
     session ? dbGetMentor(session.userId) : Promise.resolve(null),
+    dbMentorFacets(),
+    filtering ? Promise.resolve([]) : dbPopularMentorRails(12),
   ]);
 
+  const active = { q, role, city, expertise, sort };
+  const filterCount = [role, city, expertise].filter(Boolean).length + (sort !== "price" ? 1 : 0);
+
+  const emptyCtaHref = ownMentor
+    ? "/sessions"
+    : session
+      ? "/mentorship"
+      : "/login?next=/mentorship";
+  const emptyCtaLabel = ownMentor ? "Manage your sessions" : "Become a mentor";
+
   return (
-    <ServerAppPage>
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-hero">Mentorship</h1>
-          <p className="mt-1 text-ink/60">
-            Book time with private chefs and hospitality leaders. Learn from someone who has
-            already done it.
-          </p>
-        </div>
-        <Button asChild variant={ownMentor ? 'outline' : 'default'}>
-          <Link href="/mentorship">
-            {ownMentor ? 'Manage your sessions' : 'Become a mentor'}
+    <MarketplaceShell>
+      <div className="mk-shell py-8">
+        <nav aria-label="Breadcrumb" className="text-[14px] text-[var(--mk-muted)]">
+          <Link href="/" className="hover:text-[var(--mk-text)]">
+            Home
           </Link>
-        </Button>
-      </div>
+          <span className="mx-2 text-[var(--mk-subtle)]">/</span>
+          <span className="text-[var(--mk-text)]">Explore</span>
+        </nav>
 
-      <MentorSearch initialQuery={q ?? ''} />
+        <h1 className="mk-display mt-8 max-w-[26ch]">
+          Learn from chefs who&apos;ve already done it
+        </h1>
+        <p className="mk-lede mt-3 max-w-[70ch]">
+          Browse verified private chefs, banquet leads, and hospitality operators.
+          Book a 1:1 session in minutes — leave with a plan, not just advice.
+        </p>
 
-      <p className="text-meta mt-4 text-ink/60">
-        {total === 1 ? '1 mentor' : `${total} mentors`}
-      </p>
-
-      {mentors.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-ink/10 p-10 text-center">
-          <h2 className="text-lg font-semibold">
-            {q ? 'No mentors match that search' : 'No mentors yet'}
-          </h2>
-          <p className="mt-2 text-ink/60">
-            {q
-              ? 'Try a role, a city, or a name.'
-              : 'Be the first — publish your sessions and start taking bookings.'}
-          </p>
-          {!q && (
-            <Button asChild className="mt-4">
-              <Link href="/mentorship">Become a mentor</Link>
-            </Button>
-          )}
+        <div className="mt-8 flex gap-8 border-b border-[var(--mk-line)]">
+          <span className="mk-tab" aria-current="true">
+            Mentors
+          </span>
+          <Link
+            href={session ? "/sessions" : "/login?next=/sessions"}
+            className="mk-tab"
+          >
+            Group Sessions
+          </Link>
         </div>
-      ) : (
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {mentors.map((m) => {
-            const name = [m.firstName, m.lastName].filter(Boolean).join(' ') || 'Brigade Member';
-            const place = [m.city, m.state].filter(Boolean).join(', ');
-            return (
+
+        <div className="mt-6">
+          <MentorSearch
+            initialQuery={q ?? ""}
+            filters={{ role, city, expertise, sort }}
+            filterCount={filterCount}
+          />
+          <CategoryRail facets={facets} active={active} />
+        </div>
+
+        {!filtering && rails.length > 0 && (
+          <div className="mt-4 divide-y divide-[var(--mk-line)]">
+            {rails.map((rail) => (
+              <MentorRail
+                key={rail.expertise}
+                title={`Popular in ${rail.expertise}`}
+                expertise={rail.expertise}
+                mentors={rail.mentors}
+              />
+            ))}
+          </div>
+        )}
+
+        <p className="mt-8 text-[14px] text-[var(--mk-muted)]" aria-live="polite">
+          {total.toLocaleString("en-US")} {total === 1 ? "mentor" : "mentors"}
+          {expertise ? ` in ${expertise}` : ""}
+          {role ? ` · ${role}` : ""}
+          {city ? ` · ${city}` : ""}
+        </p>
+
+        {mentors.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="text-[18px] font-semibold text-[var(--mk-text)]">
+              {filtering ? "No mentors match that yet." : "No mentors yet."}
+            </p>
+            <p className="mt-2 text-[15px] text-[var(--mk-muted)]">
+              {filtering
+                ? "Try a broader search, or clear the filters."
+                : "Be the first — publish your sessions and start taking bookings."}
+            </p>
+            <Link
+              href={filtering ? "/mentors" : emptyCtaHref}
+              className="mk-btn mk-btn-outline mt-6"
+            >
+              {filtering ? "Clear everything" : emptyCtaLabel}
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {mentors.map((m) => (
               <li key={m.userId}>
-                <Link
-                  href={`/mentors/${m.userId}`}
-                  className="flex h-full flex-col rounded-xl border border-ink/10 p-4 transition-shadow hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={resolveAvatarUrl(m.avatarUrl, m.userId)}
-                      alt=""
-                      className="size-12 rounded-full object-cover"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold">{name}</p>
-                      {m.role && (
-                        <p className="text-meta truncate uppercase text-forest">{m.role}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {m.headline && (
-                    <p className="mt-3 line-clamp-2 text-sm text-ink/70">{m.headline}</p>
-                  )}
-                  {place && <p className="text-meta mt-2 text-ink/50">{place}</p>}
-
-                  <div className="mt-auto flex items-baseline gap-1 pt-4">
-                    <span className="text-meta text-ink/50">from</span>
-                    <span className="font-semibold">
-                      {m.fromPriceCents === null
-                        ? '—'
-                        : formatMoney(m.fromPriceCents, m.currency)}
-                    </span>
-                    <span className="text-meta text-ink/50">
-                      · {m.sessionCount === 1 ? '1 session' : `${m.sessionCount} sessions`}
-                    </span>
-                  </div>
-                </Link>
+                <ExploreCard mentor={m} />
               </li>
-            );
-          })}
-        </ul>
-      )}
-    </ServerAppPage>
+            ))}
+          </ul>
+        )}
+
+        {(facets.expertise.length > 0 || facets.cities.length > 0) && (
+          <>
+            {facets.expertise.length > 0 && (
+              <section className="mt-16 border-t border-[var(--mk-line)] pt-8">
+                <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">
+                  Browse by Expertise
+                </h2>
+                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+                  {facets.expertise.map((tag) => (
+                    <Link
+                      key={tag.value}
+                      href={`/mentors?expertise=${encodeURIComponent(tag.value)}`}
+                      className="text-[15px] text-[var(--mk-muted)] hover:text-[var(--mk-text)]"
+                    >
+                      {tag.value}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+            {facets.cities.length > 0 && (
+              <section className="mt-10 border-t border-[var(--mk-line)] pt-8">
+                <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">
+                  Browse by Location
+                </h2>
+                <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+                  {facets.cities.map((c) => (
+                    <Link
+                      key={c.value}
+                      href={`/mentors?city=${encodeURIComponent(c.value)}`}
+                      className="text-[15px] text-[var(--mk-muted)] hover:text-[var(--mk-text)]"
+                    >
+                      {c.value}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </div>
+    </MarketplaceShell>
   );
 }
