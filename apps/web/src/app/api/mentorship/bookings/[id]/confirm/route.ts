@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getConnectProSession } from "@/lib/connectpro/server";
 import { dbConfirmBooking } from "@/lib/server/mentorship-db";
 import { dbNotify } from "@/lib/server/notify-db";
-import { paymentsConfigured } from "@/lib/server/payments";
+import { paymentsFullyConfigured } from "@/lib/server/payments";
 
 /**
  * The mentor accepts a booking: POST /api/mentorship/bookings/:id/confirm
@@ -19,7 +19,12 @@ export async function POST(
   const session = await getConnectProSession();
   if (!session) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-  if (paymentsConfigured()) {
+  // Must be the SAME condition the booking route branches on. It used to ask
+  // `paymentsConfigured()` — a secret key with no webhook secret — while
+  // bookings asked `paymentsFullyConfigured()`. In that combination a paid
+  // booking took the manual path and then could not be accepted, stranding it
+  // at `pending_payment` with no way out for either party.
+  if (paymentsFullyConfigured()) {
     return NextResponse.json(
       {
         message:

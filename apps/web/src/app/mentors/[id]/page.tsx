@@ -9,7 +9,7 @@ import {
   dbListAvailabilityRules,
   dbListMentors,
 } from "@/lib/server/mentorship-db";
-import { paymentsConfigured } from "@/lib/server/payments";
+import { paymentsFullyConfigured } from "@/lib/server/payments";
 import { resolveAvatarUrl } from "@/lib/avatars";
 import { BookingPanel } from "@/components/mentorship/booking-panel";
 import { MentorRail } from "@/components/mentorship/mentor-rail";
@@ -61,6 +61,15 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
         })
       ).data.filter((m) => m.userId !== id)
     : [];
+
+  /**
+   * Fully configured, not merely configured.
+   *
+   * This drives whether the booking button promises "Continue to payment". With
+   * a secret key but no webhook secret the booking route takes the manual path,
+   * and offering a checkout that never appears is worse than saying nothing.
+   */
+  const takingPayments = paymentsFullyConfigured();
 
   const titleLine = [profile.role, profile.current_employer].filter(Boolean);
   const cover = typeof profile.cover_url === "string" ? profile.cover_url : null;
@@ -208,7 +217,7 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
               timezone={mentor.timezone}
               sessionTypes={sessionTypes}
               isSelf={isSelf}
-              paymentsEnabled={paymentsConfigured()}
+              paymentsEnabled={takingPayments}
               paused={mentor.status === "paused"}
             />
           </aside>

@@ -48,8 +48,12 @@ export default function SessionsPage() {
       setTeaching(json.teaching ?? []);
       // Accepting by hand is only offered while payments are off; with Stripe
       // on, a settled charge is what confirms a session.
-      const meJson = (await me.json().catch(() => ({}))) as { paymentsConfigured?: boolean };
-      setPaymentsOn(meJson.paymentsConfigured !== false);
+      // `takingPayments`, not `paymentsConfigured`: this decides whether the
+      // Accept button is offered, and it has to match the condition the booking
+      // route branches on. A deployment with a Stripe key but no webhook secret
+      // still needs the mentor to accept by hand.
+      const meJson = (await me.json().catch(() => ({}))) as { takingPayments?: boolean };
+      setPaymentsOn(meJson.takingPayments !== false);
     } finally {
       setLoading(false);
     }

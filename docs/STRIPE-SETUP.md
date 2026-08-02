@@ -85,6 +85,23 @@ session with card `4242 4242 4242 4242`.
 6. Cancel the booking more than 24 hours out and confirm the refund appears in
    Stripe with the application fee reversed.
 
+## Two flags, and which one to use
+
+There are two different questions, and mixing them up strands bookings:
+
+| Function | Asks | Governs |
+| --- | --- | --- |
+| `paymentsConfigured()` | is there a secret key? | whether a mentor can connect Stripe at all, whether payouts are required to publish, whether a refund can be issued |
+| `paymentsFullyConfigured()` | key **and** webhook secret? | which path a booking takes, whether the mentor may accept by hand, whether the button says "Continue to payment" |
+
+Anything that decides **how a booking is confirmed** must use
+`paymentsFullyConfigured()`. The booking route and the manual-confirm route
+have to agree: they once didn't, and with a key but no webhook secret a paid
+booking took the manual path and was then refused acceptance, leaving it at
+`pending_payment` with no way out for either party. The API exposes both as
+`paymentsConfigured` and `takingPayments` so the UI cannot pick the wrong one
+by accident.
+
 ## What "off" means
 
 `paymentsFullyConfigured()` requires **both** variables. With either missing:

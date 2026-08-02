@@ -8,7 +8,7 @@ import {
   dbListExceptions,
   normaliseMeetingUrl,
 } from "@/lib/server/mentorship-db";
-import { paymentsConfigured } from "@/lib/server/payments";
+import { paymentsConfigured, paymentsFullyConfigured } from "@/lib/server/payments";
 import { evaluateReadiness, SETUP_STEPS } from "@/lib/mentorship/readiness";
 import { getPool } from "@connectpro/common";
 
@@ -20,7 +20,11 @@ export async function GET() {
   try {
     const mentor = await dbGetMentor(session.userId);
     if (!mentor) {
-      return NextResponse.json({ mentor: null, paymentsConfigured: paymentsConfigured() });
+      return NextResponse.json({
+        mentor: null,
+        paymentsConfigured: paymentsConfigured(),
+        takingPayments: paymentsFullyConfigured(),
+      });
     }
     const [sessionTypes, availability, exceptions] = await Promise.all([
       dbListSessionTypes(session.userId, { activeOnly: false }),
@@ -73,6 +77,7 @@ export async function GET() {
             : Number(p.years_experience),
       },
       paymentsConfigured: paymentsConfigured(),
+      takingPayments: paymentsFullyConfigured(),
     });
   } catch (error) {
     console.error("[mentorship/me]", error instanceof Error ? error.message : error);
