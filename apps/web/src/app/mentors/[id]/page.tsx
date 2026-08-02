@@ -41,9 +41,14 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
     [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Brigade Member";
   const place = [profile.city, profile.state, profile.country].filter(Boolean).join(", ");
   const isSelf = session?.userId === id;
-  const expertiseAreas: string[] = Array.isArray(profile.expertise_areas)
+  // What they said they TEACH wins over what their member profile says they do.
+  // Falls back to the profile so mentors who joined before mentor-owned tags
+  // existed still show something — matches how the directory filters and
+  // facets resolve it (EFFECTIVE_EXPERTISE in mentorship-db.ts).
+  const profileAreas: string[] = Array.isArray(profile.expertise_areas)
     ? profile.expertise_areas
     : [];
+  const expertiseAreas: string[] = mentor.expertise.length > 0 ? mentor.expertise : profileAreas;
   const relatedExpertise = expertiseAreas[0] ?? profile.role ?? null;
 
   const related = relatedExpertise

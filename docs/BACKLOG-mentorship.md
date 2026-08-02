@@ -24,7 +24,7 @@ Mentorship already runs on direct-Postgres (no Docker microservices required).
 8. **Vetting / admin approve — deliberately NOT built.** Auto-publish was chosen; `status` already has the states to add review later without a migration.
 9. ~~Onboarding checklist~~ — the readiness model above, shown as a progress bar and a checklist, with each blocking item linking to the step that fixes it.
 10. ~~Timezone picker~~ — `Intl.supportedValuesOf("timeZone")`, with a warning when the mentor's stored zone disagrees with their browser.
-11. ~~Mentor-owned expertise tags~~ — `mentorship.mentors.expertise`, suggested-but-free-text, de-duplicated case-insensitively and capped at 12 so the directory facets stay usable.
+11. ~~Mentor-owned expertise tags~~ — `mentorship.mentors.expertise`, suggested-but-free-text, de-duplicated case-insensitively and capped at 12 so the directory facets stay usable. **Discovery genuinely resolves them**: `EFFECTIVE_EXPERTISE` in `mentorship-db.ts` prefers the mentor's own tags and falls back to `users.profiles.expertise_areas`, so mentors who predate the field keep their facets. The `?expertise=` filter matches *either* side, so links already in the wild cannot start returning nothing. Free-text search now also covers mentor tags and the mentor bio.
 
 ### Still open from this area
 - Mentor **reviews** after completed sessions (P2 #12) — still the biggest gap in making the directory worth browsing.

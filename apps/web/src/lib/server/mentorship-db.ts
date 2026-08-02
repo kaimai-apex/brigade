@@ -1112,7 +1112,8 @@ export async function dbListMentors(params: {
             m.created_at, st.min_price, st.session_count,
             p.first_name, p.last_name, p.headline AS profile_headline,
             p.role, p.city, p.state, p.country, p.avatar_url,
-            p.expertise_areas, p.current_employer, p.years_experience
+            ${EFFECTIVE_EXPERTISE} AS expertise_areas,
+            p.current_employer, p.years_experience
      FROM mentorship.mentors m
      ${priceJoin}
      JOIN users.profiles p ON p.user_id = m.user_id
@@ -1165,7 +1166,7 @@ export async function dbMentorFacets(): Promise<MentorFacets> {
       values,
     ),
     pool().query(
-      `SELECT unnest(p.expertise_areas) AS value, count(*)::int AS count ${from}
+      `SELECT unnest(${EFFECTIVE_EXPERTISE}) AS value, count(*)::int AS count ${from}
        GROUP BY value ORDER BY count DESC, value LIMIT 24`,
       values,
     ),
@@ -1223,6 +1224,24 @@ export async function dbPopularMentorRails(limitPerRail = 12): Promise<MentorRai
   return rails;
 }
 
+/**
+ * What this mentor teaches, for discovery.
+ *
+ * Their own tags when they have set any, otherwise the expertise areas on their
+ * member profile. Mentor-owned tags describe what they will teach, which is not
+ * the same question as what they do for a living — a pastry chef who mentors on
+ * costing should be findable for costing.
+ *
+ * The fallback matters: mentors who joined before the tags existed have nothing
+ * in `m.expertise`, and dropping them out of every facet would quietly empty
+ * the directory's filters.
+ */
+const EFFECTIVE_EXPERTISE = `
+  CASE WHEN COALESCE(cardinality(m.expertise), 0) > 0
+       THEN m.expertise
+       ELSE COALESCE(p.expertise_areas, '{}'::text[])
+  END`;
+
 function mentorListFilters(params: {
   q?: string;
   role?: string;
@@ -1242,8 +1261,9 @@ function mentorListFilters(params: {
       `(p.first_name ILIKE $${i} OR p.last_name ILIKE $${i} OR m.headline ILIKE $${i}
         OR p.headline ILIKE $${i} OR p.role ILIKE $${i} OR p.city ILIKE $${i}
         OR p.current_employer ILIKE $${i}
+        OR m.bio ILIKE $${i}
         OR EXISTS (
-          SELECT 1 FROM unnest(COALESCE(p.expertise_areas, '{}'::text[])) AS ea(tag)
+          SELECT 1 FROM unnest(${EFFECTIVE_EXPERTISE}) AS ea(tag)
           WHERE ea.tag ILIKE $${i}
         ))`,
     );
@@ -1258,7 +1278,14 @@ function mentorListFilters(params: {
   }
   if (params.expertise?.trim()) {
     values.push([params.expertise.trim()]);
-    where.push(`p.expertise_areas @> $${values.length}::text[]`);
+    // Either side matches, rather than only the effective one: a mentor who has
+    // since written their own tags should still be reachable from a chip built
+    // out of their profile's, and vice versa. Narrowing this would make
+    // existing links in the wild start returning nothing.
+    where.push(
+      `(m.expertise @> $${values.length}::text[]
+        OR COALESCE(p.expertise_areas, '{}'::text[]) @> $${values.length}::text[])`,
+    );
   }
   if (typeof params.maxPriceCents === "number") {
     values.push(params.maxPriceCents);
