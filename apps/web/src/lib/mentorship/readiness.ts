@@ -25,7 +25,7 @@ export interface ReadinessInput {
 }
 
 export interface ChecklistItem {
-  id: "profile" | "sessions" | "hours" | "meeting" | "payouts";
+  id: "profile" | "sessions" | "hours" | "meeting" | "payouts" | "tags";
   label: string;
   /** Blocks publishing when false. Advisory items are never blocking. */
   required: boolean;
@@ -86,6 +86,22 @@ export function evaluateReadiness(input: ReadinessInput): Readiness {
       hint: input.paymentsConfigured
         ? "Connect a Stripe account so the money from a booking reaches your bank."
         : "Payments are not switched on for this deployment yet.",
+    },
+    {
+      id: "tags",
+      label: "Say what you teach",
+      /**
+       * Advisory, not blocking.
+       *
+       * Tags are the main way people find a mentor — the directory filters and
+       * facets resolve to them — so leaving them empty is a real handicap. But
+       * a mentor with a good headline and an open calendar is still worth
+       * listing, and discovery falls back to their profile's expertise areas,
+       * so refusing to publish over this would keep useful people off the site.
+       */
+      required: false,
+      done: input.expertise.length > 0,
+      hint: "The subjects you want to be found for. Without them you rely on your profile's.",
     },
     {
       id: "meeting",

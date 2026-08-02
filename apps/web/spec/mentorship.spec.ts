@@ -560,6 +560,16 @@ group("Publish readiness");
     "a missing meeting link is advisory, not blocking",
     evaluateReadiness({ ...complete, defaultMeetingUrl: null }).canPublish,
   );
+  // Tags are how the directory finds people, but discovery falls back to the
+  // profile's expertise areas — so this nudges without keeping anyone off.
+  check(
+    "no tags is advisory, not blocking",
+    evaluateReadiness({ ...complete, expertise: [] }).canPublish,
+  );
+  check(
+    "but no tags still counts against the progress figure",
+    evaluateReadiness({ ...complete, expertise: [] }).percentComplete < 100,
+  );
   check(
     "but it still counts against the progress figure",
     evaluateReadiness({ ...complete, defaultMeetingUrl: null }).percentComplete < 100,
