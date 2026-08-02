@@ -5,6 +5,7 @@ import {
   dbReleaseWebhookEvent,
   dbFindPaidAfterRelease,
   dbGetBooking,
+  dbGetBookingByPaymentIntent,
   dbMarkBookingPaid,
   dbRecordRefund,
 } from "@/lib/server/mentorship-db";
@@ -193,22 +194,42 @@ async function onCheckoutCompleted(event: StripeEvent): Promise<void> {
 }
 
 async function onChargeRefunded(event: StripeEvent): Promise<void> {
-  const bookingId = event.data.object.metadata?.brigade_booking_id;
-  if (!bookingId) return;
+  const charge = event.data.object;
 
-  const booking = await dbGetBooking(bookingId);
+  /**
+   * Matched on the PaymentIntent, not on metadata.
+   *
+   * A Charge does not inherit its PaymentIntent's metadata — they are separate
+   * objects — so `brigade_booking_id` is absent here even though it was set at
+   * checkout. `payment_intent` is on the charge and is written onto the booking
+   * when the payment settles, so it is the handle that actually resolves.
+   * Metadata is still read as a fallback, in case a refund is created by hand
+   * with it set.
+   */
+  const booking = charge.payment_intent
+    ? await dbGetBookingByPaymentIntent(charge.payment_intent)
+    : charge.metadata?.brigade_booking_id
+      ? await dbGetBooking(charge.metadata.brigade_booking_id)
+      : null;
+
   if (!booking) return;
 
-  const refunds = event.data.object.refunds?.data ?? [];
-  const latest = refunds[0];
-  const amount = Number(event.data.object.amount_refunded ?? latest?.amount ?? 0);
+  const latest = charge.refunds?.data?.[0];
+  // `amount_refunded` is the cumulative total on the charge, which is what the
+  // booking column means. A single refund's amount would be wrong after a
+  // second partial refund.
+  const amount = Number(charge.amount_refunded ?? latest?.amount ?? 0);
   if (!amount) return;
 
   // Records a refund issued from the Stripe dashboard as well as one Brigade
-  // asked for, so the two views of the booking cannot disagree.
-  await dbRecordRefund(bookingId, latest?.id ?? "dashboard", amount);
+  // asked for, so the two views of the booking cannot disagree. Returns false
+  // when the amount is already recorded — a Brigade-initiated refund lands here
+  // as an echo, and the mentee should not be told about it twice.
+  const changed = await dbRecordRefund(booking.id, latest?.id ?? "dashboard", amount);
+  if (!changed) return;
+
   await dbNotify(booking.menteeUserId, "mentorship_refunded", {
-    bookingId,
+    bookingId: booking.id,
     amountCents: amount,
     currency: booking.currency,
   });

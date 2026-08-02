@@ -904,19 +904,46 @@ export async function dbConfirmFreeBooking(bookingId: string): Promise<Booking |
   return null;
 }
 
-/** Write down what was given back, after Stripe has agreed to it. */
+/**
+ * Find a booking from the PaymentIntent that paid for it.
+ *
+ * How refund events are matched. A Stripe Charge does NOT inherit its
+ * PaymentIntent's metadata — they are separate objects — so a
+ * `charge.refunded` event carries no `brigade_booking_id`. It does carry
+ * `payment_intent`, which the webhook writes onto the booking when the payment
+ * settles, so that is the reliable handle.
+ */
+export async function dbGetBookingByPaymentIntent(
+  paymentIntentId: string,
+): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    "SELECT * FROM mentorship.bookings WHERE payment_intent_id = $1",
+    [paymentIntentId],
+  );
+  return res.rows[0] ? mapBooking(res.rows[0]) : null;
+}
+
+/**
+ * Write down what was given back, after Stripe has agreed to it.
+ *
+ * Returns false when the figure was already recorded. Brigade-initiated refunds
+ * are written here AND arrive again as a `charge.refunded` webhook; without
+ * this the mentee would be told about the same refund twice.
+ */
 export async function dbRecordRefund(
   bookingId: string,
   refundId: string,
   amountCents: number,
-): Promise<void> {
+): Promise<boolean> {
   await ensureMentorshipSchema();
-  await pool().query(
+  const res = await pool().query(
     `UPDATE mentorship.bookings
         SET refunded_cents = $3, refund_id = $2, updated_at = now()
-      WHERE id = $1`,
+      WHERE id = $1 AND refunded_cents <> $3`,
     [bookingId, refundId, amountCents],
   );
+  return (res.rowCount ?? 0) > 0;
 }
 
 /* ------------------------------------------------------------------ */
