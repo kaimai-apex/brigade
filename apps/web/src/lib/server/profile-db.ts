@@ -19,13 +19,22 @@ function pool() {
   return getPool();
 }
 
+/**
+ * An explicit list, not `*`, so a new column cannot silently widen every
+ * profile payload. The cost is that adding one means adding it HERE as well as
+ * to COLUMN_MAP and toCamel — miss this and writes succeed while reads come
+ * back empty, which is a genuinely confusing way to fail.
+ */
 const PROFILE_COLUMNS = `
   user_id, first_name, last_name, headline, about, industry, location, website,
   resume_url, avatar_url, cover_url, city, state, country, current_position,
   current_employer, instagram_url, linkedin_url, expertise_areas, years_experience,
   onboarding_step, onboarding_completed, open_to_opportunities,
   available_private_events, available_contract_work, available_emergency_staffing,
-  visible_in_directory, role, completeness, created_at, updated_at
+  visible_in_directory, role, completeness, created_at, updated_at,
+  preferred_name, pronouns, timezone, languages, experience_level, workplace_type,
+  interest_industries, skills_wanted, goals, help_wanted, biggest_challenge,
+  preferred_session_minutes, preferred_mentor_experience
 `;
 
 /** Shape the web's mapProfile()/mapDirectoryRow() already expect (camelCase). */
@@ -66,6 +75,22 @@ function toCamel(row: Record<string, unknown>) {
     completeness: row.completeness,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    // Migration 017. Arrays default to [] rather than null so every consumer —
+    // the onboarding flow resuming, and the matcher — can call .length without
+    // a guard.
+    preferredName: row.preferred_name,
+    pronouns: row.pronouns,
+    timezone: row.timezone,
+    languages: row.languages ?? [],
+    experienceLevel: row.experience_level,
+    workplaceType: row.workplace_type,
+    interestIndustries: row.interest_industries ?? [],
+    skillsWanted: row.skills_wanted ?? [],
+    goals: row.goals ?? [],
+    helpWanted: row.help_wanted ?? [],
+    biggestChallenge: row.biggest_challenge,
+    preferredSessionMinutes: row.preferred_session_minutes,
+    preferredMentorExperience: row.preferred_mentor_experience,
   };
 }
 
@@ -268,6 +293,21 @@ const COLUMN_MAP: Record<string, string> = {
   onboardingStep: "onboarding_step",
   onboardingCompleted: "onboarding_completed",
   role: "role",
+  // Migration 017 — what the member is here for. The array columns are the
+  // mentee half of a matching pair; see lib/onboarding/taxonomy.ts.
+  preferredName: "preferred_name",
+  pronouns: "pronouns",
+  timezone: "timezone",
+  languages: "languages",
+  experienceLevel: "experience_level",
+  workplaceType: "workplace_type",
+  interestIndustries: "interest_industries",
+  skillsWanted: "skills_wanted",
+  goals: "goals",
+  helpWanted: "help_wanted",
+  biggestChallenge: "biggest_challenge",
+  preferredSessionMinutes: "preferred_session_minutes",
+  preferredMentorExperience: "preferred_mentor_experience",
 };
 
 export async function dbEnsureProfile(

@@ -2,29 +2,19 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SKILLS } from "@/lib/onboarding/taxonomy";
 import type { StepProps } from "./types";
 
 /**
- * Suggestions, not a fixed taxonomy.
+ * The suggestions are the SHARED skills list.
  *
- * Free text is still allowed — the point is to nudge people toward the tags
- * other mentors already use, so the directory's facets stay useful. A dozen
- * spellings of "cost control" makes filtering worse than no filter.
+ * A member picking "Food costing" on their own onboarding and a mentor picking
+ * it here produce the same string, which is the entire basis of the
+ * recommendation ranking. A private list here would look identical and match
+ * nothing. Free text is still allowed for anything the list does not name — it
+ * simply cannot contribute to a skills match until a member types it too.
  */
-const SUGGESTED = [
-  "Menu development",
-  "Food costing",
-  "Kitchen leadership",
-  "Private cheffing",
-  "Opening a restaurant",
-  "Wine & pairing",
-  "Pastry",
-  "Butchery",
-  "Catering",
-  "Front of house",
-  "Hiring & brigade building",
-  "Going solo",
-];
+const SUGGESTED: readonly string[] = SKILLS;
 
 const MAX_TAGS = 12;
 

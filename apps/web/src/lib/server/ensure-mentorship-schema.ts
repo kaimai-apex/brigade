@@ -61,6 +61,25 @@ export function ensureMentorshipSchema() {
     await pool.query(
       "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS payouts_onboarded_at TIMESTAMPTZ",
     );
+    // Migration 017 — the mentor half of every matching pair. `expertise`
+    // already covers skills, so it is not repeated here.
+    for (const column of [
+      "industries TEXT[] NOT NULL DEFAULT '{}'",
+      "help_offered TEXT[] NOT NULL DEFAULT '{}'",
+      "languages TEXT[] NOT NULL DEFAULT '{}'",
+      "mentee_types TEXT[] NOT NULL DEFAULT '{}'",
+    ]) {
+      await pool.query(`ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS ${column}`);
+    }
+    for (const [name, column] of [
+      ["idx_mentors_industries", "industries"],
+      ["idx_mentors_help_offered", "help_offered"],
+      ["idx_mentors_expertise", "expertise"],
+    ] as const) {
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS ${name} ON mentorship.mentors USING GIN (${column})`,
+      );
+    }
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mentorship.session_types (

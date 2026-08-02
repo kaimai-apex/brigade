@@ -22,6 +22,11 @@ export interface SetupMentor {
   expertise: string[];
   onboardingStep: number;
   payoutAccountId: string | null;
+  /** The mentor half of the matching pairs — see lib/onboarding/taxonomy.ts. */
+  menteeTypes: string[];
+  helpOffered: string[];
+  industries: string[];
+  languages: string[];
 }
 
 export interface SetupSessionType {

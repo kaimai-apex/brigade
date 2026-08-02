@@ -11,6 +11,14 @@ import {
 import { paymentsConfigured, paymentsFullyConfigured } from "@/lib/server/payments";
 import { evaluateReadiness, SETUP_STEPS } from "@/lib/mentorship/readiness";
 import { getPool } from "@connectpro/common";
+import {
+  COMMON_LANGUAGES,
+  HELP_TYPES,
+  INDUSTRIES,
+  MENTEE_TYPES,
+  keepKnown,
+  keepTags,
+} from "@/lib/onboarding/taxonomy";
 
 /** The caller's own mentor setup, or null if they have not started one. */
 export async function GET() {
@@ -176,6 +184,19 @@ export async function PUT(request: Request) {
             ),
           ).slice(0, 12)
         : undefined,
+      // The mentor half of the matching pairs. Filtered against the same lists
+      // a member picks from, so the two sides stay comparable.
+      menteeTypes: body.menteeTypes === undefined ? undefined : keepKnown(body.menteeTypes, MENTEE_TYPES),
+      helpOffered: body.helpOffered === undefined ? undefined : keepKnown(body.helpOffered, HELP_TYPES),
+      industries: body.industries === undefined ? undefined : keepKnown(body.industries, INDUSTRIES),
+      languages:
+        body.languages === undefined
+          ? undefined
+          : keepTags(body.languages, 6).filter(
+              (language) =>
+                COMMON_LANGUAGES.includes(language as (typeof COMMON_LANGUAGES)[number]) ||
+                language.length <= 30,
+            ),
       onboardingStep:
         typeof body.onboardingStep === "number" && Number.isInteger(body.onboardingStep)
           ? Math.max(0, Math.min(body.onboardingStep, SETUP_STEPS.length))

@@ -2,14 +2,14 @@
   "name": "@connectpro/web",
   "version": "0.2.0",
   "private": true,
-  "description": "Brigade — hospitality talent network",
+  "description": "Brigade \u2014 hospitality talent network",
   "scripts": {
     "dev": "ulimit -n 10240 2>/dev/null || true; WATCHPACK_POLLING=true next dev --port 3100",
     "build": "next build",
     "start": "next start --port 3100",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.spec.json",
-    "test": "node --experimental-strip-types spec/mentorship.spec.ts"
+    "test": "node --experimental-strip-types spec/mentorship.spec.ts && node --experimental-strip-types spec/onboarding.spec.ts"
   },
   "dependencies": {
     "@connectpro/common": "workspace:*",

@@ -41,6 +41,15 @@ export interface Mentor {
   /** Stripe connected account id, once onboarding has been started. */
   payoutAccountId: string | null;
   payoutsOnboardedAt: string | null;
+  /**
+   * The mentor half of the matching pairs. Each one is answered from the same
+   * list a member answers during their own onboarding — see
+   * lib/onboarding/taxonomy.ts. `expertise` above is the skills half.
+   */
+  menteeTypes: string[];
+  helpOffered: string[];
+  industries: string[];
+  languages: string[];
 }
 
 export interface SessionType {
@@ -71,6 +80,10 @@ function mapMentor(row: Record<string, unknown>): Mentor {
     payoutsOnboardedAt: row.payouts_onboarded_at
       ? new Date(row.payouts_onboarded_at as string).toISOString()
       : null,
+    menteeTypes: Array.isArray(row.mentee_types) ? (row.mentee_types as string[]) : [],
+    helpOffered: Array.isArray(row.help_offered) ? (row.help_offered as string[]) : [],
+    industries: Array.isArray(row.industries) ? (row.industries as string[]) : [],
+    languages: Array.isArray(row.languages) ? (row.languages as string[]) : [],
   };
 }
 
@@ -122,6 +135,10 @@ export async function dbUpsertMentor(
     columns.default_meeting_url = patch.defaultMeetingUrl;
   }
   if (patch.expertise !== undefined) columns.expertise = patch.expertise;
+  if (patch.menteeTypes !== undefined) columns.mentee_types = patch.menteeTypes;
+  if (patch.helpOffered !== undefined) columns.help_offered = patch.helpOffered;
+  if (patch.industries !== undefined) columns.industries = patch.industries;
+  if (patch.languages !== undefined) columns.languages = patch.languages;
   if (patch.onboardingStep !== undefined) columns.onboarding_step = patch.onboardingStep;
 
   const keys = Object.keys(columns);
@@ -1177,6 +1194,82 @@ export async function dbListMentors(params: {
     total: Number(totals.rows[0]?.total ?? 0),
     data: rows.rows.map(mapListing),
   };
+}
+
+/**
+ * Every bookable mentor, reduced to just what the matcher scores on.
+ *
+ * Deliberately a separate, narrow query rather than reusing `dbListMentors`:
+ * ranking happens over the WHOLE pool, not a page of it, and pulling full
+ * listings for that would fetch avatars and headlines to throw most of them
+ * away. The winners are looked up properly afterwards.
+ */
+export async function dbListMentorSignals(): Promise<
+  {
+    userId: string;
+    expertise: string[];
+    helpOffered: string[];
+    industries: string[];
+    languages: string[];
+    menteeTypes: string[];
+    timezone: string;
+    yearsExperience: number | null;
+    activeSessionCount: number;
+  }[]
+> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT m.user_id, m.expertise, m.help_offered, m.industries, m.languages,
+            m.mentee_types, m.timezone, p.years_experience,
+            COALESCE(st.session_count, 0) AS session_count
+       FROM mentorship.mentors m
+       JOIN users.profiles p ON p.user_id = m.user_id
+       LEFT JOIN (
+         SELECT mentor_user_id, count(*)::int AS session_count
+           FROM mentorship.session_types WHERE active GROUP BY mentor_user_id
+       ) st ON st.mentor_user_id = m.user_id
+      WHERE m.status = 'active'`,
+  );
+
+  return res.rows.map((row) => ({
+    userId: row.user_id as string,
+    expertise: Array.isArray(row.expertise) ? (row.expertise as string[]) : [],
+    helpOffered: Array.isArray(row.help_offered) ? (row.help_offered as string[]) : [],
+    industries: Array.isArray(row.industries) ? (row.industries as string[]) : [],
+    languages: Array.isArray(row.languages) ? (row.languages as string[]) : [],
+    menteeTypes: Array.isArray(row.mentee_types) ? (row.mentee_types as string[]) : [],
+    timezone: (row.timezone as string) ?? "UTC",
+    yearsExperience:
+      row.years_experience === null || row.years_experience === undefined
+        ? null
+        : Number(row.years_experience),
+    activeSessionCount: Number(row.session_count ?? 0),
+  }));
+}
+
+/** Full listings for a specific set of mentors, in the order given. */
+export async function dbListMentorsByIds(userIds: string[]): Promise<MentorListing[]> {
+  if (userIds.length === 0) return [];
+  await ensureMentorshipSchema();
+
+  const { priceJoin } = mentorListFilters({});
+  const res = await pool().query(
+    `SELECT m.user_id, m.headline AS mentor_headline, m.timezone, m.currency,
+            m.created_at, st.min_price, st.session_count,
+            p.first_name, p.last_name, p.headline AS profile_headline,
+            p.role, p.city, p.state, p.country, p.avatar_url,
+            ${EFFECTIVE_EXPERTISE} AS expertise_areas,
+            p.current_employer, p.years_experience
+       FROM mentorship.mentors m
+       ${priceJoin}
+       JOIN users.profiles p ON p.user_id = m.user_id
+      WHERE m.user_id = ANY($1::uuid[]) AND m.status = 'active'`,
+    [userIds],
+  );
+
+  // Re-ordered to match the ranking, which the SQL does not preserve.
+  const byId = new Map(res.rows.map((row) => [row.user_id as string, mapListing(row)]));
+  return userIds.map((id) => byId.get(id)).filter((listing): listing is MentorListing => Boolean(listing));
 }
 
 /**

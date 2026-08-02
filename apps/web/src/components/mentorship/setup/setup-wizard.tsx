@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { SETUP_STEPS, stepIndex } from "@/lib/mentorship/readiness";
 import { MentorCardPreview } from "./card-preview";
 import { StepProfile } from "./step-profile";
+import { StepAudience } from "./step-audience";
 import { StepSessions } from "./step-sessions";
 import { StepHours } from "./step-hours";
 import { StepMeeting } from "./step-meeting";
@@ -16,6 +17,7 @@ import type { SetupDraft, SetupState, StepProps } from "./types";
 
 const STEP_COMPONENTS: Record<string, (props: StepProps) => React.ReactNode> = {
   profile: StepProfile,
+  audience: StepAudience,
   sessions: StepSessions,
   hours: StepHours,
   meeting: StepMeeting,

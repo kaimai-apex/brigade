@@ -25,7 +25,7 @@ export interface ReadinessInput {
 }
 
 export interface ChecklistItem {
-  id: "profile" | "sessions" | "hours" | "meeting" | "payouts" | "tags";
+  id: "profile" | "sessions" | "hours" | "meeting" | "payouts" | "tags" | "audience";
   label: string;
   /** Blocks publishing when false. Advisory items are never blocking. */
   required: boolean;
@@ -128,6 +128,7 @@ export function evaluateReadiness(input: ReadinessInput): Readiness {
 /** The setup flow's steps, in order. Index matches `mentors.onboarding_step`. */
 export const SETUP_STEPS = [
   { slug: "profile", label: "Your profile" },
+  { slug: "audience", label: "Who you help" },
   { slug: "sessions", label: "Sessions & pricing" },
   { slug: "hours", label: "Availability" },
   { slug: "meeting", label: "Meeting link" },
