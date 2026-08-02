@@ -19,6 +19,7 @@ type Booking = {
   platformFeeCents: number;
   mentorPayoutCents: number;
   meetingUrl: string | null;
+  confirmationCode: string | null;
 };
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
@@ -179,13 +180,27 @@ function BookingList({
                 className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-ink/10 p-4"
               >
                 <div className="min-w-0">
-                  <p className="font-semibold">{formatRange(b.startsAt, b.endsAt)}</p>
+                  {/* The date is the permalink into the receipt. Without this
+                      the receipt page is only reachable by coming back from
+                      Stripe, so anyone who closed that tab could never find
+                      their confirmation code or meeting link again. */}
+                  <p className="font-semibold">
+                    <Link href={`/sessions/${b.id}`} className="hover:underline">
+                      {formatRange(b.startsAt, b.endsAt)}
+                    </Link>
+                  </p>
                   <p className="text-meta mt-1 text-ink/50">
                     <Link href={`/profile/${other}`} className="hover:underline">
                       {perspective === 'mentee' ? 'with your mentor' : 'with your mentee'}
                     </Link>
                     {' · '}
                     <StatusBadge status={b.status} />
+                    {b.confirmationCode && (
+                      <>
+                        {' · '}
+                        <span className="font-mono">{b.confirmationCode}</span>
+                      </>
+                    )}
                   </p>
                   {b.meetingUrl && b.status === 'confirmed' && (
                     <a

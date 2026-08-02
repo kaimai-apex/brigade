@@ -1034,19 +1034,33 @@ export async function dbConfirmBooking(
   const link = meetingUrl?.trim() || mentor?.defaultMeetingUrl || null;
   const normalised = link ? normaliseMeetingUrl(link) : null;
 
-  const res = await pool().query(
-    `UPDATE mentorship.bookings
-       SET status = 'confirmed',
-           meeting_url = COALESCE($3, meeting_url),
-           updated_at = now()
-     WHERE id = $1 AND mentor_user_id = $2 AND status = 'pending_payment'
-     RETURNING *`,
-    [bookingId, mentorUserId, normalised],
-  );
-  if (res.rows.length === 0) {
-    throw new Error("That booking is not waiting for your confirmation");
+  // A code is issued here too. A confirmed session is a confirmed session
+  // however it got there, and a receipt that shows a confirmation number for a
+  // Stripe booking and a blank for a hand-accepted one is the kind of
+  // inconsistency people notice and distrust.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await pool().query(
+        `UPDATE mentorship.bookings
+           SET status = 'confirmed',
+               meeting_url = COALESCE($3, meeting_url),
+               confirmation_code = COALESCE(confirmation_code, $4),
+               updated_at = now()
+         WHERE id = $1 AND mentor_user_id = $2 AND status = 'pending_payment'
+         RETURNING *`,
+        [bookingId, mentorUserId, normalised, generateConfirmationCode()],
+      );
+      if (res.rows.length === 0) {
+        throw new Error("That booking is not waiting for your confirmation");
+      }
+      return mapBooking(res.rows[0]);
+    } catch (error) {
+      // 23505 = unique_violation on the confirmation code.
+      if ((error as { code?: string }).code === "23505" && attempt < 4) continue;
+      throw error;
+    }
   }
-  return mapBooking(res.rows[0]);
+  throw new Error("Could not confirm that booking");
 }
 
 /** Either party may cancel; the slot returns to the calendar. */
