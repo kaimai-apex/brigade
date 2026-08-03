@@ -4,7 +4,7 @@ import {
   getConnectProSession,
   requireConnectProSession,
 } from "@/lib/connectpro/server";
-import type { FullProfile, OnboardingSlug, Profile } from "@/lib/types/database";
+import type { FullProfile, OnboardingSlug } from "@/lib/types/database";
 import {
   mapDirectoryRow,
   type DirectoryFacets,
@@ -24,7 +24,6 @@ import {
 import { normalizeInstagramUrl, normalizeWebsiteUrl } from "@/lib/profile/links";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 
 const STEP_INDEX: Record<OnboardingSlug, number> = {
   "basic-info": 0,
@@ -263,22 +262,7 @@ export async function completeOnboarding() {
   redirect(`/profile/${userId}`);
 }
 
-export async function signOut() {
-  const cookieStore = await cookies();
-  const refreshToken = cookieStore.get("connectpro_refresh_token")?.value;
-  if (refreshToken) {
-    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3100"}/api/auth/logout`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    }).catch(() => null);
-  }
-  redirect("/");
-}
 
-export async function getDiscoverProfiles(): Promise<Profile[]> {
-  return getDirectoryProfiles();
-}
 
 const EMPTY_FACETS: DirectoryFacets = { roles: [], cities: [], expertise: [] };
 
@@ -313,13 +297,6 @@ export async function getDirectory(
   }
 }
 
-/** Authenticated directory only — no public unauthenticated listing. */
-export async function getDirectoryProfiles(
-  params: DirectoryParams = {},
-): Promise<Profile[]> {
-  const { profiles } = await getDirectory(params);
-  return profiles;
-}
 
 /** Member ids the current user has saved to their shortlist. */
 export async function getSavedMemberIds(): Promise<string[]> {

@@ -747,25 +747,6 @@ export async function dbGetBooking(id: string): Promise<Booking | null> {
   return res.rows[0] ? mapBooking(res.rows[0]) : null;
 }
 
-/**
- * A booking, but only for the two people it concerns.
- *
- * Receipts carry a meeting link and a price, so the row is filtered by
- * participation in SQL rather than fetched and then checked — there is no
- * moment where the wrong person is holding the data.
- */
-export async function dbGetBookingForViewer(
-  id: string,
-  viewerId: string,
-): Promise<Booking | null> {
-  await ensureMentorshipSchema();
-  const res = await pool().query(
-    `SELECT * FROM mentorship.bookings
-      WHERE id = $1 AND (mentee_user_id = $2 OR mentor_user_id = $2)`,
-    [id, viewerId],
-  );
-  return res.rows[0] ? mapBooking(res.rows[0]) : null;
-}
 
 export interface BookingDetail extends Booking {
   sessionTitle: string;

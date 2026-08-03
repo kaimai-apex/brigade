@@ -298,21 +298,9 @@ export const MENTEE_STEPS: MenteeStep[] = [
   },
 ];
 
-/** Steps whose answers the matcher actually uses. */
-export const MATCHING_FIELDS = [
-  "skillsWanted",
-  "helpWanted",
-  "interestIndustries",
-  "languages",
-] as const;
-
 export function stepIndexById(id: string | null | undefined): number {
   if (!id) return 0;
   const index = MENTEE_STEPS.findIndex((step) => step.id === id);
   return index === -1 ? 0 : index;
 }
 
-/** The progress figure for a step, defaulting to the first. */
-export function percentForIndex(index: number): number {
-  return MENTEE_STEPS[Math.max(0, Math.min(index, MENTEE_STEPS.length - 1))]?.percent ?? 0;
-}

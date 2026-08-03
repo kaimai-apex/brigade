@@ -310,17 +310,6 @@ const COLUMN_MAP: Record<string, string> = {
   preferredMentorExperience: "preferred_mentor_experience",
 };
 
-export async function dbEnsureProfile(
-  userId: string,
-  firstName = "Member",
-  lastName = "",
-) {
-  await pool().query(
-    `INSERT INTO users.profiles (user_id, first_name, last_name, completeness, onboarding_step)
-     VALUES ($1, $2, $3, 10, 0) ON CONFLICT (user_id) DO NOTHING`,
-    [userId, firstName, lastName],
-  );
-}
 
 export async function dbUpdateProfile(
   userId: string,
