@@ -1,122 +1,122 @@
 /**
  * The vocabulary both sides of the marketplace speak.
  *
- * A mentee says "I want to get better at food costing"; a mentor says "I can
- * teach food costing". Those are only matchable if they are literally the same
- * string, so both flows pick from these lists and the matcher compares them
- * directly. Two hand-maintained lists would drift within a month and the
- * matching would quietly degrade to nothing — which is why `SKILLS` is one
- * array used by the mentee's "what do you want to improve" screen AND the
- * mentor's expertise picker.
+ * SCOPE: private chef mentorship, and nothing else. This MVP is for cooks and
+ * chefs moving into — or already working in — private service: households,
+ * estates, yachts, chalets, villas, events. Every list below is written for
+ * that one journey.
+ *
+ * It deliberately does NOT cover bartending, front of house, sommeliers, hotel
+ * operations or restaurant management. A directory that offers all of
+ * hospitality and delivers four private chefs is worse than one that offers
+ * private cheffing and delivers four private chefs.
+ *
+ * A mentee says "I want to get better at rates and pricing"; a mentor says "I
+ * can teach rates and pricing". Those are only matchable if they are literally
+ * the same string, so both flows pick from these lists and the matcher compares
+ * them directly. Two hand-maintained lists would drift within a month — which
+ * is why `SKILLS` is one array used by the mentee's "what do you want to
+ * improve" screen AND the mentor's expertise picker.
  *
  * Pure data, no I/O, so the pairing can be asserted in a spec.
- *
- * Free text is still allowed for mentor expertise: a chef who teaches something
- * nobody listed should not be silenced. Those tags simply cannot contribute to
- * a skills match until the same words appear on a mentee's side.
  */
 
-/** Parts of the industry someone works in or wants to move into. */
+/** Where private chefs actually work. The real segments of the job. */
 export const INDUSTRIES = [
-  "Private chef",
-  "Restaurants",
-  "Hotels",
-  "Luxury hospitality",
-  "Fine dining",
-  "Catering",
-  "Events",
-  "Food trucks",
-  "Bakeries",
-  "Coffee",
-  "Wine",
-  "Cocktails",
-  "Resorts",
-  "Travel",
-  "Cruise",
-  "Hospitality tech",
-  "Food content",
-  "Hospitality startups",
+  "Private households",
+  "Estates",
+  "Yachts",
+  "Chalets & ski season",
+  "Villas & holiday lets",
+  "Family offices",
+  "Dinner parties & events",
+  "Supper clubs & pop-ups",
+  "Retreats",
+  "Travelling with clients",
 ] as const;
 
 /**
  * The matching backbone.
  *
  * Read as "I want to improve X" by a mentee and "I can teach X" by a mentor.
- * Every entry has to make sense read both ways — that is the test for whether
- * something belongs here.
+ * Every entry has to make sense read both ways, and has to be something a
+ * private chef would actually name — that is the test for whether it belongs.
  */
 export const SKILLS = [
-  "Leadership",
-  "Knife skills",
   "Menu development",
   "Food costing",
-  "Business",
-  "Networking",
-  "Interview prep",
-  "Career growth",
-  "Personal branding",
-  "Resume",
-  "Pricing services",
-  "Client acquisition",
-  "Marketing",
-  "Operations",
-  "Hiring",
-  "Management",
-  "Financial literacy",
-  "Communication",
-  "Public speaking",
+  "Rates & pricing",
+  "Finding clients",
+  "Contracts & terms",
+  "Dietary requirements",
+  "Allergies & safety",
+  "Sourcing & suppliers",
+  "Meal prep & batch cooking",
+  "Plating & presentation",
+  "Wine & pairing",
+  "Cooking in someone's home",
+  "Working on a yacht",
+  "Household staff dynamics",
+  "Discretion & boundaries",
+  "Trial cooks",
   "Going solo",
+  "Marketing yourself",
+  "Managing your time",
+  "Budgeting for a household",
 ] as const;
 
 /** What a mentee is trying to achieve. Mentee-only — mentors do not have goals. */
 export const GOALS = [
-  "Land my first hospitality job",
   "Become a private chef",
-  "Get promoted",
-  "Start my own business",
-  "Open a restaurant",
-  "Build my network",
-  "Find a mentor",
-  "Switch careers",
-  "Learn from industry experts",
-  "Improve technical skills",
+  "Land my first private client",
+  "Move from restaurants into private service",
+  "Raise my rates",
+  "Build a steady client base",
+  "Get into yachts or estates",
+  "Go full-time solo",
+  "Cook for a season abroad",
+  "Get better at the food",
+  "Find someone who has done it",
 ] as const;
 
 /**
  * The shape of help, as opposed to the subject of it.
  *
- * "Food costing" is a skill; "mock interviews" is a format. Someone can be
+ * "Food costing" is a skill; "trial cook prep" is a format. Someone can be
  * expert in the subject and unwilling to do the format, so these are matched
  * separately and weighted lower than skills.
+ *
+ * No entry here may also appear in SKILLS. An exact duplicate would be scored
+ * twice — once at skill weight, once at help weight — quietly making one
+ * answer worth three times what the design intends. The spec asserts the two
+ * lists stay disjoint, which is how the original "Finding clients" collision
+ * was caught.
  */
 export const HELP_TYPES = [
   "Career advice",
-  "Resume review",
-  "Mock interviews",
+  "Trial cook prep",
+  "Mock client call",
+  "Rate negotiation",
+  "Contract review",
+  "Menu feedback",
   "Business strategy",
-  "Networking",
-  "Technical skills",
-  "Pricing",
-  "Finding clients",
-  "Leadership",
+  "Technical cooking",
+  "Portfolio review",
   "Life advice",
 ] as const;
 
-/** "What best describes you?" — the same list for both sides. */
+/** "What best describes you?" — the private chef track, start to finish. */
 export const HOSPITALITY_ROLES = [
-  "Student",
-  "Aspiring chef",
+  "Culinary student",
+  "Aspiring private chef",
+  "Commis chef",
+  "Chef de partie",
+  "Sous chef",
+  "Head chef",
+  "Personal chef",
   "Private chef",
-  "Line cook",
-  "Pastry chef",
-  "Restaurant manager",
-  "Bartender",
-  "Server",
-  "Sommelier",
-  "Hotel professional",
-  "Event professional",
-  "Caterer",
-  "Hospitality entrepreneur",
+  "Estate chef",
+  "Yacht chef",
   "Other",
 ] as const;
 
@@ -129,39 +129,39 @@ export const HOSPITALITY_ROLES = [
  */
 export const EXPERIENCE_LEVELS = [
   { value: "exploring", label: "Just exploring", minYears: 0 },
-  { value: "student", label: "Hospitality student", minYears: 0 },
-  { value: "0-1", label: "0–1 years", minYears: 0 },
-  { value: "2-5", label: "2–5 years", minYears: 2 },
-  { value: "5-10", label: "5–10 years", minYears: 5 },
-  { value: "10+", label: "10+ years", minYears: 10 },
+  { value: "student", label: "Culinary student", minYears: 0 },
+  { value: "0-1", label: "0–1 years cooking", minYears: 0 },
+  { value: "2-5", label: "2–5 years cooking", minYears: 2 },
+  { value: "5-10", label: "5–10 years cooking", minYears: 5 },
+  { value: "10+", label: "10+ years cooking", minYears: 10 },
 ] as const;
 
 /** What a mentee wants from the person on the other side of the call. */
 export const MENTOR_EXPERIENCE_PREFERENCE = [
-  { value: "1-5", label: "1–5 years", minYears: 1 },
-  { value: "5-10", label: "5–10 years", minYears: 5 },
-  { value: "10+", label: "10+ years", minYears: 10 },
+  { value: "1-5", label: "1–5 years private", minYears: 1 },
+  { value: "5-10", label: "5–10 years private", minYears: 5 },
+  { value: "10+", label: "10+ years private", minYears: 10 },
   { value: "any", label: "No preference", minYears: 0 },
 ] as const;
 
-/** Where someone works now. */
+/** Where someone cooks now. */
 export const WORKPLACE_TYPES = [
   "Restaurant",
-  "Hotel",
-  "Private chef",
-  "Freelance",
-  "Self-employed",
-  "Not working",
+  "Private household",
+  "Estate or villa",
+  "Yacht",
+  "Freelance / agency",
+  "Culinary school",
+  "Not working right now",
 ] as const;
 
 /** Who a mentor wants to help — the mentor-side mirror of a mentee's stage. */
 export const MENTEE_TYPES = [
-  "Students",
-  "People just starting out",
-  "Career changers",
-  "Cooks stepping up to lead",
-  "People going private",
-  "Founders and owners",
+  "Culinary students",
+  "Restaurant chefs going private",
+  "Chefs new to private service",
+  "Established private chefs",
+  "Chefs going solo",
   "Anyone who asks",
 ] as const;
 
@@ -172,19 +172,17 @@ export const COMMON_LANGUAGES = [
   "English",
   "Spanish",
   "French",
-  "Mandarin",
-  "Cantonese",
   "Italian",
   "Portuguese",
   "German",
+  "Mandarin",
+  "Cantonese",
   "Japanese",
-  "Korean",
   "Arabic",
-  "Hindi",
-  "Tagalog",
-  "Vietnamese",
-  "Polish",
   "Russian",
+  "Polish",
+  "Tagalog",
+  "Hindi",
 ] as const;
 
 export type Industry = (typeof INDUSTRIES)[number];

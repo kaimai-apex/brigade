@@ -147,9 +147,9 @@ export function SetupWizard() {
       <div className="mx-auto max-w-xl py-8 text-center">
         <h1 className="mk-title">Teach what you know</h1>
         <p className="mt-3 text-[15px] text-[var(--mk-muted)]">
-          Chefs and hospitality leaders sell one-to-one sessions on Brigade. You set the
-          price and the hours; Brigade handles the booking, the payment and the reminders,
-          and keeps 20% of each session.
+          Private chefs sell one-to-one sessions to cooks trying to break into private
+          service. You set the price and the hours; Brigade handles the booking, the
+          payment and the reminders, and keeps 20% of each session.
         </p>
         <ul className="mt-6 space-y-2 text-left text-[15px] text-[var(--mk-muted)]">
           <li>· Takes about ten minutes, and you can stop halfway.</li>

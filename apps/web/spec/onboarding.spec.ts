@@ -70,7 +70,18 @@ group("Taxonomy");
   // The whole design rests on this: a mentee picks from SKILLS and a mentor
   // picks from SKILLS, so an exact string compare is a real match.
   check("skills read both ways", SKILLS.includes("Food costing"));
-  check("help types are formats, not subjects", HELP_TYPES.includes("Mock interviews"));
+  // Formats and subjects must stay in separate lists, or the matcher would
+  // double-count the same signal under two weights.
+  check(
+    "help types are formats, not subjects",
+    HELP_TYPES.every((help) => !SKILLS.includes(help as never)),
+  );
+  // This MVP is private chef mentorship only. If a role from the wider
+  // hospitality world reappears here, the scope has drifted.
+  check(
+    "roles stay on the private chef track",
+    !HOSPITALITY_ROLES.some((r) => /bartender|sommelier|server|hotel|barista/i.test(r)),
+  );
 
   check(
     "every experience level has a floor",
@@ -92,10 +103,10 @@ group("Taxonomy");
 {
   // These land in text[] columns the matcher and the directory facets read, so
   // anything not on the list has to be dropped at the boundary.
-  check("keepKnown drops unknown values", keepKnown(["Leadership", "Nonsense"], SKILLS).length === 1);
-  check("keepKnown de-duplicates", keepKnown(["Leadership", "Leadership"], SKILLS).length === 1);
-  check("keepKnown trims", keepKnown(["  Leadership  "], SKILLS)[0] === "Leadership");
-  check("keepKnown rejects non-arrays", keepKnown("Leadership", SKILLS).length === 0);
+  check("keepKnown drops unknown values", keepKnown([SKILLS[0], "Nonsense"], SKILLS).length === 1);
+  check("keepKnown de-duplicates", keepKnown([SKILLS[0], SKILLS[0]], SKILLS).length === 1);
+  check("keepKnown trims", keepKnown([`  ${SKILLS[0]}  `], SKILLS)[0] === SKILLS[0]);
+  check("keepKnown rejects non-arrays", keepKnown(SKILLS[0], SKILLS).length === 0);
   check("keepKnown rejects non-strings", keepKnown([1, null, {}], SKILLS).length === 0);
 
   check("keepTags allows free text", keepTags(["Sourdough"]).length === 1);
@@ -113,7 +124,7 @@ group("Matching");
 const mentee: MenteeSignals = {
   skillsWanted: ["Food costing", "Menu development"],
   helpWanted: ["Business strategy"],
-  interestIndustries: ["Private chef"],
+  interestIndustries: ["Private households"],
   languages: ["English"],
   timezone: "America/New_York",
   minMentorYears: minYearsForPreference("10+"),
@@ -168,7 +179,7 @@ function mentor(overrides: Partial<MentorSignals> = {}): MentorSignals {
   check("help type counts", help.reasons.some((r) => r.kind === "help"));
   check("but less than a skill", help.score < oneSkill.score);
 
-  const industry = scoreMentor(mentee, mentor({ industries: ["Private chef"] }));
+  const industry = scoreMentor(mentee, mentor({ industries: ["Private households"] }));
   check("industry counts", industry.reasons.some((r) => r.kind === "industry"));
 
   const language = scoreMentor(mentee, mentor({ languages: ["English"] }));

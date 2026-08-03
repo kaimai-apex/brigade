@@ -27,7 +27,7 @@ export default async function HomePage() {
     rails.length > 0
       ? rails
       : allMentors.data.length > 0
-        ? [{ expertise: "Hospitality", mentors: allMentors.data }]
+        ? [{ expertise: "Private cheffing", mentors: allMentors.data }]
         : [];
 
   // Split like ADPList: first rails, practice band, then remaining rails.

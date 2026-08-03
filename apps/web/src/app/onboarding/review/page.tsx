@@ -125,8 +125,8 @@ export default async function ReviewPage() {
         <CardHeader>
           <CardTitle>Want to mentor as well?</CardTitle>
           <CardDescription>
-            Chefs and hospitality leaders sell one-to-one sessions on Brigade. You set the
-            price and the hours; we handle booking and payment and keep 20%.
+            If you cook privately, you can sell one-to-one sessions to chefs trying to get
+            there. You set the price and the hours; we handle booking and payment, and keep 20%.
           </CardDescription>
         </CardHeader>
         <Button asChild variant="outline">

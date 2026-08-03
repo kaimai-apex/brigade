@@ -83,7 +83,7 @@ export const MENTEE_STEPS: MenteeStep[] = [
     percent: 10,
     title: "Welcome to Brigade",
     subtitle:
-      "A few questions so we can point you at the right people. About two minutes, and you can skip anything you would rather not answer.",
+      "A few questions so we can point you at the right private chefs. About two minutes, and you can skip anything you would rather not answer.",
     cta: "Let's go",
   },
 
@@ -174,7 +174,7 @@ export const MENTEE_STEPS: MenteeStep[] = [
     kind: "multi",
     phase: "Interests",
     percent: 50,
-    title: "Which parts of hospitality interest you most?",
+    title: "What kind of private work interests you?",
     subtitle: "Pick as many as apply. This shapes who we show you.",
     field: "interestIndustries",
     options: asOptions(INDUSTRIES),

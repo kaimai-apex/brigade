@@ -28,9 +28,9 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "Brigade — Hospitality Community",
+  title: "Brigade — Private Chef Mentorship",
   description:
-    "A hospitality community for building your Brigade — relationships, collaboration, and career growth.",
+    "Mentorship for chefs moving into private service. Learn from private chefs who have already done it.",
 };
 
 export const viewport: Viewport = {

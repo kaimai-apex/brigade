@@ -68,11 +68,11 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
         </nav>
 
         <h1 className="mk-display mt-8 max-w-[26ch]">
-          Learn from chefs who&apos;ve already done it
+          Learn from private chefs who&apos;ve already done it
         </h1>
         <p className="mk-lede mt-3 max-w-[70ch]">
-          Browse verified private chefs, banquet leads, and hospitality operators.
-          Book a 1:1 session in minutes — leave with a plan, not just advice.
+          Private chefs who cook for households, estates, yachts and villas. Book a 1:1
+          session in minutes — leave with a plan, not just advice.
         </p>
 
         <div className="mt-8 flex gap-8 border-b border-[var(--mk-line)]">
@@ -155,9 +155,9 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
                   Teach what you know
                 </h2>
                 <p className="mt-2 text-[15px] text-[var(--mk-muted)]">
-                  You set the price and the hours. Brigade handles booking, payment and
-                  reminders, and keeps 20% of each session. Setting up takes about ten
-                  minutes.
+                  If you cook privately, someone is trying to work out how you did it. You
+                  set the price and the hours; Brigade handles booking, payment and
+                  reminders, and keeps 20%. Setting up takes about ten minutes.
                 </p>
               </div>
               <Link href={setupHref} className="mk-btn mk-btn-dark">

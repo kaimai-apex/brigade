@@ -137,7 +137,7 @@ export function StepAudience({ state, save, saving, onNext }: StepProps) {
 
       <div>
         <span className="text-[13px] font-semibold text-[var(--mk-text)]">
-          Which parts of hospitality do you know?
+          Where have you cooked privately?
         </span>
         <Chips
           options={INDUSTRIES}

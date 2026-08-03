@@ -174,7 +174,7 @@ export function ExploreCard({
         <p className="mt-1 line-clamp-2 text-[14px] leading-snug text-[var(--mk-muted)]">
           {[mentor.role, mentor.currentEmployer].filter(Boolean).join(" at ") ||
             mentor.headline ||
-            "Hospitality mentor"}
+            "Private chef mentor"}
         </p>
         <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">
           {sessionCountLabel(mentor.sessionCount)}

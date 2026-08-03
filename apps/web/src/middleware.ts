@@ -107,7 +107,23 @@ async function hasVerifiedSession(request: NextRequest): Promise<boolean> {
   return false;
 }
 
+/**
+ * The demo console and the persona API it calls.
+ *
+ * Open without a session because the entire point is to walk the product
+ * without signing in as yourself. NODE_ENV is inlined at build time, so on a
+ * production build this whole branch compiles away and both paths fall back to
+ * the normal rules — which reject them. The routes themselves also return 404
+ * in production; two independent guards, because one of them being wrong would
+ * mean a stranger could mint accounts on the live site.
+ */
+function isDevConsolePath(pathname: string): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return pathname === "/dev" || pathname.startsWith("/api/dev/");
+}
+
 function isPublicPage(pathname: string): boolean {
+  if (isDevConsolePath(pathname)) return true;
   if (PUBLIC_PAGES.has(pathname)) return true;
   // Exact segment match — do not treat /mentorship as /mentors*.
   if (pathname === "/mentors" || pathname.startsWith("/mentors/")) return true;
@@ -116,6 +132,7 @@ function isPublicPage(pathname: string): boolean {
 }
 
 function isPublicApi(pathname: string): boolean {
+  if (isDevConsolePath(pathname)) return true;
   if (PUBLIC_APIS.has(pathname)) return true;
   // List + /:id only — not /api/mentorship/me or bookings.
   if (
