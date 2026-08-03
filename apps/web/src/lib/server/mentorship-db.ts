@@ -1147,7 +1147,7 @@ export interface MentorRail {
  * Requires at least one active session type: a mentor with nothing for sale is
  * not a listing, it is an empty page.
  */
-export async function dbListMentors(params: {
+export interface MentorListParams {
   q?: string;
   role?: string;
   city?: string;
@@ -1156,7 +1156,46 @@ export async function dbListMentors(params: {
   sort?: MentorSort;
   limit?: number;
   offset?: number;
-}): Promise<{ data: MentorListing[]; total: number }> {
+}
+
+/**
+ * Just the rows.
+ *
+ * Split out because the discovery rails need listings but never the total —
+ * they show at most a dozen cards and have no pagination. Running the COUNT
+ * anyway meant six extra aggregate queries on every visit to /mentors for a
+ * number nothing rendered.
+ */
+async function queryMentorRows(params: MentorListParams): Promise<MentorListing[]> {
+  await ensureMentorshipSchema();
+
+  const { where, values, priceJoin } = mentorListFilters(params);
+  const whereSql = where.join(" AND ");
+  const limit = Math.min(Math.max(params.limit ?? 24, 1), 48);
+  const offset = Math.max(params.offset ?? 0, 0);
+  const orderBy = mentorListOrder(params.sort);
+
+  const rows = await pool().query(
+    `SELECT m.user_id, m.headline AS mentor_headline, m.timezone, m.currency,
+            m.created_at, st.min_price, st.session_count,
+            p.first_name, p.last_name, p.headline AS profile_headline,
+            p.role, p.city, p.state, p.country, p.avatar_url,
+            ${EFFECTIVE_EXPERTISE} AS expertise_areas,
+            p.current_employer, p.years_experience
+     FROM mentorship.mentors m
+     ${priceJoin}
+     JOIN users.profiles p ON p.user_id = m.user_id
+     WHERE ${whereSql}
+     ORDER BY ${orderBy}
+     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+    [...values, limit, offset],
+  );
+  return rows.rows.map(mapListing);
+}
+
+export async function dbListMentors(
+  params: MentorListParams,
+): Promise<{ data: MentorListing[]; total: number }> {
   await ensureMentorshipSchema();
 
   const { where, values, priceJoin } = mentorListFilters(params);
@@ -1327,35 +1366,45 @@ export async function dbMentorFacets(): Promise<MentorFacets> {
  * "Popular in …" rails keyed by real expertise tags on active mentors.
  * Empty groups are omitted — with a thin mentor pool that may mean one rail.
  */
-export async function dbPopularMentorRails(limitPerRail = 12): Promise<MentorRail[]> {
-  const facets = await dbMentorFacets();
-  const rails: MentorRail[] = [];
+/**
+ * "Popular in …" rails.
+ *
+ * `facets` is passed in rather than fetched, because every caller has already
+ * computed them for the filter chips — recomputing meant three more GROUP BY
+ * queries over the whole join on each page load, for an identical answer.
+ *
+ * The rails themselves run concurrently. They used to be a sequential `await`
+ * inside a `for` loop: six independent queries taking six round trips, which is
+ * most of what made /mentors slow once there were enough mentors to fill the
+ * rails at all.
+ */
+export async function dbPopularMentorRails(
+  facets: MentorFacets,
+  limitPerRail = 12,
+): Promise<MentorRail[]> {
+  const build = async (
+    values: MentorFacet[],
+    key: "expertise" | "role",
+  ): Promise<MentorRail[]> => {
+    const results = await Promise.all(
+      values.map(async (facet) => ({
+        expertise: facet.value,
+        mentors: await queryMentorRows({
+          [key]: facet.value,
+          sort: "newest",
+          limit: limitPerRail,
+        }),
+      })),
+    );
+    return results.filter((rail) => rail.mentors.length > 0);
+  };
 
-  for (const facet of facets.expertise.slice(0, 6)) {
-    const { data } = await dbListMentors({
-      expertise: facet.value,
-      sort: "newest",
-      limit: limitPerRail,
-    });
-    if (data.length === 0) continue;
-    rails.push({ expertise: facet.value, mentors: data });
-  }
+  const rails = await build(facets.expertise.slice(0, 6), "expertise");
+  if (rails.length > 0) return rails;
 
   // If nobody has expertise tags yet, fall back to role-based rails so the
   // marketplace still has a discovery band when mentors exist.
-  if (rails.length === 0) {
-    for (const facet of facets.roles.slice(0, 4)) {
-      const { data } = await dbListMentors({
-        role: facet.value,
-        sort: "newest",
-        limit: limitPerRail,
-      });
-      if (data.length === 0) continue;
-      rails.push({ expertise: facet.value, mentors: data });
-    }
-  }
-
-  return rails;
+  return build(facets.roles.slice(0, 4), "role");
 }
 
 /**

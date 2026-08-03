@@ -47,7 +47,7 @@ export default async function RecommendationsPage() {
 
   const signals = await dbListMentorSignals();
   // A mentor cannot be recommended to themselves.
-  const { matches, confident } = rankMentors(
+  const { matches, confident, reason } = rankMentors(
     mentee,
     signals.filter((signal) => signal.userId !== session.userId),
   );
@@ -77,12 +77,26 @@ export default async function RecommendationsPage() {
         {confident ? `Here's who we'd start with, ${firstName}` : `You're all set, ${firstName}`}
       </h1>
 
+      {/* One sentence per reason. Saying "we are still building up our mentor
+          list" to someone browsing two hundred mentors is worse than saying
+          nothing, and that is exactly what a single fallback string produced. */}
       <p className="mt-2 text-[15px] text-ink/60">
-        {confident
-          ? "Matched on what you said you want to work on. Each card says why."
-          : matches.length > 0
-            ? "We found a few people worth a look, but not enough to call them a shortlist yet — so here is everyone."
-            : "Brigade is still building up its mentor list, so have a browse and see who fits."}
+        {reason === "confident" &&
+          "Matched on what you said you want to work on. Each card says why."}
+        {reason === "few-matches" &&
+          "We found a few people worth a look, but not enough to call them a shortlist yet — so here is everyone."}
+        {reason === "no-answers" && (
+          <>
+            You skipped the questions about what you want to work on, so this is just
+            everyone.{" "}
+            <Link href="/onboarding?step=skills" className="underline underline-offset-4">
+              Answer them
+            </Link>{" "}
+            and we can narrow it down.
+          </>
+        )}
+        {reason === "no-mentors" &&
+          "Nobody is taking bookings yet. Have a look around, and we will let you know when someone starts."}
       </p>
 
       {confident ? (

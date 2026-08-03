@@ -261,6 +261,30 @@ group("Ranking");
     rankMentors(mentee, [mentor({ userId: "a", expertise: ["Food costing"] })]).matches.length === 1,
   );
   check("the bar is at least one real skill match", MIN_USEFUL_SCORE === WEIGHTS.skill);
+
+  // Three different situations needing three different sentences. Collapsing
+  // them told a member browsing 219 mentors that the list was still filling up.
+  check(
+    "an empty marketplace says so",
+    rankMentors(mentee, []).reason === "no-mentors",
+  );
+  check(
+    "a member who answered nothing is told THAT, not that we have no mentors",
+    rankMentors(silent, [mentor({ expertise: ["Food costing"] })]).reason === "no-answers",
+  );
+  check(
+    "some matches but not enough reads as few-matches",
+    rankMentors(mentee, [mentor({ userId: "a", expertise: ["Food costing"] })]).reason ===
+      "few-matches",
+  );
+  check(
+    "a good result reads as confident",
+    rankMentors(mentee, [
+      mentor({ userId: "a", expertise: ["Food costing"] }),
+      mentor({ userId: "b", expertise: ["Food costing"] }),
+      mentor({ userId: "c", expertise: ["Food costing"] }),
+    ]).reason === "confident",
+  );
 }
 
 {

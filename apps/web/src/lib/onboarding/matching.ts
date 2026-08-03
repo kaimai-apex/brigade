@@ -229,6 +229,14 @@ export interface RankedMatches {
   matches: MatchResult[];
   /** False when there is not enough signal to call these recommendations. */
   confident: boolean;
+  /**
+   * WHY it is not confident, so the page can say something true.
+   *
+   * These are three genuinely different situations and they need three
+   * different sentences. Collapsing them is how a member on a site with two
+   * hundred mentors gets told the marketplace is still filling up.
+   */
+  reason: "confident" | "no-answers" | "few-matches" | "no-mentors";
 }
 
 /**
@@ -257,10 +265,20 @@ export function rankMentors(
     .sort((a, b) => b.score - a.score || a.mentorUserId.localeCompare(b.mentorUserId))
     .slice(0, limit);
 
-  return {
-    matches,
-    confident: toldUsSomething && matches.length >= MIN_RECOMMENDATIONS,
-  };
+  const confident = toldUsSomething && matches.length >= MIN_RECOMMENDATIONS;
+
+  // Order matters: an empty marketplace is the truest explanation when it
+  // applies, and "you told us nothing" is only worth saying when there was
+  // somebody to match against.
+  const reason: RankedMatches["reason"] = confident
+    ? "confident"
+    : mentors.length === 0
+      ? "no-mentors"
+      : !toldUsSomething
+        ? "no-answers"
+        : "few-matches";
+
+  return { matches, confident, reason };
 }
 
 /** One short line explaining a match, for the card. */

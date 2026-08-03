@@ -6,6 +6,7 @@ import { FinalCta } from "@/components/home/final-cta";
 import { MentorRail } from "@/components/mentorship/mentor-rail";
 import {
   dbListMentors,
+  dbMentorFacets,
   dbPopularMentorRails,
 } from "@/lib/server/mentorship-db";
 
@@ -16,10 +17,11 @@ export const dynamic = "force-dynamic";
  * hero photo → logo strip → popular rails → practice → final CTA.
  */
 export default async function HomePage() {
-  const [rails, allMentors] = await Promise.all([
-    dbPopularMentorRails(12),
+  const [facets, allMentors] = await Promise.all([
+    dbMentorFacets(),
     dbListMentors({ sort: "newest", limit: 12 }),
   ]);
+  const rails = await dbPopularMentorRails(facets, 12);
 
   const displayRails =
     rails.length > 0

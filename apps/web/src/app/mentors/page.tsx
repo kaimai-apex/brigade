@@ -35,12 +35,16 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
 
   const session = await getConnectProSession();
 
-  const [{ data: mentors, total }, ownMentor, facets, rails] = await Promise.all([
+  const [{ data: mentors, total }, ownMentor, facets] = await Promise.all([
     dbListMentors({ q, role, city, expertise, sort, limit: 36 }),
     session ? dbGetMentor(session.userId) : Promise.resolve(null),
     dbMentorFacets(),
-    filtering ? Promise.resolve([]) : dbPopularMentorRails(12),
   ]);
+
+  // Built from the facets already fetched above rather than fetching them
+  // again, and skipped entirely while filtering — the rails are a browse aid,
+  // and nobody who has typed a query is looking at them.
+  const rails = filtering ? [] : await dbPopularMentorRails(facets, 12);
 
   const active = { q, role, city, expertise, sort };
   const filterCount = [role, city, expertise].filter(Boolean).length + (sort !== "price" ? 1 : 0);
