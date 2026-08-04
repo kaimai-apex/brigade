@@ -16,10 +16,19 @@ export const dynamic = "force-dynamic";
  * hero photo → logo strip → popular rails → practice → final CTA.
  */
 export default async function HomePage() {
-  const [rails, allMentors] = await Promise.all([
-    dbPopularMentorRails(12),
-    dbListMentors({ sort: "newest", limit: 12 }),
-  ]);
+  // Marketing home must render even if Postgres is unreachable (wrong
+  // DATABASE_URL password, pooler outage, etc.). Mentor rails are progressive
+  // enhancement — a blank rail is better than a site-wide 500.
+  let rails: Awaited<ReturnType<typeof dbPopularMentorRails>> = [];
+  let allMentors: Awaited<ReturnType<typeof dbListMentors>> = { data: [], total: 0 };
+  try {
+    [rails, allMentors] = await Promise.all([
+      dbPopularMentorRails(12),
+      dbListMentors({ sort: "newest", limit: 12 }),
+    ]);
+  } catch (err) {
+    console.error("[home] mentorship query failed; rendering without rails", err);
+  }
 
   const displayRails =
     rails.length > 0
