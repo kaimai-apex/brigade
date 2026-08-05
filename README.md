@@ -87,11 +87,14 @@ pnpm infra:up          # docker compose up -d
 ```
 
 Postgres is auto-seeded on first start by `infra/postgres/init.sql` (schemas: `auth`, `users`,
-`connections`, `jobs`, `posts`, `notifications`, …). Optional demo data:
+`connections`, `jobs`, `posts`, `notifications`, …).
 
-```bash
-psql "$DATABASE_URL" -f scripts/seed-local.sql
-```
+There are no fake-member seed scripts. There used to be, and one of them
+(`scripts/seed-directory.py`) had `BASE = "https://www.joinbrigade.co"` hard-coded — running
+it created two dozen invented chefs in **production**, which is where the
+`@demo.joinbrigade.co` accounts came from. If you need bodies in the directory locally, add
+them through the running app or extend `infra/postgres/init.sql`, which can only ever touch
+the docker database.
 
 > **OpenSearch note:** the compose file disables the security plugin so it serves plain HTTP on `:9200`
 > (matches `OPENSEARCH_URL`) — no admin password needed.
