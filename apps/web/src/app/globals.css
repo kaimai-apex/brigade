@@ -1112,3 +1112,198 @@
     display: none;
   }
 }
+
+/* ================================================================
+   Onboarding motion
+   ------------------------------------------------------------------
+   The flow is one question at a time, which means the screen replaces
+   itself fifteen times. Without motion that reads as a page failing to
+   load; with it, it reads as a stack of cards being dealt — and the
+   direction of travel tells you whether you went forward or back
+   without having to read anything.
+
+   Everything here is short. 180-260ms is long enough to be seen and
+   short enough that someone answering quickly never waits for it.
+   Every animation is disabled wholesale under prefers-reduced-motion
+   at the bottom of this block; nothing here carries information that
+   is not also written down somewhere.
+   ================================================================ */
+
+.ob-step {
+  animation: ob-step-in 220ms cubic-bezier(0.16, 0.84, 0.32, 1) both;
+}
+.ob-step[data-direction='back'] {
+  animation-name: ob-step-in-back;
+}
+@keyframes ob-step-in {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes ob-step-in-back {
+  from {
+    opacity: 0;
+    transform: translate3d(-18px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* The question itself leads, the options follow a beat later. Reading
+   order and appearance order agree, so the eye starts in the right place. */
+.ob-stagger > * {
+  animation: ob-rise 240ms cubic-bezier(0.16, 0.84, 0.32, 1) both;
+  animation-delay: calc(var(--ob-i, 0) * 28ms);
+}
+@keyframes ob-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* An option that answers on one tap has to acknowledge the tap before the
+   screen changes, or the tap feels dropped. */
+.ob-option {
+  transition:
+    transform 130ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 130ms ease,
+    background-color 130ms ease,
+    box-shadow 130ms ease;
+}
+.ob-option:active {
+  transform: scale(0.985);
+}
+.ob-option[aria-pressed='true'],
+.ob-option[data-selected='true'] {
+  animation: ob-pop 260ms cubic-bezier(0.2, 0.85, 0.25, 1);
+}
+@keyframes ob-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.028);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The progress bar. The width transition is the whole point — it is what
+   makes an answer feel like it moved something. The sweep fires only when
+   the bar actually grew. */
+.ob-progress-fill {
+  transition: width 420ms cubic-bezier(0.16, 0.84, 0.32, 1);
+}
+.ob-progress-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: ob-sweep 620ms ease-out;
+}
+@keyframes ob-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Section complete. Sits above the rail, says one true thing, leaves. It
+   never blocks the next question — the flow is usable through the whole
+   animation. */
+.ob-milestone {
+  animation: ob-milestone 2200ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+@keyframes ob-milestone {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.94);
+  }
+  10% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  82% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0) scale(0.98);
+  }
+}
+
+/* A chosen answer arriving as a chip. Small, because it happens up to
+   eight times in a row on one screen. */
+.ob-chip-in {
+  animation: ob-chip-in 200ms cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+@keyframes ob-chip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Continue becoming available. One nudge, once — a button that pulses
+   forever is a button that is shouting. */
+.ob-cta-ready {
+  animation: ob-cta-ready 520ms cubic-bezier(0.2, 0.85, 0.25, 1);
+}
+@keyframes ob-cta-ready {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-step,
+  .ob-stagger > *,
+  .ob-milestone,
+  .ob-chip-in,
+  .ob-cta-ready,
+  .ob-option[aria-pressed='true'],
+  .ob-option[data-selected='true'] {
+    animation: none;
+  }
+  .ob-progress-fill {
+    transition: none;
+  }
+  .ob-progress-sweep::after {
+    display: none;
+  }
+  .ob-option:active {
+    transform: none;
+  }
+}

@@ -6,6 +6,7 @@ import { dbListMentorSignals, dbListMentorsByIds, dbListMentors } from "@/lib/se
 import { rankMentors, summariseReasons, type MatchResult } from "@/lib/onboarding/matching";
 import { minYearsForPreference } from "@/lib/onboarding/taxonomy";
 import { ExploreCard } from "@/components/mentorship/mentor-card";
+import { CompletionCelebration } from "@/components/onboarding/completion-celebration";
 
 export const dynamic = "force-dynamic";
 
@@ -68,10 +69,7 @@ export default async function RecommendationsPage() {
 
   return (
     <div>
-      <p className="text-meta font-semibold text-ink/60">100% · All set</p>
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-ink/10">
-        <div className="h-full w-full rounded-full bg-forest" />
-      </div>
+      <CompletionCelebration label="All set · 100%" />
 
       <h1 className="font-display mt-8 text-2xl font-black leading-tight text-ink sm:text-3xl">
         {confident ? `Here's who we'd start with, ${firstName}` : `You're all set, ${firstName}`}
@@ -112,7 +110,7 @@ export default async function RecommendationsPage() {
                       <p className="text-meta font-semibold text-forest">
                         {summariseReasons(match.reasons)}
                       </p>
-                      <p className="text-meta mt-1 text-ink/50">
+                      <p className="text-meta mt-1 text-ink/65">
                         {match.reasons
                           .filter((reason) => reason.label)
                           .map((reason) => reason.label)
@@ -154,7 +152,7 @@ export default async function RecommendationsPage() {
         </Link>
       </div>
 
-      <p className="text-meta mt-4 text-ink/40">
+      <p className="text-meta mt-4 text-ink/65">
         Your answers shape these suggestions. You can change them any time in{" "}
         <Link href="/settings/profile" className="underline underline-offset-4">
           settings

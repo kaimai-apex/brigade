@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MultiSelect } from "@/components/ui/multi-select";
 import {
   COMMON_LANGUAGES,
   HELP_TYPES,
@@ -23,39 +24,46 @@ import type { StepProps } from "./types";
  * The skills question is deliberately NOT here. It lives on the profile step as
  * "what you teach", because it doubles as the mentor's directory tags.
  */
-function Chips({
+/**
+ * One question, one menu.
+ *
+ * These four lists run from six entries to fourteen. Laid out as chips they put
+ * forty words on the screen at once and the step reads as a wall — which is
+ * exactly the step a mentor skips, and a mentor who skips it gives the matcher
+ * nothing. Collapsed, each question is a sentence and a control.
+ */
+function Question({
+  label,
+  hint,
   options,
   selected,
-  onToggle,
+  onChange,
   max,
 }: {
+  label: string;
+  hint?: string;
   options: readonly string[];
   selected: string[];
-  onToggle: (value: string) => void;
+  onChange: (next: string[]) => void;
   max: number;
 }) {
-  const atCap = selected.length >= max;
+  const id = useId();
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {options.map((option) => {
-        const on = selected.includes(option);
-        return (
-          <button
-            key={option}
-            type="button"
-            aria-pressed={on}
-            disabled={!on && atCap}
-            onClick={() => onToggle(option)}
-            className={
-              on
-                ? "rounded-full bg-[var(--mk-ink)] px-3 py-1.5 text-[13px] text-[var(--brand-white)]"
-                : "rounded-full px-3 py-1.5 text-[13px] text-[var(--mk-text)] shadow-[inset_0_0_0_1px_var(--mk-chip-line)] hover:bg-[var(--mk-wash)] disabled:opacity-35"
-            }
-          >
-            {option}
-          </button>
-        );
-      })}
+    <div>
+      <label htmlFor={id} className="text-[13px] font-semibold text-[var(--mk-text)]">
+        {label}
+      </label>
+      <div className="mt-2">
+        <MultiSelect
+          id={id}
+          values={selected}
+          onChange={onChange}
+          options={options.map((option) => ({ value: option, label: option }))}
+          max={max}
+          className="border-[var(--mk-line)]"
+        />
+      </div>
+      {hint && <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">{hint}</p>}
     </div>
   );
 }
@@ -66,19 +74,6 @@ export function StepAudience({ state, save, saving, onNext }: StepProps) {
   const [helpOffered, setHelpOffered] = useState<string[]>(mentor?.helpOffered ?? []);
   const [industries, setIndustries] = useState<string[]>(mentor?.industries ?? []);
   const [languages, setLanguages] = useState<string[]>(mentor?.languages ?? []);
-
-  const toggle = (
-    current: string[],
-    setter: (next: string[]) => void,
-    max: number,
-  ) => (value: string) => {
-    const next = current.includes(value)
-      ? current.filter((entry) => entry !== value)
-      : current.length >= max
-        ? current
-        : [...current, value];
-    setter(next);
-  };
 
   return (
     <form
@@ -103,61 +98,45 @@ export function StepAudience({ state, save, saving, onNext }: StepProps) {
         </p>
       </div>
 
-      <div>
-        <span className="text-[13px] font-semibold text-[var(--mk-text)]">
-          Who do you most want in front of you?
-        </span>
-        <Chips
-          options={MENTEE_TYPES}
-          selected={menteeTypes}
-          onToggle={toggle(menteeTypes, setMenteeTypes, 4)}
-          max={4}
-        />
-        <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">
-          &ldquo;Anyone who asks&rdquo; is a perfectly good answer — it just ranks a little lower
-          than naming a group, because someone who named it is a closer fit.
-        </p>
-      </div>
+      <Question
+        label="Who do you most want in front of you?"
+        hint={
+          "“Anyone who asks” is a perfectly good answer — it just ranks a little lower than " +
+          "naming a group, because someone who named it is a closer fit."
+        }
+        options={MENTEE_TYPES}
+        selected={menteeTypes}
+        onChange={setMenteeTypes}
+        max={4}
+      />
 
-      <div>
-        <span className="text-[13px] font-semibold text-[var(--mk-text)]">
-          What kind of help can you give?
-        </span>
-        <Chips
-          options={HELP_TYPES}
-          selected={helpOffered}
-          onToggle={toggle(helpOffered, setHelpOffered, 6)}
-          max={6}
-        />
-        <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">
-          The shape of the session, rather than the subject. You can know menus inside out and
-          still not want to run mock interviews.
-        </p>
-      </div>
+      <Question
+        label="What kind of help can you give?"
+        hint={
+          "The shape of the session, rather than the subject. You can know menus inside out " +
+          "and still not want to run mock interviews."
+        }
+        options={HELP_TYPES}
+        selected={helpOffered}
+        onChange={setHelpOffered}
+        max={6}
+      />
 
-      <div>
-        <span className="text-[13px] font-semibold text-[var(--mk-text)]">
-          Where have you cooked privately?
-        </span>
-        <Chips
-          options={INDUSTRIES}
-          selected={industries}
-          onToggle={toggle(industries, setIndustries, 6)}
-          max={6}
-        />
-      </div>
+      <Question
+        label="Where have you cooked privately?"
+        options={INDUSTRIES}
+        selected={industries}
+        onChange={setIndustries}
+        max={6}
+      />
 
-      <div>
-        <span className="text-[13px] font-semibold text-[var(--mk-text)]">
-          What languages can you hold a session in?
-        </span>
-        <Chips
-          options={COMMON_LANGUAGES}
-          selected={languages}
-          onToggle={toggle(languages, setLanguages, 6)}
-          max={6}
-        />
-      </div>
+      <Question
+        label="What languages can you hold a session in?"
+        options={COMMON_LANGUAGES}
+        selected={languages}
+        onChange={setLanguages}
+        max={6}
+      />
 
       <Button type="submit" disabled={saving}>
         {saving ? "Saving…" : "Save and continue"}

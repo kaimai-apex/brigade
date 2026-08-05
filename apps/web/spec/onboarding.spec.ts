@@ -23,6 +23,12 @@ import {
   minYearsForPreference,
 } from "../src/lib/onboarding/taxonomy.ts";
 import {
+  controlFor,
+  shouldSearch,
+  summariseSelection,
+  INLINE_OPTION_LIMIT,
+} from "../src/lib/onboarding/disclosure.ts";
+import {
   scoreMentor,
   rankMentors,
   summariseReasons,
@@ -32,6 +38,19 @@ import {
   type MenteeSignals,
   type MentorSignals,
 } from "../src/lib/onboarding/matching.ts";
+import {
+  answeredCount,
+  isPhaseBoundary,
+  isStepAnswered,
+  milestoneMessage,
+  phaseOutline,
+  progressPercent,
+  questionsRemaining,
+  remainingSeconds,
+  resumeIndex,
+  timeRemainingLabel,
+  type ProgressStep,
+} from "../src/lib/onboarding/progress.ts";
 
 let passed = 0;
 let failed = 0;
@@ -302,6 +321,165 @@ group("Ranking");
   const withSkill = scoreMentor(mentee, mentor({ expertise: ["Food costing"] }));
   check("a match summarises as its strongest reason", summariseReasons(withSkill.reasons) === "Teaches Food costing");
   check("no reasons summarises to nothing", summariseReasons([]) === "");
+}
+
+// ---------------------------------------------------------------------------
+group("Progressive disclosure");
+
+/**
+ * The rule that decides whether a question shows its options or hides them.
+ *
+ * It is asserted here rather than trusted to review because it is the one piece
+ * of onboarding that is easy to regress silently: adding a twenty-first skill
+ * to the taxonomy is a one-line change that, under any hand-declared scheme,
+ * would quietly put twenty-one options back on the screen.
+ */
+{
+  const five = ["a", "b", "c", "d", "e"];
+  const six = [...five, "f"];
+
+  check("a question at the limit stays on screen", controlFor({ options: five }) === "inline");
+  check("one option past the limit collapses", controlFor({ options: six }) === "dropdown");
+  check("a question with no options is inline", controlFor({}) === "inline");
+  check(
+    "an explicit control overrules the count",
+    controlFor({ options: six, control: "inline" }) === "inline" &&
+      controlFor({ options: five, control: "dropdown" }) === "dropdown",
+  );
+  check(
+    "the limit is small enough to be read as a set",
+    INLINE_OPTION_LIMIT > 0 && INLINE_OPTION_LIMIT <= 7,
+    `INLINE_OPTION_LIMIT is ${INLINE_OPTION_LIMIT}`,
+  );
+
+  // The taxonomy lists are what onboarding actually asks from, so the rule is
+  // checked against them and not only against invented arrays.
+  const long = { SKILLS, GOALS, HELP_TYPES, INDUSTRIES, HOSPITALITY_ROLES };
+  for (const [name, list] of Object.entries(long)) {
+    check(
+      `${name} (${list.length}) is asked as a menu, not a wall`,
+      controlFor({ options: list }) === "dropdown",
+    );
+  }
+
+  check("a menu long enough to need typing gets a search box", shouldSearch(SKILLS.length));
+  check("a short menu does not", !shouldSearch(MENTOR_EXPERIENCE_PREFERENCE.length));
+}
+
+{
+  check("nothing chosen summarises to nothing", summariseSelection([]) === "");
+  check("a short answer summarises in full", summariseSelection(["Yachts", "Estates"]) === "Yachts, Estates");
+  check(
+    "a long answer summarises to a count, so the trigger never wraps",
+    summariseSelection(["Yachts", "Estates", "Villas", "Retreats"]) === "Yachts, Estates +2",
+  );
+}
+
+// ---------------------------------------------------------------------------
+group("Progress");
+
+/**
+ * A stand-in for the real flow.
+ *
+ * Written out here rather than imported: `mentee-steps.ts` imports the taxonomy
+ * without a file extension, which the app's bundler resolves and this runner
+ * does not. The shape is what matters — these functions never see a real step,
+ * only this interface.
+ */
+const FLOW: ProgressStep[] = [
+  { id: "welcome", kind: "welcome", phase: "Welcome" },
+  { id: "location", kind: "fields", phase: "About you", fields: [{ name: "city" }] },
+  { id: "role", kind: "single", phase: "About you", field: "role" },
+  { id: "skills", kind: "multi", phase: "Interests", field: "skillsWanted" },
+  { id: "links", kind: "fields", phase: "Profile", optional: true, fields: [{ name: "website" }] },
+  { id: "headline", kind: "fields", phase: "Profile", fields: [{ name: "headline" }] },
+];
+
+{
+  check("the bar is never empty on the first screen", progressPercent(0, FLOW.length) > 0);
+  check(
+    "the bar is never full before the flow is",
+    progressPercent(FLOW.length - 1, FLOW.length) < 100,
+  );
+
+  // The bug this replaced: four consecutive steps carried the same hand-written
+  // percentage, so answering did nothing visible.
+  const walk = FLOW.map((_, index) => progressPercent(index, FLOW.length));
+  check(
+    "every step moves the bar",
+    walk.every((value, index) => index === 0 || value > walk[index - 1]),
+    walk.join(" → "),
+  );
+
+  check("an empty flow does not divide by zero", progressPercent(0, 0) === 0);
+  check("an index past the end is clamped", progressPercent(99, FLOW.length) < 100);
+}
+
+{
+  check(
+    "time left shrinks as the flow is walked",
+    remainingSeconds(FLOW, 0) > remainingSeconds(FLOW, 3),
+  );
+  check("nothing left costs nothing", remainingSeconds(FLOW, FLOW.length) === 0);
+  check("a multi-select is costed above a single tap", remainingSeconds([FLOW[3]], 0) > remainingSeconds([FLOW[2]], 0));
+
+  check("the estimate rounds up rather than flattering", timeRemainingLabel(70) === "Under a minute left");
+  check("a longer estimate is given in minutes", timeRemainingLabel(200) === "About 4 min left");
+  check("the last question is not called a minute", timeRemainingLabel(12) === "One more");
+
+  check("the welcome screen is not counted as a question", questionsRemaining(FLOW, 0) === 5);
+  check("nothing remains after the last step", questionsRemaining(FLOW, FLOW.length - 1) === 0);
+}
+
+{
+  check("a section ending is a boundary", isPhaseBoundary(FLOW, 0));
+  check("two questions in one section are not", !isPhaseBoundary(FLOW, 1));
+  check("the last step has nothing to cross into", !isPhaseBoundary(FLOW, FLOW.length - 1));
+
+  const outline = phaseOutline(FLOW);
+  check("the outline skips the welcome screen", !outline.some((entry) => entry.phase === "Welcome"));
+  check(
+    "the outline counts questions per section",
+    outline.length === 3 && outline[0].questions === 2 && outline[2].questions === 2,
+    JSON.stringify(outline),
+  );
+
+  check("every section has something to say when it ends", milestoneMessage("Interests").length > 0);
+  check("an unknown section still says something", milestoneMessage("Nonsense").length > 0);
+}
+
+{
+  check("a blank answer is not an answer", !isStepAnswered(FLOW[2], { role: "  " }));
+  check("an empty list is not an answer", !isStepAnswered(FLOW[3], { skillsWanted: [] }));
+  check("a real answer is", isStepAnswered(FLOW[3], { skillsWanted: ["Food costing"] }));
+  check("a fields step is answered by any one of its fields", isStepAnswered(FLOW[1], { city: "Toronto" }));
+
+  check("nothing answered counts as nothing", answeredCount(FLOW, {}) === 0);
+  check("the welcome screen never counts", answeredCount(FLOW, { city: "Toronto" }) === 1);
+}
+
+{
+  check("a brand-new member starts at the welcome screen", resumeIndex(FLOW, {}) === 0);
+  check(
+    "someone who left mid-flow comes back to what they had not answered",
+    resumeIndex(FLOW, { city: "Toronto" }) === 2,
+  );
+  // A skip is a decision. Resuming onto the question someone chose not to
+  // answer would argue with them about it.
+  check(
+    "a skipped optional step never holds the resume point",
+    resumeIndex(FLOW, { city: "Toronto", role: "Private chef", skillsWanted: ["Food costing"] }) === 5,
+  );
+  check(
+    "someone who answered everything lands on the last step, not the first",
+    resumeIndex(FLOW, {
+      city: "Toronto",
+      role: "Private chef",
+      skillsWanted: ["Food costing"],
+      headline: "Chef",
+    }) === FLOW.length - 1,
+  );
+  check("an empty flow has nowhere to resume to", resumeIndex([], {}) === 0);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

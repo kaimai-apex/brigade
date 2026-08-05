@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { SKILLS } from "@/lib/onboarding/taxonomy";
 import type { StepProps } from "./types";
 
@@ -24,15 +25,11 @@ export function StepProfile({ state, save, setDraft, saving, onNext }: StepProps
   const [bio, setBio] = useState(mentor?.bio ?? "");
   const [expertise, setExpertise] = useState<string[]>(mentor?.expertise ?? []);
   const [custom, setCustom] = useState("");
+  const teachId = useId();
 
   // Computed outside the state updater on purpose: an updater must be pure,
   // and React will call it twice in development to prove that it is.
-  function toggle(tag: string) {
-    const next = expertise.includes(tag)
-      ? expertise.filter((t) => t !== tag)
-      : expertise.length >= MAX_TAGS
-        ? expertise
-        : [...expertise, tag];
+  function commit(next: string[]) {
     setExpertise(next);
     setDraft({ expertise: next });
   }
@@ -46,9 +43,7 @@ export function StepProfile({ state, save, setDraft, saving, onNext }: StepProps
       return;
     }
     if (expertise.length >= MAX_TAGS) return;
-    const next = [...expertise, tag];
-    setExpertise(next);
-    setDraft({ expertise: next });
+    commit([...expertise, tag]);
     setCustom("");
   }
 
@@ -111,29 +106,32 @@ export function StepProfile({ state, save, setDraft, saving, onNext }: StepProps
       </label>
 
       <div>
-        <span className="text-[13px] font-semibold text-[var(--mk-text)]">What you teach</span>
+        <label htmlFor={teachId} className="text-[13px] font-semibold text-[var(--mk-text)]">
+          What you teach
+        </label>
         <p className="mt-1 text-[13px] text-[var(--mk-subtle)]">
           Up to {MAX_TAGS}. These are how people find you.
         </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {Array.from(new Set([...SUGGESTED, ...expertise])).map((tag) => {
-            const on = expertise.includes(tag);
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggle(tag)}
-                aria-pressed={on}
-                className={
-                  on
-                    ? "rounded-full bg-[var(--mk-ink)] px-3 py-1.5 text-[13px] text-[var(--brand-white)]"
-                    : "rounded-full px-3 py-1.5 text-[13px] text-[var(--mk-text)] shadow-[inset_0_0_0_1px_var(--mk-chip-line)] hover:bg-[var(--mk-wash)]"
-                }
-              >
-                {tag}
-              </button>
-            );
-          })}
+        <div className="mt-2">
+          {/*
+            Twenty subjects behind a searchable menu rather than twenty chips.
+            The ones already chosen stay listed underneath it, so closing the
+            menu does not cost the mentor sight of their own answer. Anything
+            typed in below is added to the list, which is why the options are
+            the suggestions merged with whatever is already on the profile.
+          */}
+          <MultiSelect
+            id={teachId}
+            values={expertise}
+            onChange={commit}
+            options={Array.from(new Set([...SUGGESTED, ...expertise])).map((tag) => ({
+              value: tag,
+              label: tag,
+            }))}
+            max={MAX_TAGS}
+            placeholder="Choose what you teach"
+            className="border-[var(--mk-line)]"
+          />
         </div>
 
         <div className="mt-3 flex gap-2">

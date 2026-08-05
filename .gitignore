@@ -40,7 +40,9 @@ public/-.textClipping
 apps/web/public/uploads/
 .vercel/
 .cursor/
-.claude/skills/
+# Vendored third-party skills stay local; Brigade's own are part of the repo.
+.claude/skills/*
+!.claude/skills/cognitive-load/
 claude-skills-main/
 env.local
 .vercel

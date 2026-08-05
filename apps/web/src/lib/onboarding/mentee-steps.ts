@@ -1,3 +1,4 @@
+import type { OptionControl } from "./disclosure";
 import {
   COMMON_LANGUAGES,
   EXPERIENCE_LEVELS,
@@ -20,9 +21,16 @@ import {
  * rendering them with one component means a new question is three lines, and
  * every question behaves identically.
  *
- * Order is the flow. `percent` is what the progress bar reads, taken from the
- * PRD rather than computed, so the numbers people were shown in design are the
- * numbers they see.
+ * Order is the flow, and order is all the progress bar needs: the percentage
+ * is computed from position by `progress.ts`. It used to be written here, one
+ * number per step copied from the PRD, and four consecutive questions shared a
+ * value — so the bar stood still through four answers, which reads as broken.
+ * A step's job is to be a question; how far along it is, is arithmetic.
+ *
+ * How a question is *shown* is not declared here. `controlFor` in disclosure.ts
+ * derives it from the number of options, so a list that grows past the limit
+ * collapses into a menu on its own rather than waiting for someone to remember
+ * to change a flag.
  */
 
 export type StepKind =
@@ -57,7 +65,6 @@ export interface MenteeStep {
   kind: StepKind;
   /** Shown in the progress rail. Several steps can share a phase. */
   phase: string;
-  percent: number;
   title: string;
   subtitle?: string;
   /** The profile column this step writes, for single/multi/text steps. */
@@ -66,6 +73,13 @@ export interface MenteeStep {
   fields?: StepField[];
   /** Multi-select cap. Unbounded lists make poor matching signal. */
   max?: number;
+  /**
+   * Overrules `controlFor`, which otherwise decides from the option count.
+   *
+   * Set this only with a reason written next to it. A long list forced inline
+   * is the exact thing the rule exists to prevent.
+   */
+  control?: OptionControl;
   /** Non-essential: a Skip control is offered. */
   optional?: boolean;
   /** Overrides the default "Continue". */
@@ -80,10 +94,13 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "welcome",
     kind: "welcome",
     phase: "Welcome",
-    percent: 10,
     title: "Welcome to Brigade",
+    // No duration in here. The welcome screen states one, computed from the
+    // steps that actually exist, and a hand-written "about two minutes" sitting
+    // next to a computed "about three" is the flow contradicting itself on the
+    // first screen of the account.
     subtitle:
-      "A few questions so we can point you at the right private chefs. About two minutes, and you can skip anything you would rather not answer.",
+      "A few questions so we can point you at the right private chefs. Here is everything we will ask.",
     cta: "Let's go",
   },
 
@@ -92,7 +109,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "name",
     kind: "fields",
     phase: "About you",
-    percent: 20,
     title: "What should people call you?",
     optional: true,
     fields: [
@@ -104,7 +120,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "location",
     kind: "fields",
     phase: "About you",
-    percent: 20,
     title: "Where are you based?",
     subtitle: "So we can show you mentors you can actually get on a call with.",
     fields: [
@@ -117,7 +132,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "languages",
     kind: "multi",
     phase: "About you",
-    percent: 20,
     title: "What languages do you speak?",
     subtitle: "Mentors who share one will rank higher for you.",
     field: "languages",
@@ -129,7 +143,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "role",
     kind: "single",
     phase: "About you",
-    percent: 20,
     title: "What best describes you?",
     field: "role",
     options: asOptions(HOSPITALITY_ROLES),
@@ -140,7 +153,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "experience",
     kind: "single",
     phase: "Background",
-    percent: 35,
     title: "Where are you in your career?",
     field: "experienceLevel",
     options: EXPERIENCE_LEVELS.map((level) => ({ value: level.value, label: level.label })),
@@ -149,7 +161,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "workplace",
     kind: "single",
     phase: "Background",
-    percent: 35,
     title: "Where do you work at the moment?",
     field: "workplaceType",
     options: asOptions(WORKPLACE_TYPES),
@@ -159,7 +170,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "job",
     kind: "fields",
     phase: "Background",
-    percent: 35,
     title: "What do you do there?",
     optional: true,
     fields: [
@@ -173,7 +183,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "industries",
     kind: "multi",
     phase: "Interests",
-    percent: 50,
     title: "What kind of private work interests you?",
     subtitle: "Pick as many as apply. This shapes who we show you.",
     field: "interestIndustries",
@@ -184,7 +193,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "skills",
     kind: "multi",
     phase: "Interests",
-    percent: 50,
     title: "What are you trying to get better at?",
     subtitle:
       "The most important question here — mentors answer this exact list about what they teach.",
@@ -198,7 +206,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "goals",
     kind: "multi",
     phase: "Goals",
-    percent: 65,
     title: "What are you hoping to achieve?",
     field: "goals",
     options: asOptions(GOALS),
@@ -208,7 +215,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "challenge",
     kind: "text",
     phase: "Goals",
-    percent: 65,
     title: "What is holding you back right now?",
     subtitle:
       "In your own words. Mentors read this before a session — it is often the thing that makes someone say yes.",
@@ -221,7 +227,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "help",
     kind: "multi",
     phase: "Mentorship",
-    percent: 80,
     title: "How would you like a mentor to help?",
     field: "helpWanted",
     options: asOptions(HELP_TYPES),
@@ -231,7 +236,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "length",
     kind: "single",
     phase: "Mentorship",
-    percent: 80,
     title: "How long should a session be?",
     field: "preferredSessionMinutes",
     options: SESSION_LENGTHS.map((minutes) => ({
@@ -244,7 +248,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "seniority",
     kind: "single",
     phase: "Mentorship",
-    percent: 80,
     title: "How experienced should they be?",
     field: "preferredMentorExperience",
     options: MENTOR_EXPERIENCE_PREFERENCE.map((entry) => ({
@@ -259,7 +262,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "headline",
     kind: "fields",
     phase: "Your profile",
-    percent: 90,
     title: "How would you introduce yourself?",
     subtitle: "This is what a mentor sees when you book them.",
     fields: [
@@ -274,7 +276,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "links",
     kind: "fields",
     phase: "Your profile",
-    percent: 90,
     title: "Anywhere people can see your work?",
     optional: true,
     fields: [
@@ -287,7 +288,6 @@ export const MENTEE_STEPS: MenteeStep[] = [
     id: "availability",
     kind: "toggles",
     phase: "Your profile",
-    percent: 90,
     title: "What are you open to?",
     optional: true,
     fields: [

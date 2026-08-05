@@ -35,16 +35,29 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
 
   const session = await getConnectProSession();
 
-  const [{ data: mentors, total }, ownMentor, facets] = await Promise.all([
-    dbListMentors({ q, role, city, expertise, sort, limit: 36 }),
-    session ? dbGetMentor(session.userId) : Promise.resolve(null),
-    dbMentorFacets(),
-  ]);
+  let mentors: Awaited<ReturnType<typeof dbListMentors>>["data"] = [];
+  let total = 0;
+  let ownMentor: Awaited<ReturnType<typeof dbGetMentor>> = null;
+  let facets: Awaited<ReturnType<typeof dbMentorFacets>> = {
+    roles: [],
+    cities: [],
+    expertise: [],
+  };
+  let rails: Awaited<ReturnType<typeof dbPopularMentorRails>> = [];
+  try {
+    [{ data: mentors, total }, ownMentor, facets] = await Promise.all([
+      dbListMentors({ q, role, city, expertise, sort, limit: 36 }),
+      session ? dbGetMentor(session.userId) : Promise.resolve(null),
+      dbMentorFacets(),
+    ]);
 
-  // Built from the facets already fetched above rather than fetching them
-  // again, and skipped entirely while filtering — the rails are a browse aid,
-  // and nobody who has typed a query is looking at them.
-  const rails = filtering ? [] : await dbPopularMentorRails(facets, 12);
+    // Built from the facets already fetched above rather than fetching them
+    // again, and skipped entirely while filtering — the rails are a browse aid,
+    // and nobody who has typed a query is looking at them.
+    rails = filtering ? [] : await dbPopularMentorRails(facets, 12);
+  } catch (err) {
+    console.error("[mentors] query failed; rendering empty marketplace", err);
+  }
 
   const active = { q, role, city, expertise, sort };
   const filterCount = [role, city, expertise].filter(Boolean).length + (sort !== "price" ? 1 : 0);
