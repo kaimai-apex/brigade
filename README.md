@@ -124,11 +124,19 @@ pnpm infra:down        # stop docker infra
 > **Dev runner:** services run through SWC (`node --watch -r @swc-node/register`), **not** tsx —
 > tsx/esbuild doesn't emit `emitDecoratorMetadata`, which silently breaks NestJS dependency injection.
 
-### 5. Sign up
+### 5. Log in
 
-1. Go to http://localhost:3100/signup (email/password or Google).
-2. Complete onboarding (basic info → experience → education → portfolio → availability → review).
-3. Use the feed, network, jobs, companies, messages, and ⌘K search from the nav.
+Login is passwordless: type an email, get a six-digit code, type it back.
+Locally there is usually no `RESEND_API_KEY`, so the code is printed to the
+server log **and** shown on the login screen rather than emailed. Set the key
+and it switches to real mail with no other change.
+
+Faster, for local work: `http://localhost:3100/api/dev/login?next=/directory`
+logs you in as the demo member for thirty days. It 404s in production.
+
+1. Go to http://localhost:3100/login and enter a member's email.
+2. Complete onboarding at `/onboarding` — one question per screen, resumable.
+3. Use the feed, brigade, directory, mentors, messages and ⌘K search from the nav.
 
 ---
 
@@ -176,11 +184,20 @@ The **web app** deploys to Vercel and auto-builds on push to `main`.
 
 | Var | Purpose |
 |---|---|
-| `DATABASE_URL` or `SUPABASE_DB_*` | Supabase Transaction pooler (port 6543) for email/password auth |
+| `DATABASE_URL` or `SUPABASE_DB_*` | Supabase Transaction pooler (port 6543) |
 | `AUTH_SCHEMA` | Must be `connectpro_auth` on Supabase |
 | `JWT_SECRET` | Signing key for ConnectPro access tokens |
+| **`RESEND_API_KEY`** | **Required.** Login is a six-digit code sent by email — without this key nobody can log in, and the send throws rather than failing quietly |
+| `RESEND_FROM` | From address, e.g. `Brigade <login@joinbrigade.co>`. Must be on a domain **verified in Resend**, or every send is rejected |
 | `NEXT_PUBLIC_SITE_URL` | Canonical site URL — e.g. `https://www.joinbrigade.co` |
 | `NEXT_PUBLIC_API_URL` | Gateway base URL — only meaningful once the backend is deployed |
+
+**Turning on login mail:** add the domain in Resend → Domains, publish the DKIM
+and SPF records it gives you, wait for it to verify, then set the two variables
+above. Until `RESEND_API_KEY` exists, local development prints the code to the
+server log and shows it on the login screen; that fallback is disabled in
+production on purpose, so a deploy without the key fails loudly instead of
+silently locking everyone out.
 
 Schema rebuild: see `supabase/README.md` (`000` wipe → `001`–`006`).
 

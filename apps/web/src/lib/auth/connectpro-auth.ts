@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, randomInt, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import {
   getAuthSchema,
@@ -7,10 +7,16 @@ import {
   signMfaChallengeToken,
   verifyMfaChallengeToken,
   verifyTotp,
+  AppError,
   ConflictError,
   UnauthorizedError,
   NotFoundError,
 } from "@connectpro/common";
+import {
+  CODE_TTL_MINUTES,
+  canRevealCode,
+  sendLoginCode,
+} from "@/lib/auth/send-login-code";
 import { ensureAuthSchema } from "@/lib/auth/ensure-auth-schema";
 import { isDebugBackdoorLogin } from "@/lib/auth/debug-backdoor";
 import { DEMO_ACCOUNT_EMAIL } from "@/lib/auth/demo-access";
@@ -298,6 +304,20 @@ export async function connectProLogin(dto: { email: string; password: string }) 
     throw new UnauthorizedError("Account is suspended or banned");
   }
 
+  /**
+   * An account created passwordlessly has no hash at all.
+   *
+   * Checked before bcrypt sees it, for two reasons. `compare` against null does
+   * not return false — it throws, which would surface as a 500 and tell an
+   * anonymous caller that the address exists. And a future bcrypt that returned
+   * false-y for a null digest would be a way in for anyone who could reach this
+   * endpoint. Members log in with a code; this path is for the dev login and
+   * the debug backdoor.
+   */
+  if (!user.password_hash) {
+    throw new UnauthorizedError("Invalid email or password");
+  }
+
   const valid = await bcrypt.compare(dto.password, user.password_hash);
   if (!valid) {
     throw new UnauthorizedError("Invalid email or password");
@@ -308,6 +328,220 @@ export async function connectProLogin(dto: { email: string; password: string }) 
     const mfaToken = signMfaChallengeToken(user.id, user.email, secret);
     return { mfaRequired: true, userId: user.id, mfaToken };
   }
+
+  const roles: string[] = user.roles.filter(Boolean);
+  const tokens = await issueTokens(user.id, user.email, roles);
+  return { userId: user.id, ...tokens };
+}
+
+/* -------------------------------------------------------------------------
+ * Passwordless login
+ *
+ * A member types their email, we mail them six digits, they type the digits
+ * back. There is no password, so there is nothing to reuse from a breach
+ * elsewhere, nothing to reset, and nothing for us to store.
+ *
+ * The thing a six-digit code needs is discipline about the numbers around it:
+ * how long it lives, how many guesses it survives, and how often one can be
+ * asked for. Those three are the whole security model and they are all here.
+ * ---------------------------------------------------------------------------
+ */
+
+/** Guesses allowed against one code before it is destroyed. */
+const CODE_MAX_ATTEMPTS = 5;
+/** Codes one address may request per window. */
+const CODE_MAX_PER_EMAIL = 5;
+/** Codes one IP may request per window, across all addresses. */
+const CODE_MAX_PER_IP = 20;
+const CODE_WINDOW_MINUTES = 15;
+
+/**
+ * Six digits from a CSPRNG.
+ *
+ * `randomInt` rather than `Math.random()`: the code is the only credential in
+ * the system, and Math.random is seeded predictably enough that a stream of
+ * codes leaks the next one. Padded, so "000123" stays six characters and the
+ * comparison never has to think about length.
+ */
+function generateLoginCode() {
+  return randomInt(0, 1_000_000).toString().padStart(6, "0");
+}
+
+/** Codes are compared as hashes, so a database read is never a way in. */
+function hashCode(email: string, code: string) {
+  // Salted with the address so an identical code for two people hashes
+  // differently, and a stolen hash cannot be replayed against another account.
+  return createHash("sha256").update(`${email.toLowerCase()}:${code}`).digest("hex");
+}
+
+async function withinRateLimits(email: string, ip: string | null) {
+  const pool = getPool();
+  const since = `now() - interval '${CODE_WINDOW_MINUTES} minutes'`;
+
+  const byEmail = await pool.query(
+    `SELECT count(*)::int AS n FROM ${auth}.login_codes
+     WHERE email = $1 AND created_at > ${since}`,
+    [email],
+  );
+  if (byEmail.rows[0].n >= CODE_MAX_PER_EMAIL) return false;
+
+  // Counted in the database rather than in memory: the app runs as serverless
+  // functions, so an in-process counter would reset on every cold start and
+  // limit nothing.
+  if (ip) {
+    const byIp = await pool.query(
+      `SELECT count(*)::int AS n FROM ${auth}.login_codes
+       WHERE request_ip = $1 AND created_at > ${since}`,
+      [ip],
+    );
+    if (byIp.rows[0].n >= CODE_MAX_PER_IP) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Send a login code, if that address has an account.
+ *
+ * Always resolves the same way whether or not the account exists. Telling an
+ * anonymous caller "no account here" turns this endpoint into a membership
+ * oracle for anyone with a list of email addresses, and the members are named
+ * professionals. The caller returns one message either way.
+ */
+export async function connectProRequestLoginCode(dto: {
+  email: string;
+  ip?: string | null;
+}): Promise<{ delivered: boolean; debugCode?: string }> {
+  if (!databaseConfigured()) {
+    throw new Error("DATABASE_URL is not configured");
+  }
+
+  await ensureAuthSchema();
+
+  const email = dto.email.trim().toLowerCase();
+  const ip = dto.ip?.trim() || null;
+  const pool = getPool();
+
+  if (!(await withinRateLimits(email, ip))) {
+    throw new AppError(
+      "RATE_LIMITED",
+      "Too many codes requested. Try again in a few minutes.",
+      429,
+    );
+  }
+
+  const user = await pool.query(
+    `SELECT id, status FROM ${auth}.users WHERE email = $1 AND deleted_at IS NULL`,
+    [email],
+  );
+
+  // No account, or a suspended one. Nothing is sent and nothing is said.
+  if (user.rows.length === 0 || user.rows[0].status !== "active") {
+    return { delivered: false };
+  }
+
+  const code = generateLoginCode();
+  const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
+
+  // Asking for a new code kills the old one. Two live codes doubles the number
+  // of valid guesses, and someone who requested twice is reading the newest
+  // mail anyway.
+  await pool.query(
+    `UPDATE ${auth}.login_codes SET consumed_at = now()
+     WHERE email = $1 AND consumed_at IS NULL`,
+    [email],
+  );
+
+  await pool.query(
+    `INSERT INTO ${auth}.login_codes (email, code_hash, expires_at, request_ip)
+     VALUES ($1, $2, $3, $4)`,
+    [email, hashCode(email, code), expiresAt, ip],
+  );
+
+  await sendLoginCode({ to: email, code });
+
+  return { delivered: true, ...(canRevealCode() ? { debugCode: code } : {}) };
+}
+
+/**
+ * Exchange a code for a session.
+ *
+ * One error message for every failure — wrong code, expired code, already-used
+ * code, no such account. Distinguishing them would let someone with a list of
+ * addresses learn which ones are members by reading the difference.
+ */
+export async function connectProVerifyLoginCode(dto: { email: string; code: string }) {
+  if (!databaseConfigured()) {
+    throw new Error("DATABASE_URL is not configured");
+  }
+
+  await ensureAuthSchema();
+
+  const email = dto.email.trim().toLowerCase();
+  const code = dto.code.trim();
+  const pool = getPool();
+  const wrong = () => new UnauthorizedError("That code is not right, or it has expired.");
+
+  const found = await pool.query(
+    `SELECT id, code_hash, attempts FROM ${auth}.login_codes
+     WHERE email = $1 AND consumed_at IS NULL AND expires_at > now()
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [email],
+  );
+  if (found.rows.length === 0) throw wrong();
+
+  const row = found.rows[0];
+
+  // Counted before it is checked. If the attempt is recorded afterwards, a
+  // caller who hangs up mid-request gets a free guess, and free guesses against
+  // six digits are the entire attack.
+  const attempts = await pool.query(
+    `UPDATE ${auth}.login_codes SET attempts = attempts + 1
+     WHERE id = $1 RETURNING attempts`,
+    [row.id],
+  );
+
+  if (attempts.rows[0].attempts > CODE_MAX_ATTEMPTS) {
+    await pool.query(`UPDATE ${auth}.login_codes SET consumed_at = now() WHERE id = $1`, [
+      row.id,
+    ]);
+    throw wrong();
+  }
+
+  const expected = Buffer.from(row.code_hash, "utf8");
+  const given = Buffer.from(hashCode(email, code), "utf8");
+  // Both are hex sha256, so they are always the same length and
+  // timingSafeEqual cannot throw. Compared this way rather than with === so the
+  // time taken does not describe how much of the code was right.
+  if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
+    throw wrong();
+  }
+
+  // Single use, marked before the session is issued.
+  await pool.query(`UPDATE ${auth}.login_codes SET consumed_at = now() WHERE id = $1`, [
+    row.id,
+  ]);
+
+  const result = await pool.query(
+    `SELECT u.id, u.email, u.status, array_agg(r.role) AS roles
+     FROM ${auth}.users u
+     LEFT JOIN ${auth}.user_roles r ON r.user_id = u.id
+     WHERE u.email = $1 AND u.deleted_at IS NULL
+     GROUP BY u.id`,
+    [email],
+  );
+  if (result.rows.length === 0) throw wrong();
+
+  const user = result.rows[0];
+  if (user.status !== "active") {
+    throw new UnauthorizedError("Account is suspended or banned");
+  }
+
+  // Reaching a code sent to that address is the proof the address is theirs.
+  await pool
+    .query(`UPDATE ${auth}.users SET email_verified = true WHERE id = $1`, [user.id])
+    .catch(() => undefined);
 
   const roles: string[] = user.roles.filter(Boolean);
   const tokens = await issueTokens(user.id, user.email, roles);
@@ -401,14 +635,25 @@ export async function connectProVerifyMfa(mfaToken: string, code: string) {
 export function toAuthErrorResponse(error: unknown, step = "auth"): { status: number; body: AuthErrorDetail } {
   const info = formatAuthError(error, step);
 
-  if (error instanceof ConflictError) {
-    return { status: 409, body: info };
-  }
-  if (error instanceof UnauthorizedError) {
-    return { status: 401, body: info };
-  }
-  if (error instanceof NotFoundError) {
-    return { status: 404, body: info };
+  /**
+   * Every AppError already knows its own status, so read it rather than
+   * enumerating subclasses.
+   *
+   * The list this replaced named Conflict, Unauthorized and NotFound and fell
+   * through to 500 for everything else — so the rate limiter, which is an
+   * AppError carrying 429, reported a working defence as a server error.
+   * Anything that counts 5xx would have paged on it.
+   */
+  if (error instanceof AppError) {
+    const status = error.statusCode;
+    return {
+      status,
+      // The diagnostic hints all describe database and environment
+      // misconfiguration. On a 4xx the caller did something we are declining,
+      // and telling them to check Vercel env vars is noise at best and
+      // misleading at worst.
+      body: status < 500 ? { ...info, hint: undefined } : info,
+    };
   }
 
   return { status: 500, body: info };

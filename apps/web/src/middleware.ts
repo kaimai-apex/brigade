@@ -32,6 +32,12 @@ const PUBLIC_APIS = new Set([
   "/api/auth/login",
   "/api/auth/signup",
   "/api/auth/mfa/verify",
+  // Passwordless login. Public by necessity — they are how someone with no
+  // session gets one. Both are rate limited in the database rather than in
+  // memory, because these run as serverless functions and an in-process
+  // counter would reset on every cold start.
+  "/api/auth/request-code",
+  "/api/auth/verify-code",
 ]);
 
 /** Refresh tokens are 48 random bytes, hex-encoded (see connectpro-auth). */
