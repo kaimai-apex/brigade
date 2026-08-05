@@ -3,11 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Bell,
-  Building2,
+  Calendar,
   Compass,
-  MessageSquare,
-  Newspaper,
+  GraduationCap,
   Search,
   Settings,
   User,
@@ -59,13 +57,11 @@ export function CommandMenu() {
   const trimmed = query.trim();
 
   const navIcons: Record<string, typeof Users> = {
-    Feed: Newspaper,
-    Brigade: Users,
+    Mentors: GraduationCap,
     Directory: Compass,
-    Messages: MessageSquare,
+    Sessions: Calendar,
     Profile: User,
-    Companies: Building2,
-    Alerts: Bell,
+    'Your mentoring': Users,
     Settings: Settings,
   };
 
@@ -80,10 +76,10 @@ export function CommandMenu() {
       open={open}
       onOpenChange={setOpen}
       title="Command menu"
-      description="Search people and companies in Brigade"
+      description="Search members and jump around Brigade"
     >
       <CommandInput
-        placeholder="Search people & companies…"
+        placeholder="Search members…"
         value={query}
         onValueChange={setQuery}
       />

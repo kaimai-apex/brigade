@@ -37,12 +37,10 @@ Mentorship already runs on direct-Postgres (no Docker microservices required).
 14. Calendar sync (Google/Outlook) or ICS download for confirmed bookings.
 15. Email (and optional SMS) for book / confirm / cancel / reminder (Kit or transactional provider).
 
-### P3 — hosted infra cleanup
-16. Keep mentorship on Supabase `DATABASE_URL` (pooler) in Vercel + local `.env` — no Docker for marketplace.
-17. Decide fate of ConnectPro microservices for feed/DMs/search: deploy gateway stack **or** port those routes to direct-DB like mentorship (`/api/connectpro/*` → localhost is broken on Vercel).
-18. Optional Redis for live notification SSE in prod; otherwise in-app notify rows only.
-19. Seed / import a small set of real hospitality mentors for launch (no fabricated reviews).
-20. Smoke path: apply → publish → book → pay → confirm → join link → review.
+### P3 — launch polish
+16. Keep mentorship on Supabase `DATABASE_URL` (pooler) in Vercel + local `.env`.
+17. Seed / import a small set of real hospitality mentors for launch (no fabricated reviews).
+18. Smoke path: apply → publish → book → pay → confirm → join link → review.
 
 ### Already shipped (do not rebuild)
 - Schema + lazy `ensure-mentorship-schema`, pricing/slots, `mentorship-db`, public `/mentors` + booking panel, `/mentorship` mentor ops, `/sessions`, cancel + manual confirm when Stripe off, ADPList-style marketing home, CTA contrast fix, Supabase-hosted DB path.
@@ -96,43 +94,10 @@ profile with booking panel, mentor management page, ADPList-style marketing home
 
 ## Known issues found during QA
 
-- [x] **`pnpm verify` flake (exit 139)** — not turbo. Node crashes in its own
-      static-destructor teardown when `process.exit()` is called (`OptionsParser`
-      dtor → `_xzm_free`), on Node 24 / current macOS. Measured 14/150 with
-      `process.exit(0)` vs 0/150 with `process.exitCode`. The three check scripts
-      now set `exitCode` and drain; verify went 1/10 → 0/15. Written up in
-      `scripts/README-exit-codes.md`. CI pins Node 22 via `.nvmrc`, so this mainly
-      hit local machines and the pre-push hook.
-      Residual: tsc/eslint/turbo subprocesses still call `exit()` internally and
-      are outside our control — if 139s reappear, that is where to look.
-- [x] **My Brigades is localStorage-only** — now real rows
-      (`connections.brigade_teams` + `brigade_team_members`, migration 013/014) behind
-      `/api/brigade-teams`. Members are intersected with the owner's *accepted*
-      connections in SQL, so a crafted request cannot assemble a team of strangers.
-      `importLegacyTeams()` moves anything left in localStorage on first load and only
-      clears the key after every team is written; unparseable local data is left alone
-      rather than destroyed. Also fixed the member picker, which rendered truncated
-      UUIDs instead of names — it now uses the existing `usePersonNames` hook.
-- [ ] **No Activity section on profiles** — a member's posts are not visible from
-      their profile.
-- [ ] **Prod cannot read notifications**… fixed via `/api/notifications`, but the
-      same gateway-proxy problem still applies to feed, messages and search: those
-      call `/api/connectpro/*`, which resolves to an unreachable localhost:3000 on
-      Vercel. Either host the services or port each to direct-DB.
-- [ ] `/explore/*` subpages all redirect to a "Coming soon" `/explore`.
+- [x] **`pnpm verify` flake (exit 139)** — Node crashes in static-destructor
+      teardown when `process.exit()` is called. Check scripts now set
+      `exitCode` and drain; see `scripts/README-exit-codes.md`. CI pins Node 22.
 - [ ] Unknown profile ids render the raw unstyled Next 404 rather than a branded one.
-- [ ] `connections.connections` has no foreign keys. Both writers now validate in
-      application code (web + connection-service); a schema-level fix would need to
-      cross a schema boundary, which nothing else in this database does.
-
-## Done in this session
-
-- Kafka consumers reconnect instead of disabling permanently after ~8s; producer no
-  longer caches a failed connection. Verified by cold-starting against a dead broker
-  and watching every consumer self-heal.
-- Reactions invalidate the cached feed (`post.reacted` → feed-service), including
-  type changes and unreacts.
-- Brigade invitations and acceptances notify the other party on the direct-DB path.
-- `/admin` gated on `SYSTEM_ADMIN`/`MODERATOR` from the signed JWT.
-- Directory toolbar wraps at 375px — was giving every page a horizontal scroll.
-- `followerCount` cast to int; `"1" + 1` no longer renders `11` on follow.
+- [ ] Nothing marks a past session `completed` (bookings stay `confirmed`).
+- [ ] Mentor reviews after completed sessions — still the biggest directory gap.
+- [ ] Booking confirmation email from Brigade itself (Stripe sends the receipt).

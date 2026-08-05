@@ -9,6 +9,7 @@ import {
   CancelSessionButton,
   CopyLinkButton,
 } from "@/components/mentorship/receipt-actions";
+import { isUuid } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function SessionReceiptPage({
   if (!session) notFound();
 
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const { paid } = await searchParams;
 
   const booking = await dbGetBookingDetail(id, session.userId);

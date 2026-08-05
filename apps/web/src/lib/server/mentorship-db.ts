@@ -104,6 +104,16 @@ function mapSessionType(row: Record<string, unknown>): SessionType {
 /* ------------------------------------------------------------------ */
 
 export async function dbGetMentor(userId: string): Promise<Mentor | null> {
+  // Guard before Postgres sees the value — a route param of "undefined" is a
+  // 22P02, not a clean miss.
+  if (
+    typeof userId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      userId,
+    )
+  ) {
+    return null;
+  }
   await ensureMentorshipSchema();
   const res = await pool().query(
     "SELECT * FROM mentorship.mentors WHERE user_id = $1",

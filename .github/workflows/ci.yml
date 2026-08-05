@@ -100,14 +100,7 @@ jobs:
           npx wait-on http://localhost:3100 --timeout 60000
           pnpm check:a11y
 
-  # The `schema` job is gone with packages/core. It applied that package's own
-  # `brigade.*` schema through scripts/migrate.mjs and asserted its service
-  # layer against it — none of which the live app ever used. What runs in
-  # production is supabase/migrations, applied by hand, plus the ensure-schema
-  # modules in apps/web/src/lib that run the same DDL idempotently on first use.
-  #
-  # The specs that survived are the pure ones, and they run in the verify job
-  # with the rest of the app.
+  # Pure mentorship/onboarding specs — no DB required.
   specs:
     runs-on: ubuntu-latest
     needs: verify

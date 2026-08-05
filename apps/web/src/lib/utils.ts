@@ -5,6 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Strict RFC-4122 UUID (any version). Rejects "undefined", truncated ids, etc. */
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(value?: string | null): boolean {
+  return typeof value === "string" && UUID.test(value);
+}
+
 /** Hex UUID / short id fragments must never appear as people names. */
 const UUID_LIKE = /^[0-9a-f]{6,}(-[0-9a-f]{4,})*$/i;
 

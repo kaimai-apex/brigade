@@ -1,152 +1,61 @@
 # Runbook
 
-What to do when something is wrong, and the process topology it assumes.
-
-## Topology
-
-Four process types, one image (`Dockerfile`), different entrypoints (`Procfile`):
-
-| Process | Scales on | Notes |
-|---|---|---|
-| `web` | request rate | Next.js on Vercel today |
-| `worker` | queue depth | `pnpm worker`. Safe to run many. |
-| `scheduler` | — | **Singleton.** Never run two. |
-| `streaming` | connection count | WebSockets only. Deploying it drops sockets; clients reconnect with backoff. |
-
-They share one Postgres and one Redis. Everything below assumes
-`DATABASE_URL` and `REDIS_URL` are set.
+One process: Next.js (`web`) talking to Postgres. That is the whole topology.
 
 ## Migrations
 
 ```bash
-DATABASE_URL=... pnpm db:migrate --status   # what is applied, what is pending
-DATABASE_URL=... pnpm db:migrate            # apply pending, in order, once each
+DATABASE_URL=... pnpm db:migrate --status
+DATABASE_URL=... pnpm db:migrate
 ```
 
-Applied versions are recorded in `brigade.schema_migrations`, so this is safe on
-every deploy. Run it **before** the new code, since migrations are additive and
-old code tolerates new columns.
+Applied versions land in `public.schema_migrations`. Hosted Supabase can also
+be migrated by pasting files from `supabase/migrations/` into the SQL editor —
+do that **before** deploying code that needs the new columns.
 
-> The hosted database was previously migrated by hand, and a deploy landing
-> ahead of its migration is what took the directory down with a missing column.
-> That is the failure this runner exists to prevent.
+The `ensure-*-schema.ts` modules in the web app re-apply additive DDL on first
+use as a safety net. They are not a substitute for running migrations.
 
----
+## Failure modes
 
-## The top failure modes
+### 1. Directory or mentors 500ing
 
-### 1. Jobs are queued but nothing is processing them
-
-**Symptom:** notifications stop arriving, feeds go stale, `brigade.jobs` grows.
-
-```sql
-SELECT queue, state, count(*) FROM brigade.jobs GROUP BY 1, 2 ORDER BY 1, 2;
-SELECT worker, last_error, count(*) FROM brigade.jobs
- WHERE state = 'dead' GROUP BY 1, 2 ORDER BY 3 DESC;
-```
-
-- All `queued`, none `running` → no worker is alive. Check the worker process.
-- Many `running` with old `locked_at` → workers died holding jobs. The scheduler
-  reaps these every 5 minutes; force it with
-  `SELECT brigade.reap_stalled_jobs(300);`
-- Many `dead` with the same `last_error` → a real bug. Fix, then requeue:
-  `UPDATE brigade.jobs SET state='queued', attempts=0 WHERE state='dead' AND worker='X';`
-
-### 2. Feeds are empty or wrong
-
-Feeds are a **cache**, always rebuildable. Nothing in a feed is the only copy of
-anything.
-
-```ts
-await new FeedManager(redis, pool).populateHome(profileId);
-```
-
-- One user affected → rebuild that feed.
-- Everyone affected → Redis was flushed or failed over. Feeds repopulate lazily
-  on read; no action strictly required.
-- A user sees someone they blocked → the block is the bug, not the feed. Check
-  `BlockService` ran fully, then rebuild.
-
-### 3. The directory is empty or 500ing
-
-Almost always a missing column, i.e. a migration that has not run.
+Almost always a missing column (migration not applied).
 
 ```bash
 DATABASE_URL=... pnpm db:migrate --status
 ```
 
-`ensure-directory-schema.ts` in the web app applies the additive directory DDL
-lazily as a safety net, but it is a net, not a substitute.
+Then apply the pending file(s), or paste them in the Supabase SQL editor.
 
-### 4. A scam wave
+### 2. Login codes not arriving
 
-1. `/admin/reports` — fraud categories sort to the top by design.
-2. **Silence first, suspend second.** Silencing removes the account from
-   discovery without telling it, so the attacker keeps working a dead account
-   instead of registering a new one immediately.
-3. Block the mailbox, not the address:
-   `BlockCanonicalEmailService` — this covers every plus-tagged variant.
-4. Every action needs a statement of reasons and is appealable. That is a legal
-   requirement, not a courtesy.
+Passwordless login needs Resend:
 
-Check for a pattern before acting individually:
+- `RESEND_API_KEY` and `RESEND_FROM` set in the environment
+- In development without Resend, the code is returned in the API response /
+  logged — check the server log, not your inbox
 
-```sql
-SELECT signal, count(*) FROM brigade.risk_signals
- WHERE created_at > now() - interval '24 hours' GROUP BY 1 ORDER BY 2 DESC;
-```
+Rate limits live in `connectpro_auth.login_codes`. A flood of rows for one
+address or IP means someone is probing; the request-code route already rejects
+over the limit.
 
-### 5. Streaming connections climbing without users
+### 3. Bookings stuck in `pending_payment`
 
-```bash
-curl http://<streaming-host>/health   # {"ok":true,"connections":N}
-```
+1. Confirm Stripe webhook secret matches the endpoint (`STRIPE_WEBHOOK_SECRET`).
+2. Check `mentorship.webhook_events` for the Checkout session id — missing row
+   means Stripe never reached you; duplicate with `error` means the handler
+   failed and Stripe will retry.
+3. The unpaid-hold reaper releases holds after 45 minutes. A charge that lands
+   after that is refunded by the webhook rather than confirming a ghost booking.
 
-The 30-second heartbeat terminates sockets whose peer vanished. If the count
-still climbs, restart streaming — clients reconnect with backoff and jitter, and
-the app is fully functional over polling without it.
+### 4. Mentor cannot publish
 
-### 6. Suspended account still active
+`evaluateReadiness()` in `lib/mentorship/readiness.ts` is the checklist. Paid
+sessions require Stripe `payouts_enabled` (read back from Stripe, never inferred
+from the return URL). Free-only mentors and Stripe-less deploys are not blocked.
 
-The suspension writes `suspended_at` and enqueues `RevokeSessionsWorker`. If the
-account is still acting, that job did not run — see failure mode 1. Until it
-does, the account keeps its session until the token expires.
+### 5. Database connection errors on Vercel
 
-### 7. `pnpm verify` fails with exit 139 and no error message
-
-Node segfaulting in its own shutdown, not a failing check — note that every step
-printed its success line first. Node's `process.exit()` runs static destructors
-that crash against the allocator in current macOS; the repo's own scripts avoid
-it by setting `process.exitCode`.
-
-Re-run it: a genuine failure repeats and names a file, this does not. If it
-starts happening often, run the repo's Node version — `.nvmrc` pins 22, and CI
-uses it. Full write-up in `scripts/README-exit-codes.md`.
-
----
-
-## Things that are true and worth remembering
-
-- **`MAX_ITEMS = 800`.** This is what makes Redis cost predictable. Resist
-  raising it; anyone scrolling past 800 falls through to Postgres.
-- **The moderation log is append-only**, enforced by a trigger. `UPDATE` and
-  `DELETE` raise. Use `TRUNCATE` only in tests.
-- **Verification expires.** Current roles re-verify every 6 months. The
-  `verified_only` filter checks expiry directly, so a lapsed badge stops
-  matching before the nightly sweep.
-- **Never log PII or tokens.** `lib/log.ts` redacts by field name at every
-  depth; do not work around it.
-- **The scheduler is a singleton.** Two schedulers is untidy rather than
-  dangerous — every task is idempotent — but it doubles the work.
-
-## Not yet in place
-
-Honest list, so nobody assumes coverage that does not exist:
-
-- No metrics or tracing export. Structured logs only.
-- No alerting. The queries above are manual.
-- No automated backups or a tested restore drill — **the single most commonly
-  skipped practice and the one that ends companies.**
-- No OAuth provider; the streaming token store assumes the API writes
-  `stream:token:<token>` on login.
-- No read replica, no PgBouncer.
+Use the **transaction pooler** URI (port 6543), not `db.[project].supabase.co`.
+The direct host is IPv6-only on many networks and fails from Vercel.

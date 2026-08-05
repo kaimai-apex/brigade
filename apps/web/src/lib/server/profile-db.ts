@@ -404,15 +404,6 @@ export async function dbReplaceWorkPhotos(userId: string, imageUrls: string[]) {
   }
 }
 
-export async function dbRecordProfileView(profileId: string, viewerId: string) {
-  if (profileId === viewerId) return;
-  await ensureDirectorySchema();
-  await pool().query(
-    `INSERT INTO users.profile_views (profile_id, viewer_id) VALUES ($1, $2)`,
-    [profileId, viewerId],
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /* Saved members                                                       */
 /* ------------------------------------------------------------------ */

@@ -1,18 +1,27 @@
 # Brigade Supabase migrations
 
-Email/password auth uses Postgres schema `connectpro_auth` (Supabase’s `auth` schema is reserved for GoTrue).
+App auth uses Postgres schema `connectpro_auth` (Supabase’s `auth` schema is
+reserved for GoTrue).
+
+## Apply pending migrations
+
+Preferred (local Docker or any `DATABASE_URL`):
+
+```bash
+DATABASE_URL=... pnpm db:migrate --status
+DATABASE_URL=... pnpm db:migrate
+```
+
+`000_wipe_brigade.sql` is **never** applied by the runner — it is a manual
+full reset for the SQL editor only.
 
 ## Fresh rebuild (SQL Editor)
 
-Run in order:
+1. `migrations/000_wipe_brigade.sql` — drop Brigade schemas (destructive)
+2. `001` → `018` in order (or `pnpm db:migrate` against an empty database)
 
-1. `migrations/000_wipe_brigade.sql` — drop Brigade schemas + legacy `public` tables  
-2. `migrations/001_auth.sql`  
-3. `migrations/002_users.sql`  
-4. `migrations/003_connections.sql`  
-5. `migrations/004_posts.sql`  
-6. `migrations/005_jobs.sql`  
-7. `migrations/006_notifications.sql`
+The web app also applies additive DDL lazily via `ensure-*-schema.ts`, so a
+deploy that lands ahead of a hand-applied migration does not 500.
 
 ## Env
 
@@ -24,4 +33,6 @@ JWT_SECRET=<long random string>
 
 ## Local Docker
 
-`infra/postgres/init.sql` seeds local Postgres with schema name `auth` (not Supabase). Use `AUTH_SCHEMA=auth` locally if you rely on that file, or `AUTH_SCHEMA=connectpro_auth` when pointing at Supabase.
+`infra/postgres/init.sql` only installs extensions. Tables are created on first
+use by the ensure-schema modules, or by `pnpm db:migrate`. Use
+`AUTH_SCHEMA=connectpro_auth` to match production.

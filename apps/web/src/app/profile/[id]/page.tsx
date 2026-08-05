@@ -8,7 +8,7 @@ import {
   normalizeInstagramUrl,
   normalizeWebsiteUrl,
 } from "@/lib/profile/links";
-import { cn, displayName, formatLocation, getInitials } from "@/lib/utils";
+import { cn, displayName, formatLocation, getInitials, isUuid } from "@/lib/utils";
 import { resolveAvatarUrl } from "@/lib/avatars";
 import { resolveBannerUrl } from "@/lib/banners";
 import { ServerAppPage } from "@/components/layout/server-app-page";
@@ -26,6 +26,8 @@ export default async function ProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
+
   const session = await getConnectProSession();
 
   const profile = await getFullProfile(id);

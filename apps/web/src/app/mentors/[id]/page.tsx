@@ -13,11 +13,14 @@ import { paymentsFullyConfigured } from "@/lib/server/payments";
 import { resolveAvatarUrl } from "@/lib/avatars";
 import { BookingPanel } from "@/components/mentorship/booking-panel";
 import { MentorRail } from "@/components/mentorship/mentor-rail";
+import { isUuid } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function MentorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
+
   const session = await getConnectProSession();
 
   const mentor = await dbGetMentor(id);

@@ -21,7 +21,7 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const FAKE_DATA_DEPS = ["@faker-js/faker", "faker", "chance", "casual"];
 const MOCK_TOKENS =
   /\b(mockData|dummyData|sampleData|placeholderData|MOCK_[A-Z_]+|TEST_DATA)\b|lorem ipsum/i;
-const SOURCE_DIRS = ["apps/web/src", "packages/core/src"];
+const SOURCE_DIRS = ["apps/web/src", "packages/common/src"];
 
 const failures = [];
 
@@ -34,7 +34,7 @@ const failures = [];
  */
 async function* workspacePackageJsons() {
   yield "package.json";
-  for (const group of ["apps", "services", "packages"]) {
+  for (const group of ["apps", "packages"]) {
     let entries;
     try {
       entries = await readdir(path.join(ROOT, group), { withFileTypes: true });
@@ -97,31 +97,7 @@ for (const dir of SOURCE_DIRS) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. packages/core runs under Node's type stripping, with no build step.
-//
-// Strip-only mode cannot handle syntax that needs a real transform. The failure
-// is a runtime crash at import time rather than a type error, so tsc does not
-// catch it — this does.
-// ---------------------------------------------------------------------------
-const STRIP_UNSAFE = [
-  [/constructor\s*\([^)]*\b(private|public|protected|readonly)\s+\w/s, "constructor parameter property"],
-  [/^\s*enum\s+\w/m, "enum (use a const object with `as const`)"],
-  [/\bnamespace\s+\w+\s*\{/, "namespace"],
-];
-
-for await (const file of sources("packages/core/src")) {
-  const src = readFileSync(path.join(ROOT, file), "utf8");
-  for (const [pattern, what] of STRIP_UNSAFE) {
-    if (pattern.test(src)) {
-      failures.push(
-        `${file}: uses a ${what}, which Node's type stripping cannot run. Write it out explicitly.`,
-      );
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 4. Colours live in the token file, nowhere else.
+// 3. Colours live in the token file, nowhere else.
 //
 // Two files may hold a raw hex: app/tokens.css, and lib/design/tokens.ts for
 // the handful of values consumed outside CSS (a theme-color meta tag cannot
@@ -165,7 +141,7 @@ for await (const file of styleSources("apps/web/src")) {
 }
 
 // ---------------------------------------------------------------------------
-// 5. next.config must not silence errors
+// 4. next.config must not silence errors
 // ---------------------------------------------------------------------------
 for (const config of ["apps/web/next.config.ts", "apps/web/next.config.mjs", "apps/web/next.config.js"]) {
   const full = path.join(ROOT, config);
