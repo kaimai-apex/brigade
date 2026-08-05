@@ -6,6 +6,7 @@ import { FinalCta } from "@/components/home/final-cta";
 import { MentorRail } from "@/components/mentorship/mentor-rail";
 import {
   dbListMentors,
+  dbMentorFacets,
   dbPopularMentorRails,
 } from "@/lib/server/mentorship-db";
 
@@ -19,13 +20,19 @@ export default async function HomePage() {
   // Marketing home must render even if Postgres is unreachable (wrong
   // DATABASE_URL password, pooler outage, etc.). Mentor rails are progressive
   // enhancement — a blank rail is better than a site-wide 500.
-  let rails: Awaited<ReturnType<typeof dbPopularMentorRails>> = [];
+  let facets: Awaited<ReturnType<typeof dbMentorFacets>> = {
+    roles: [],
+    cities: [],
+    expertise: [],
+  };
   let allMentors: Awaited<ReturnType<typeof dbListMentors>> = { data: [], total: 0 };
+  let rails: Awaited<ReturnType<typeof dbPopularMentorRails>> = [];
   try {
-    [rails, allMentors] = await Promise.all([
-      dbPopularMentorRails(12),
+    [facets, allMentors] = await Promise.all([
+      dbMentorFacets(),
       dbListMentors({ sort: "newest", limit: 12 }),
     ]);
+    rails = await dbPopularMentorRails(facets, 12);
   } catch (err) {
     console.error("[home] mentorship query failed; rendering without rails", err);
   }
@@ -34,7 +41,7 @@ export default async function HomePage() {
     rails.length > 0
       ? rails
       : allMentors.data.length > 0
-        ? [{ expertise: "Hospitality", mentors: allMentors.data }]
+        ? [{ expertise: "Private cheffing", mentors: allMentors.data }]
         : [];
 
   // Split like ADPList: first rails, practice band, then remaining rails.

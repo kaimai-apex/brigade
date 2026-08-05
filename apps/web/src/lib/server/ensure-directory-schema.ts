@@ -24,6 +24,41 @@ export function ensureDirectorySchema() {
         ADD COLUMN IF NOT EXISTS visible_in_directory BOOLEAN NOT NULL DEFAULT true
     `);
 
+    // Migration 017 — what a member is actually here for. The mentee half of
+    // every matching pair; the mentor half lives in ensure-mentorship-schema.
+    for (const column of [
+      "preferred_name TEXT",
+      "pronouns TEXT",
+      "timezone TEXT",
+      "languages TEXT[] NOT NULL DEFAULT '{}'",
+      "experience_level TEXT",
+      "workplace_type TEXT",
+      "interest_industries TEXT[] NOT NULL DEFAULT '{}'",
+      "skills_wanted TEXT[] NOT NULL DEFAULT '{}'",
+      "goals TEXT[] NOT NULL DEFAULT '{}'",
+      "help_wanted TEXT[] NOT NULL DEFAULT '{}'",
+      "biggest_challenge TEXT",
+      "preferred_session_minutes INT",
+      "preferred_mentor_experience TEXT",
+    ]) {
+      await pool.query(`ALTER TABLE users.profiles ADD COLUMN IF NOT EXISTS ${column}`);
+    }
+    await pool.query(
+      "ALTER TABLE users.profiles DROP CONSTRAINT IF EXISTS profiles_session_minutes_check",
+    );
+    await pool.query(`
+      ALTER TABLE users.profiles ADD CONSTRAINT profiles_session_minutes_check
+        CHECK (preferred_session_minutes IS NULL OR preferred_session_minutes BETWEEN 15 AND 480)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_profiles_skills_wanted
+        ON users.profiles USING GIN (skills_wanted)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_profiles_interest_industries
+        ON users.profiles USING GIN (interest_industries)
+    `);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users.directory_saves (
         user_id       UUID NOT NULL,

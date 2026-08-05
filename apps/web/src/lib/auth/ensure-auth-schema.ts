@@ -47,6 +47,82 @@ export async function ensureAuthSchema() {
       )
     `);
 
+    /**
+     * Passwordless login.
+     *
+     * Keyed by email rather than user_id on purpose: the code is requested
+     * before we are willing to say whether an account exists, and a foreign key
+     * to users would force that answer at insert time.
+     *
+     * Only the hash of the code is stored. A six-digit number is guessable
+     * enough that the table itself must not be a list of live credentials, and
+     * a leaked backup should not be a way in.
+     */
+
+    /**
+     * Replace the table left behind by the first attempt at passwordless login.
+     *
+     * That version stored the code itself in a `code` column — a live
+     * credential in plaintext, readable by anything with a connection string or
+     * a backup — and keyed rows by user_id, which forces the "does this address
+     * exist" answer at insert time. `CREATE TABLE IF NOT EXISTS` would leave it
+     * exactly as it is and every query below would fail on a missing column.
+     *
+     * Conditional on the absence of `code_hash`, so this runs once against the
+     * old shape and never again. The only thing dropped is unexpired login
+     * codes, which are ten minutes of nothing: the worst case is someone
+     * mid-login asks for another.
+     */
+    const stale = await pool.query(
+      `SELECT 1 FROM information_schema.tables t
+        WHERE t.table_schema = $1 AND t.table_name = 'login_codes'
+          AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns c
+             WHERE c.table_schema = $1 AND c.table_name = 'login_codes'
+               AND c.column_name = 'code_hash'
+          )`,
+      [auth],
+    );
+    if (stale.rows.length > 0) {
+      await pool.query(`DROP TABLE ${auth}.login_codes`);
+    }
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ${auth}.login_codes (
+        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email        CITEXT NOT NULL,
+        code_hash    TEXT NOT NULL,
+        expires_at   TIMESTAMPTZ NOT NULL,
+        consumed_at  TIMESTAMPTZ,
+        attempts     SMALLINT NOT NULL DEFAULT 0,
+        request_ip   TEXT,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+
+    // The lookup is always "the newest live code for this address", and the
+    // rate limits count recent rows per address and per IP.
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_login_codes_email_created
+        ON ${auth}.login_codes (email, created_at DESC)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_login_codes_ip_created
+        ON ${auth}.login_codes (request_ip, created_at DESC)
+    `);
+
+    /**
+     * A passwordless account has no password, so the column cannot be NOT NULL.
+     *
+     * Migration 010 re-imposed NOT NULL when passwordless was removed. Dropping
+     * it here rather than only in a migration file is deliberate: the hosted
+     * database is migrated by hand, and a deploy that lands before someone runs
+     * the SQL would fail every login with a constraint violation.
+     */
+    await pool.query(`
+      ALTER TABLE ${auth}.users ALTER COLUMN password_hash DROP NOT NULL
+    `);
+
     await pool.query("CREATE SCHEMA IF NOT EXISTS users");
 
     await pool.query(`

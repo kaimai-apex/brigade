@@ -1,6 +1,8 @@
-import { getPool } from "@connectpro/common";
+import { getAuthSchema, getPool } from "@connectpro/common";
 import { ensureMentorshipSchema } from "@/lib/server/ensure-mentorship-schema";
 import { splitPrice, assertSellablePrice, PLATFORM_FEE_BPS } from "@/lib/mentorship/pricing";
+import { generateConfirmationCode } from "@/lib/mentorship/webhook-signature";
+import { HOLD_WINDOW_MINUTES } from "@/lib/mentorship/holds";
 import {
   generateSlots,
   isSlotAvailable,
@@ -32,6 +34,22 @@ export interface Mentor {
   payoutsEnabled: boolean;
   /** The mentor's standing meeting room, copied onto bookings on acceptance. */
   defaultMeetingUrl: string | null;
+  /** What they teach, authored by them — not their profile's expertise areas. */
+  expertise: string[];
+  /** How far through setup they got, so the flow resumes instead of restarting. */
+  onboardingStep: number;
+  /** Stripe connected account id, once onboarding has been started. */
+  payoutAccountId: string | null;
+  payoutsOnboardedAt: string | null;
+  /**
+   * The mentor half of the matching pairs. Each one is answered from the same
+   * list a member answers during their own onboarding — see
+   * lib/onboarding/taxonomy.ts. `expertise` above is the skills half.
+   */
+  menteeTypes: string[];
+  helpOffered: string[];
+  industries: string[];
+  languages: string[];
 }
 
 export interface SessionType {
@@ -56,6 +74,16 @@ function mapMentor(row: Record<string, unknown>): Mentor {
     bookingHorizonDays: Number(row.booking_horizon_days),
     payoutsEnabled: Boolean(row.payouts_enabled),
     defaultMeetingUrl: (row.default_meeting_url as string) ?? null,
+    expertise: Array.isArray(row.expertise) ? (row.expertise as string[]) : [],
+    onboardingStep: Number(row.onboarding_step ?? 0),
+    payoutAccountId: (row.payout_account_id as string) ?? null,
+    payoutsOnboardedAt: row.payouts_onboarded_at
+      ? new Date(row.payouts_onboarded_at as string).toISOString()
+      : null,
+    menteeTypes: Array.isArray(row.mentee_types) ? (row.mentee_types as string[]) : [],
+    helpOffered: Array.isArray(row.help_offered) ? (row.help_offered as string[]) : [],
+    industries: Array.isArray(row.industries) ? (row.industries as string[]) : [],
+    languages: Array.isArray(row.languages) ? (row.languages as string[]) : [],
   };
 }
 
@@ -76,6 +104,16 @@ function mapSessionType(row: Record<string, unknown>): SessionType {
 /* ------------------------------------------------------------------ */
 
 export async function dbGetMentor(userId: string): Promise<Mentor | null> {
+  // Guard before Postgres sees the value — a route param of "undefined" is a
+  // 22P02, not a clean miss.
+  if (
+    typeof userId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      userId,
+    )
+  ) {
+    return null;
+  }
   await ensureMentorshipSchema();
   const res = await pool().query(
     "SELECT * FROM mentorship.mentors WHERE user_id = $1",
@@ -87,7 +125,9 @@ export async function dbGetMentor(userId: string): Promise<Mentor | null> {
 /** Create-or-update; becoming a mentor is idempotent. */
 export async function dbUpsertMentor(
   userId: string,
-  patch: Partial<Omit<Mentor, "userId" | "payoutsEnabled">>,
+  patch: Partial<
+    Omit<Mentor, "userId" | "payoutsEnabled" | "payoutAccountId" | "payoutsOnboardedAt">
+  >,
 ): Promise<Mentor> {
   await ensureMentorshipSchema();
 
@@ -104,6 +144,12 @@ export async function dbUpsertMentor(
   if (patch.defaultMeetingUrl !== undefined) {
     columns.default_meeting_url = patch.defaultMeetingUrl;
   }
+  if (patch.expertise !== undefined) columns.expertise = patch.expertise;
+  if (patch.menteeTypes !== undefined) columns.mentee_types = patch.menteeTypes;
+  if (patch.helpOffered !== undefined) columns.help_offered = patch.helpOffered;
+  if (patch.industries !== undefined) columns.industries = patch.industries;
+  if (patch.languages !== undefined) columns.languages = patch.languages;
+  if (patch.onboardingStep !== undefined) columns.onboarding_step = patch.onboardingStep;
 
   const keys = Object.keys(columns);
   if (keys.length === 0) {
@@ -115,7 +161,16 @@ export async function dbUpsertMentor(
     return (await dbGetMentor(userId))!;
   }
 
-  const assignments = keys.map((k, i) => `${k} = $${i + 2}`).join(", ");
+  // onboarding_step is a high-water mark, not a cursor. Stepping back to
+  // re-read the pricing page must not tell the flow there is more left to do
+  // than there is, so the stored value only ever climbs.
+  const assignments = keys
+    .map((k, i) =>
+      k === "onboarding_step"
+        ? `${k} = GREATEST(mentors.${k}, $${i + 2})`
+        : `${k} = $${i + 2}`,
+    )
+    .join(", ");
   const insertCols = keys.join(", ");
   const insertVals = keys.map((_, i) => `$${i + 2}`).join(", ");
   const res = await pool().query(
@@ -125,6 +180,48 @@ export async function dbUpsertMentor(
      RETURNING *`,
     [userId, ...keys.map((k) => columns[k])],
   );
+  return mapMentor(res.rows[0]);
+}
+
+/**
+ * Remember which Stripe account belongs to this mentor.
+ *
+ * Written as soon as the account is created, before the mentor has finished
+ * Stripe's hosted form. If it were only stored on the way back, a mentor who
+ * abandoned onboarding would get a brand new connected account on every
+ * attempt, and Stripe would accumulate orphans nobody can reconcile.
+ */
+export async function dbSetPayoutAccount(userId: string, accountId: string): Promise<void> {
+  await ensureMentorshipSchema();
+  await pool().query(
+    `UPDATE mentorship.mentors SET payout_account_id = $2, updated_at = now()
+     WHERE user_id = $1`,
+    [userId, accountId],
+  );
+}
+
+/**
+ * Record what Stripe says about the account.
+ *
+ * `enabled` must come from reading the account back, never from the mentor
+ * having landed on the return URL — that only means they closed the form, not
+ * that Stripe accepted them.
+ */
+export async function dbSetPayoutsEnabled(userId: string, enabled: boolean): Promise<Mentor> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `UPDATE mentorship.mentors
+        SET payouts_enabled = $2,
+            payouts_onboarded_at = CASE
+              WHEN $2 AND payouts_onboarded_at IS NULL THEN now()
+              ELSE payouts_onboarded_at
+            END,
+            updated_at = now()
+      WHERE user_id = $1
+      RETURNING *`,
+    [userId, enabled],
+  );
+  if (res.rows.length === 0) throw new Error("You have not set up mentoring yet");
   return mapMentor(res.rows[0]);
 }
 
@@ -166,6 +263,68 @@ export async function dbCreateSessionType(
       input.priceCents,
     ],
   );
+  return mapSessionType(res.rows[0]);
+}
+
+/**
+ * Change what a session is, or what it costs.
+ *
+ * Editing the row rather than versioning it is safe because every booking
+ * freezes its own price, fee rate and split at the moment it is made — a past
+ * session still explains itself after the mentor puts their rate up.
+ */
+export async function dbUpdateSessionType(
+  id: string,
+  mentorUserId: string,
+  patch: {
+    title?: string;
+    description?: string | null;
+    durationMinutes?: number;
+    priceCents?: number;
+    active?: boolean;
+  },
+): Promise<SessionType> {
+  await ensureMentorshipSchema();
+
+  const columns: Record<string, unknown> = {};
+  if (patch.title !== undefined) {
+    if (!patch.title.trim()) throw new Error("Give the session a title");
+    columns.title = patch.title.trim();
+  }
+  if (patch.description !== undefined) {
+    columns.description = patch.description?.trim() || null;
+  }
+  if (patch.durationMinutes !== undefined) {
+    if (patch.durationMinutes < 15 || patch.durationMinutes > 480) {
+      throw new Error("A session runs between 15 minutes and 8 hours");
+    }
+    columns.duration_minutes = patch.durationMinutes;
+  }
+  if (patch.priceCents !== undefined) {
+    assertSellablePrice(patch.priceCents);
+    columns.price_cents = patch.priceCents;
+  }
+  if (patch.active !== undefined) columns.active = patch.active;
+
+  const keys = Object.keys(columns);
+  if (keys.length === 0) {
+    const current = (await dbListSessionTypes(mentorUserId, { activeOnly: false })).find(
+      (t) => t.id === id,
+    );
+    if (!current) throw new Error("That session does not exist");
+    return current;
+  }
+
+  const assignments = keys.map((k, i) => `${k} = $${i + 3}`).join(", ");
+  // Ownership is in the WHERE clause, so this cannot reprice someone else's
+  // session even with a guessed id.
+  const res = await pool().query(
+    `UPDATE mentorship.session_types SET ${assignments}, updated_at = now()
+      WHERE id = $1 AND mentor_user_id = $2
+      RETURNING *`,
+    [id, mentorUserId, ...keys.map((k) => columns[k])],
+  );
+  if (res.rows.length === 0) throw new Error("That session does not exist");
   return mapSessionType(res.rows[0]);
 }
 
@@ -325,9 +484,9 @@ export async function dbDeleteException(id: string, mentorUserId: string): Promi
 const MAX_PENDING_PER_MENTEE = 8;
 
 /**
- * Release unpaid bookings older than the 30-minute checkout window. Safe to
- * call often — it only touches `pending_payment` rows past the TTL. Without
- * this, abandoned holds occupy the EXCLUDE gist forever.
+ * Release unpaid bookings past the hold window. Safe to call often — it only
+ * touches `pending_payment` rows past the TTL. Without this, abandoned holds
+ * occupy the EXCLUDE gist forever.
  */
 export async function dbExpireStalePendingBookings(): Promise<number> {
   await ensureMentorshipSchema();
@@ -338,9 +497,44 @@ export async function dbExpireStalePendingBookings(): Promise<number> {
            cancelled_by = NULL,
            updated_at = now()
      WHERE status = 'pending_payment'
-       AND created_at < now() - interval '30 minutes'`,
+       AND created_at < now() - ($1 || ' minutes')::interval`,
+    [String(HOLD_WINDOW_MINUTES)],
   );
   return res.rowCount ?? 0;
+}
+
+/**
+ * A booking whose payment arrived after Brigade had already released the slot.
+ *
+ * This should be unreachable — the hold outlives the checkout window by design
+ * — but "should be unreachable" is not a plan for someone else's money. The
+ * webhook looks for this case explicitly so the charge can be refunded rather
+ * than silently kept for a session that will not happen.
+ */
+export async function dbFindPaidAfterRelease(
+  checkoutSessionId: string,
+): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT * FROM mentorship.bookings
+      WHERE checkout_session_id = $1 AND status = 'cancelled' AND paid_at IS NULL`,
+    [checkoutSessionId],
+  );
+  return res.rows[0] ? mapBooking(res.rows[0]) : null;
+}
+
+/**
+ * The billing email for Stripe's receipt.
+ *
+ * Read from the auth schema at charge time rather than copied onto the booking:
+ * a receipt should go to where the person reads mail today.
+ */
+export async function dbGetBillingEmail(userId: string): Promise<string | null> {
+  const res = await pool().query(
+    `SELECT email FROM ${getAuthSchema()}.users WHERE id = $1`,
+    [userId],
+  );
+  return (res.rows[0]?.email as string) ?? null;
 }
 
 async function dbBusyRanges(mentorUserId: string) {
@@ -406,6 +600,12 @@ export interface Booking {
   mentorPayoutCents: number;
   meetingUrl: string | null;
   paymentIntentId: string | null;
+  checkoutSessionId: string | null;
+  paidAt: string | null;
+  receiptUrl: string | null;
+  confirmationCode: string | null;
+  refundedCents: number;
+  createdAt: string;
 }
 
 function mapBooking(row: Record<string, unknown>): Booking {
@@ -423,6 +623,12 @@ function mapBooking(row: Record<string, unknown>): Booking {
     mentorPayoutCents: Number(row.mentor_payout_cents),
     meetingUrl: (row.meeting_url as string) ?? null,
     paymentIntentId: (row.payment_intent_id as string) ?? null,
+    checkoutSessionId: (row.checkout_session_id as string) ?? null,
+    paidAt: row.paid_at ? new Date(row.paid_at as string).toISOString() : null,
+    receiptUrl: (row.receipt_url as string) ?? null,
+    confirmationCode: (row.confirmation_code as string) ?? null,
+    refundedCents: Number(row.refunded_cents ?? 0),
+    createdAt: new Date(row.created_at as string).toISOString(),
   };
 }
 
@@ -544,6 +750,261 @@ export async function dbListBookingsForMentor(mentorUserId: string): Promise<Boo
   return res.rows.map(mapBooking);
 }
 
+/** One booking, whoever is asking. */
+export async function dbGetBooking(id: string): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query("SELECT * FROM mentorship.bookings WHERE id = $1", [id]);
+  return res.rows[0] ? mapBooking(res.rows[0]) : null;
+}
+
+
+export interface BookingDetail extends Booking {
+  sessionTitle: string;
+  sessionDescription: string | null;
+  durationMinutes: number;
+  mentorName: string;
+  menteeName: string;
+  /** The mentor's zone, so the receipt can say what time it is for them too. */
+  mentorTimezone: string;
+}
+
+/**
+ * One booking with everything a receipt has to state, in a single query.
+ *
+ * Scoped to the two participants in SQL rather than fetched and then checked:
+ * this row carries a price and a meeting link, so there is no point at which
+ * the wrong person is holding it.
+ */
+export async function dbGetBookingDetail(
+  id: string,
+  viewerId: string,
+): Promise<BookingDetail | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT b.*,
+            st.title       AS session_title,
+            st.description AS session_description,
+            st.duration_minutes,
+            m.timezone     AS mentor_timezone,
+            trim(concat_ws(' ', mp.first_name, mp.last_name)) AS mentor_name,
+            trim(concat_ws(' ', ep.first_name, ep.last_name)) AS mentee_name
+       FROM mentorship.bookings b
+       JOIN mentorship.session_types st ON st.id = b.session_type_id
+       JOIN mentorship.mentors m        ON m.user_id = b.mentor_user_id
+       LEFT JOIN users.profiles mp      ON mp.user_id = b.mentor_user_id
+       LEFT JOIN users.profiles ep      ON ep.user_id = b.mentee_user_id
+      WHERE b.id = $1 AND (b.mentee_user_id = $2 OR b.mentor_user_id = $2)`,
+    [id, viewerId],
+  );
+  const row = res.rows[0];
+  if (!row) return null;
+
+  return {
+    ...mapBooking(row),
+    sessionTitle: row.session_title as string,
+    sessionDescription: (row.session_description as string) ?? null,
+    durationMinutes: Number(row.duration_minutes),
+    mentorTimezone: row.mentor_timezone as string,
+    mentorName: (row.mentor_name as string) || "This mentor",
+    menteeName: (row.mentee_name as string) || "This member",
+  };
+}
+
+/** Correlate the Stripe Checkout Session with the booking it is paying for. */
+export async function dbAttachCheckoutSession(
+  bookingId: string,
+  checkoutSessionId: string,
+): Promise<void> {
+  await ensureMentorshipSchema();
+  await pool().query(
+    `UPDATE mentorship.bookings SET checkout_session_id = $2, updated_at = now()
+      WHERE id = $1`,
+    [bookingId, checkoutSessionId],
+  );
+}
+
+/**
+ * The payment settled: turn the hold into a real session.
+ *
+ * Idempotent by construction. The WHERE clause requires `pending_payment`, so a
+ * redelivered webhook updates zero rows and the caller sees `null` — meaning
+ * "already handled", not "failed". That matters because Stripe will deliver
+ * this event more than once and a second confirmation would notify both people
+ * twice.
+ *
+ * The mentor's standing meeting room is COPIED here rather than joined at read
+ * time: changing your Zoom link next year must not rewrite the link on a
+ * session that already happened.
+ */
+export async function dbMarkBookingPaid(input: {
+  checkoutSessionId: string;
+  paymentIntentId: string | null;
+  receiptUrl: string | null;
+}): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+
+  // Retried on the astronomically unlikely code collision; the unique index is
+  // what makes that a retry rather than a duplicate.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await pool().query(
+        `UPDATE mentorship.bookings b
+            SET status = 'confirmed',
+                paid_at = now(),
+                payment_intent_id = COALESCE($2, b.payment_intent_id),
+                receipt_url = COALESCE($3, b.receipt_url),
+                confirmation_code = COALESCE(b.confirmation_code, $4),
+                meeting_url = COALESCE(b.meeting_url, m.default_meeting_url),
+                updated_at = now()
+           FROM mentorship.mentors m
+          WHERE b.checkout_session_id = $1
+            AND b.status = 'pending_payment'
+            AND m.user_id = b.mentor_user_id
+        RETURNING b.*`,
+        [
+          input.checkoutSessionId,
+          input.paymentIntentId,
+          input.receiptUrl,
+          generateConfirmationCode(),
+        ],
+      );
+      return res.rows[0] ? mapBooking(res.rows[0]) : null;
+    } catch (error) {
+      // 23505 = unique_violation on the confirmation code.
+      if ((error as { code?: string }).code === "23505" && attempt < 4) continue;
+      throw error;
+    }
+  }
+  return null;
+}
+
+/**
+ * Confirm a free session.
+ *
+ * A zero-price session has nothing for Stripe to do, but it still needs a
+ * confirmation code and the meeting link, so it goes through the same
+ * transition rather than a parallel one that could drift.
+ */
+export async function dbConfirmFreeBooking(bookingId: string): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await pool().query(
+        `UPDATE mentorship.bookings b
+            SET status = 'confirmed',
+                confirmation_code = COALESCE(b.confirmation_code, $2),
+                meeting_url = COALESCE(b.meeting_url, m.default_meeting_url),
+                updated_at = now()
+           FROM mentorship.mentors m
+          WHERE b.id = $1
+            AND b.status = 'pending_payment'
+            AND b.price_cents = 0
+            AND m.user_id = b.mentor_user_id
+        RETURNING b.*`,
+        [bookingId, generateConfirmationCode()],
+      );
+      return res.rows[0] ? mapBooking(res.rows[0]) : null;
+    } catch (error) {
+      if ((error as { code?: string }).code === "23505" && attempt < 4) continue;
+      throw error;
+    }
+  }
+  return null;
+}
+
+/**
+ * Find a booking from the PaymentIntent that paid for it.
+ *
+ * How refund events are matched. A Stripe Charge does NOT inherit its
+ * PaymentIntent's metadata — they are separate objects — so a
+ * `charge.refunded` event carries no `brigade_booking_id`. It does carry
+ * `payment_intent`, which the webhook writes onto the booking when the payment
+ * settles, so that is the reliable handle.
+ */
+export async function dbGetBookingByPaymentIntent(
+  paymentIntentId: string,
+): Promise<Booking | null> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    "SELECT * FROM mentorship.bookings WHERE payment_intent_id = $1",
+    [paymentIntentId],
+  );
+  return res.rows[0] ? mapBooking(res.rows[0]) : null;
+}
+
+/**
+ * Write down what was given back, after Stripe has agreed to it.
+ *
+ * Returns false when the figure was already recorded. Brigade-initiated refunds
+ * are written here AND arrive again as a `charge.refunded` webhook; without
+ * this the mentee would be told about the same refund twice.
+ */
+export async function dbRecordRefund(
+  bookingId: string,
+  refundId: string,
+  amountCents: number,
+): Promise<boolean> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `UPDATE mentorship.bookings
+        SET refunded_cents = $3, refund_id = $2, updated_at = now()
+      WHERE id = $1 AND refunded_cents <> $3`,
+    [bookingId, refundId, amountCents],
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Webhook idempotency                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Claim a Stripe event for processing.
+ *
+ * Returns false when this event has been seen before. The INSERT is the lock:
+ * two concurrent deliveries of the same event race on the primary key and
+ * exactly one wins, which is stronger than checking-then-inserting.
+ */
+export async function dbClaimWebhookEvent(id: string, type: string): Promise<boolean> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `INSERT INTO mentorship.webhook_events (id, type) VALUES ($1, $2)
+     ON CONFLICT (id) DO NOTHING`,
+    [id, type],
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
+/** Mark the claimed event done, or record why it was not. */
+export async function dbFinishWebhookEvent(id: string, error?: string): Promise<void> {
+  await ensureMentorshipSchema();
+  if (error) {
+    // Clear processed_at and keep the reason, so a failed event is visibly
+    // unfinished rather than looking handled.
+    await pool().query(
+      "UPDATE mentorship.webhook_events SET error = $2, processed_at = NULL WHERE id = $1",
+      [id, error.slice(0, 500)],
+    );
+    return;
+  }
+  await pool().query(
+    "UPDATE mentorship.webhook_events SET processed_at = now(), error = NULL WHERE id = $1",
+    [id],
+  );
+}
+
+/**
+ * Release a claim so Stripe's retry can have another go.
+ *
+ * Without this, a handler that throws would leave the event marked as seen and
+ * every retry would be skipped as a duplicate — the booking would stay unpaid
+ * forever with no way back.
+ */
+export async function dbReleaseWebhookEvent(id: string): Promise<void> {
+  await ensureMentorshipSchema();
+  await pool().query("DELETE FROM mentorship.webhook_events WHERE id = $1", [id]);
+}
+
 /** Reject anything that is not an https URL a browser can actually open. */
 export function normaliseMeetingUrl(raw: string): string {
   const trimmed = raw.trim();
@@ -581,19 +1042,33 @@ export async function dbConfirmBooking(
   const link = meetingUrl?.trim() || mentor?.defaultMeetingUrl || null;
   const normalised = link ? normaliseMeetingUrl(link) : null;
 
-  const res = await pool().query(
-    `UPDATE mentorship.bookings
-       SET status = 'confirmed',
-           meeting_url = COALESCE($3, meeting_url),
-           updated_at = now()
-     WHERE id = $1 AND mentor_user_id = $2 AND status = 'pending_payment'
-     RETURNING *`,
-    [bookingId, mentorUserId, normalised],
-  );
-  if (res.rows.length === 0) {
-    throw new Error("That booking is not waiting for your confirmation");
+  // A code is issued here too. A confirmed session is a confirmed session
+  // however it got there, and a receipt that shows a confirmation number for a
+  // Stripe booking and a blank for a hand-accepted one is the kind of
+  // inconsistency people notice and distrust.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await pool().query(
+        `UPDATE mentorship.bookings
+           SET status = 'confirmed',
+               meeting_url = COALESCE($3, meeting_url),
+               confirmation_code = COALESCE(confirmation_code, $4),
+               updated_at = now()
+         WHERE id = $1 AND mentor_user_id = $2 AND status = 'pending_payment'
+         RETURNING *`,
+        [bookingId, mentorUserId, normalised, generateConfirmationCode()],
+      );
+      if (res.rows.length === 0) {
+        throw new Error("That booking is not waiting for your confirmation");
+      }
+      return mapBooking(res.rows[0]);
+    } catch (error) {
+      // 23505 = unique_violation on the confirmation code.
+      if ((error as { code?: string }).code === "23505" && attempt < 4) continue;
+      throw error;
+    }
   }
-  return mapBooking(res.rows[0]);
+  throw new Error("Could not confirm that booking");
 }
 
 /** Either party may cancel; the slot returns to the calendar. */
@@ -663,7 +1138,7 @@ export interface MentorRail {
  * Requires at least one active session type: a mentor with nothing for sale is
  * not a listing, it is an empty page.
  */
-export async function dbListMentors(params: {
+export interface MentorListParams {
   q?: string;
   role?: string;
   city?: string;
@@ -672,7 +1147,17 @@ export async function dbListMentors(params: {
   sort?: MentorSort;
   limit?: number;
   offset?: number;
-}): Promise<{ data: MentorListing[]; total: number }> {
+}
+
+/**
+ * Just the rows.
+ *
+ * Split out because the discovery rails need listings but never the total —
+ * they show at most a dozen cards and have no pagination. Running the COUNT
+ * anyway meant six extra aggregate queries on every visit to /mentors for a
+ * number nothing rendered.
+ */
+async function queryMentorRows(params: MentorListParams): Promise<MentorListing[]> {
   await ensureMentorshipSchema();
 
   const { where, values, priceJoin } = mentorListFilters(params);
@@ -686,7 +1171,37 @@ export async function dbListMentors(params: {
             m.created_at, st.min_price, st.session_count,
             p.first_name, p.last_name, p.headline AS profile_headline,
             p.role, p.city, p.state, p.country, p.avatar_url,
-            p.expertise_areas, p.current_employer, p.years_experience
+            ${EFFECTIVE_EXPERTISE} AS expertise_areas,
+            p.current_employer, p.years_experience
+     FROM mentorship.mentors m
+     ${priceJoin}
+     JOIN users.profiles p ON p.user_id = m.user_id
+     WHERE ${whereSql}
+     ORDER BY ${orderBy}
+     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+    [...values, limit, offset],
+  );
+  return rows.rows.map(mapListing);
+}
+
+export async function dbListMentors(
+  params: MentorListParams,
+): Promise<{ data: MentorListing[]; total: number }> {
+  await ensureMentorshipSchema();
+
+  const { where, values, priceJoin } = mentorListFilters(params);
+  const whereSql = where.join(" AND ");
+  const limit = Math.min(Math.max(params.limit ?? 24, 1), 48);
+  const offset = Math.max(params.offset ?? 0, 0);
+  const orderBy = mentorListOrder(params.sort);
+
+  const rows = await pool().query(
+    `SELECT m.user_id, m.headline AS mentor_headline, m.timezone, m.currency,
+            m.created_at, st.min_price, st.session_count,
+            p.first_name, p.last_name, p.headline AS profile_headline,
+            p.role, p.city, p.state, p.country, p.avatar_url,
+            ${EFFECTIVE_EXPERTISE} AS expertise_areas,
+            p.current_employer, p.years_experience
      FROM mentorship.mentors m
      ${priceJoin}
      JOIN users.profiles p ON p.user_id = m.user_id
@@ -709,6 +1224,82 @@ export async function dbListMentors(params: {
     total: Number(totals.rows[0]?.total ?? 0),
     data: rows.rows.map(mapListing),
   };
+}
+
+/**
+ * Every bookable mentor, reduced to just what the matcher scores on.
+ *
+ * Deliberately a separate, narrow query rather than reusing `dbListMentors`:
+ * ranking happens over the WHOLE pool, not a page of it, and pulling full
+ * listings for that would fetch avatars and headlines to throw most of them
+ * away. The winners are looked up properly afterwards.
+ */
+export async function dbListMentorSignals(): Promise<
+  {
+    userId: string;
+    expertise: string[];
+    helpOffered: string[];
+    industries: string[];
+    languages: string[];
+    menteeTypes: string[];
+    timezone: string;
+    yearsExperience: number | null;
+    activeSessionCount: number;
+  }[]
+> {
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT m.user_id, m.expertise, m.help_offered, m.industries, m.languages,
+            m.mentee_types, m.timezone, p.years_experience,
+            COALESCE(st.session_count, 0) AS session_count
+       FROM mentorship.mentors m
+       JOIN users.profiles p ON p.user_id = m.user_id
+       LEFT JOIN (
+         SELECT mentor_user_id, count(*)::int AS session_count
+           FROM mentorship.session_types WHERE active GROUP BY mentor_user_id
+       ) st ON st.mentor_user_id = m.user_id
+      WHERE m.status = 'active'`,
+  );
+
+  return res.rows.map((row) => ({
+    userId: row.user_id as string,
+    expertise: Array.isArray(row.expertise) ? (row.expertise as string[]) : [],
+    helpOffered: Array.isArray(row.help_offered) ? (row.help_offered as string[]) : [],
+    industries: Array.isArray(row.industries) ? (row.industries as string[]) : [],
+    languages: Array.isArray(row.languages) ? (row.languages as string[]) : [],
+    menteeTypes: Array.isArray(row.mentee_types) ? (row.mentee_types as string[]) : [],
+    timezone: (row.timezone as string) ?? "UTC",
+    yearsExperience:
+      row.years_experience === null || row.years_experience === undefined
+        ? null
+        : Number(row.years_experience),
+    activeSessionCount: Number(row.session_count ?? 0),
+  }));
+}
+
+/** Full listings for a specific set of mentors, in the order given. */
+export async function dbListMentorsByIds(userIds: string[]): Promise<MentorListing[]> {
+  if (userIds.length === 0) return [];
+  await ensureMentorshipSchema();
+
+  const { priceJoin } = mentorListFilters({});
+  const res = await pool().query(
+    `SELECT m.user_id, m.headline AS mentor_headline, m.timezone, m.currency,
+            m.created_at, st.min_price, st.session_count,
+            p.first_name, p.last_name, p.headline AS profile_headline,
+            p.role, p.city, p.state, p.country, p.avatar_url,
+            ${EFFECTIVE_EXPERTISE} AS expertise_areas,
+            p.current_employer, p.years_experience
+       FROM mentorship.mentors m
+       ${priceJoin}
+       JOIN users.profiles p ON p.user_id = m.user_id
+      WHERE m.user_id = ANY($1::uuid[]) AND m.status = 'active'`,
+    [userIds],
+  );
+
+  // Re-ordered to match the ranking, which the SQL does not preserve.
+  const byId = new Map(res.rows.map((row) => [row.user_id as string, mapListing(row)]));
+  return userIds.map((id) => byId.get(id)).filter((listing): listing is MentorListing => Boolean(listing));
 }
 
 /**
@@ -739,7 +1330,7 @@ export async function dbMentorFacets(): Promise<MentorFacets> {
       values,
     ),
     pool().query(
-      `SELECT unnest(p.expertise_areas) AS value, count(*)::int AS count ${from}
+      `SELECT unnest(${EFFECTIVE_EXPERTISE}) AS value, count(*)::int AS count ${from}
        GROUP BY value ORDER BY count DESC, value LIMIT 24`,
       values,
     ),
@@ -766,36 +1357,64 @@ export async function dbMentorFacets(): Promise<MentorFacets> {
  * "Popular in …" rails keyed by real expertise tags on active mentors.
  * Empty groups are omitted — with a thin mentor pool that may mean one rail.
  */
-export async function dbPopularMentorRails(limitPerRail = 12): Promise<MentorRail[]> {
-  const facets = await dbMentorFacets();
-  const rails: MentorRail[] = [];
+/**
+ * "Popular in …" rails.
+ *
+ * `facets` is passed in rather than fetched, because every caller has already
+ * computed them for the filter chips — recomputing meant three more GROUP BY
+ * queries over the whole join on each page load, for an identical answer.
+ *
+ * The rails themselves run concurrently. They used to be a sequential `await`
+ * inside a `for` loop: six independent queries taking six round trips, which is
+ * most of what made /mentors slow once there were enough mentors to fill the
+ * rails at all.
+ */
+export async function dbPopularMentorRails(
+  facets: MentorFacets,
+  limitPerRail = 12,
+): Promise<MentorRail[]> {
+  const build = async (
+    values: MentorFacet[],
+    key: "expertise" | "role",
+  ): Promise<MentorRail[]> => {
+    const results = await Promise.all(
+      values.map(async (facet) => ({
+        expertise: facet.value,
+        mentors: await queryMentorRows({
+          [key]: facet.value,
+          sort: "newest",
+          limit: limitPerRail,
+        }),
+      })),
+    );
+    return results.filter((rail) => rail.mentors.length > 0);
+  };
 
-  for (const facet of facets.expertise.slice(0, 6)) {
-    const { data } = await dbListMentors({
-      expertise: facet.value,
-      sort: "newest",
-      limit: limitPerRail,
-    });
-    if (data.length === 0) continue;
-    rails.push({ expertise: facet.value, mentors: data });
-  }
+  const rails = await build(facets.expertise.slice(0, 6), "expertise");
+  if (rails.length > 0) return rails;
 
   // If nobody has expertise tags yet, fall back to role-based rails so the
   // marketplace still has a discovery band when mentors exist.
-  if (rails.length === 0) {
-    for (const facet of facets.roles.slice(0, 4)) {
-      const { data } = await dbListMentors({
-        role: facet.value,
-        sort: "newest",
-        limit: limitPerRail,
-      });
-      if (data.length === 0) continue;
-      rails.push({ expertise: facet.value, mentors: data });
-    }
-  }
-
-  return rails;
+  return build(facets.roles.slice(0, 4), "role");
 }
+
+/**
+ * What this mentor teaches, for discovery.
+ *
+ * Their own tags when they have set any, otherwise the expertise areas on their
+ * member profile. Mentor-owned tags describe what they will teach, which is not
+ * the same question as what they do for a living — a pastry chef who mentors on
+ * costing should be findable for costing.
+ *
+ * The fallback matters: mentors who joined before the tags existed have nothing
+ * in `m.expertise`, and dropping them out of every facet would quietly empty
+ * the directory's filters.
+ */
+const EFFECTIVE_EXPERTISE = `
+  CASE WHEN COALESCE(cardinality(m.expertise), 0) > 0
+       THEN m.expertise
+       ELSE COALESCE(p.expertise_areas, '{}'::text[])
+  END`;
 
 function mentorListFilters(params: {
   q?: string;
@@ -816,8 +1435,9 @@ function mentorListFilters(params: {
       `(p.first_name ILIKE $${i} OR p.last_name ILIKE $${i} OR m.headline ILIKE $${i}
         OR p.headline ILIKE $${i} OR p.role ILIKE $${i} OR p.city ILIKE $${i}
         OR p.current_employer ILIKE $${i}
+        OR m.bio ILIKE $${i}
         OR EXISTS (
-          SELECT 1 FROM unnest(COALESCE(p.expertise_areas, '{}'::text[])) AS ea(tag)
+          SELECT 1 FROM unnest(${EFFECTIVE_EXPERTISE}) AS ea(tag)
           WHERE ea.tag ILIKE $${i}
         ))`,
     );
@@ -832,7 +1452,14 @@ function mentorListFilters(params: {
   }
   if (params.expertise?.trim()) {
     values.push([params.expertise.trim()]);
-    where.push(`p.expertise_areas @> $${values.length}::text[]`);
+    // Either side matches, rather than only the effective one: a mentor who has
+    // since written their own tags should still be reachable from a chip built
+    // out of their profile's, and vice versa. Narrowing this would make
+    // existing links in the wild start returning nothing.
+    where.push(
+      `(m.expertise @> $${values.length}::text[]
+        OR COALESCE(p.expertise_areas, '{}'::text[]) @> $${values.length}::text[])`,
+    );
   }
   if (typeof params.maxPriceCents === "number") {
     values.push(params.maxPriceCents);

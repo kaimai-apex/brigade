@@ -27,14 +27,4 @@ export function clearSession() {
   localStorage.removeItem('accessToken');
 }
 
-export function getSession(): AuthSession | null {
-  if (typeof window === 'undefined') return null;
-  const userId = sessionStorage.getItem(USER_ID_KEY);
-  if (!userId) return null;
-  return { userId };
-}
 
-export function getAccessToken(): string | null {
-  // Tokens are httpOnly cookies — not readable from JS.
-  return null;
-}

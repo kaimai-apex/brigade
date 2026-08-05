@@ -19,6 +19,7 @@ type Booking = {
   platformFeeCents: number;
   mentorPayoutCents: number;
   meetingUrl: string | null;
+  confirmationCode: string | null;
 };
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
@@ -47,8 +48,12 @@ export default function SessionsPage() {
       setTeaching(json.teaching ?? []);
       // Accepting by hand is only offered while payments are off; with Stripe
       // on, a settled charge is what confirms a session.
-      const meJson = (await me.json().catch(() => ({}))) as { paymentsConfigured?: boolean };
-      setPaymentsOn(meJson.paymentsConfigured !== false);
+      // `takingPayments`, not `paymentsConfigured`: this decides whether the
+      // Accept button is offered, and it has to match the condition the booking
+      // route branches on. A deployment with a Stripe key but no webhook secret
+      // still needs the mentor to accept by hand.
+      const meJson = (await me.json().catch(() => ({}))) as { takingPayments?: boolean };
+      setPaymentsOn(meJson.takingPayments !== false);
     } finally {
       setLoading(false);
     }
@@ -179,13 +184,27 @@ function BookingList({
                 className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-ink/10 p-4"
               >
                 <div className="min-w-0">
-                  <p className="font-semibold">{formatRange(b.startsAt, b.endsAt)}</p>
+                  {/* The date is the permalink into the receipt. Without this
+                      the receipt page is only reachable by coming back from
+                      Stripe, so anyone who closed that tab could never find
+                      their confirmation code or meeting link again. */}
+                  <p className="font-semibold">
+                    <Link href={`/sessions/${b.id}`} className="hover:underline">
+                      {formatRange(b.startsAt, b.endsAt)}
+                    </Link>
+                  </p>
                   <p className="text-meta mt-1 text-ink/50">
                     <Link href={`/profile/${other}`} className="hover:underline">
                       {perspective === 'mentee' ? 'with your mentor' : 'with your mentee'}
                     </Link>
                     {' · '}
                     <StatusBadge status={b.status} />
+                    {b.confirmationCode && (
+                      <>
+                        {' · '}
+                        <span className="font-mono">{b.confirmationCode}</span>
+                      </>
+                    )}
                   </p>
                   {b.meetingUrl && b.status === 'confirmed' && (
                     <a

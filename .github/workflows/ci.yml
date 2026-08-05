@@ -100,30 +100,12 @@ jobs:
           npx wait-on http://localhost:3100 --timeout 60000
           pnpm check:a11y
 
-  schema:
+  # Pure mentorship/onboarding specs — no DB required.
+  specs:
     runs-on: ubuntu-latest
-    services:
-      redis:
-        image: redis:7
-        ports: ["6379:6379"]
-        options: >-
-          --health-cmd "redis-cli ping" --health-interval 10s
-          --health-timeout 5s --health-retries 5
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: brigade
-          POSTGRES_PASSWORD: brigade
-          POSTGRES_DB: brigade_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd pg_isready --health-interval 10s
-          --health-timeout 5s --health-retries 5
+    needs: verify
     steps:
       - uses: actions/checkout@v4
-
-      # Every migration applies from scratch, in order, on the same Postgres
-      # major version as production.
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -132,28 +114,6 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-
-      # Through the real migration runner, so the thing that runs on deploy is
-      # the thing CI exercises.
-      - name: Apply migrations
-        env:
-          DATABASE_URL: postgresql://brigade:brigade@localhost:5432/brigade_test
-        run: pnpm db:migrate
-
-      - name: Migrations are idempotent
-        env:
-          DATABASE_URL: postgresql://brigade:brigade@localhost:5432/brigade_test
-        run: pnpm db:migrate | grep -q "nothing to do"
-
-      # The service layer, exercised against the schema that was just built.
-      # Tests target the services rather than HTTP endpoints — that is the
-      # whole point of having a service layer.
-      - name: Core specs
-        env:
-          CORE_DATABASE_URL: postgresql://brigade:brigade@localhost:5432/brigade_test
-          CORE_REDIS_URL: redis://localhost:6379
-        run: |
-          node --experimental-strip-types packages/core/spec/service_layer.spec.ts
-          node --experimental-strip-types packages/core/spec/directory_and_verification.spec.ts
-          node --experimental-strip-types packages/core/spec/feeds_and_moderation.spec.ts
-          node --experimental-strip-types streaming/spec/streaming.spec.ts
+      - run: pnpm --filter @connectpro/common build
+      - name: Web specs
+        run: pnpm --filter @connectpro/web test

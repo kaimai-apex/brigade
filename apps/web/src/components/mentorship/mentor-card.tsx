@@ -114,18 +114,39 @@ export function RailCard({ mentor }: { mentor: MentorListing }) {
   );
 }
 
-/** Explore grid card — ADPList ExploreCard layout. */
-export function ExploreCard({ mentor }: { mentor: MentorListing }) {
+/**
+ * Explore grid card — ADPList ExploreCard layout.
+ *
+ * `preview` renders the same card as an inert div. The mentor setup flow shows
+ * it live as they type, and it has to be THIS component rather than a lookalike
+ * — a preview that drifts from the real card is worse than no preview, because
+ * it teaches people to expect something the directory will not show.
+ */
+export function ExploreCard({
+  mentor,
+  preview = false,
+}: {
+  mentor: MentorListing;
+  preview?: boolean;
+}) {
   const name = displayName(mentor);
   const place = placeLabel(mentor);
   const flag = flagFor(mentor);
   const experience = experienceLabel(mentor.yearsExperience);
 
+  const className =
+    "group flex flex-col overflow-hidden rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] transition-shadow hover:shadow-[var(--mk-shadow-lift)]";
+  const Wrapper = ({ children }: { children: React.ReactNode }) =>
+    preview ? (
+      <div className={className}>{children}</div>
+    ) : (
+      <Link href={`/mentors/${mentor.userId}`} className={className}>
+        {children}
+      </Link>
+    );
+
   return (
-    <Link
-      href={`/mentors/${mentor.userId}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] transition-shadow hover:shadow-[var(--mk-shadow-lift)]"
-    >
+    <Wrapper>
       <div className="relative overflow-hidden bg-[var(--mk-avatar-bg)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -153,7 +174,7 @@ export function ExploreCard({ mentor }: { mentor: MentorListing }) {
         <p className="mt-1 line-clamp-2 text-[14px] leading-snug text-[var(--mk-muted)]">
           {[mentor.role, mentor.currentEmployer].filter(Boolean).join(" at ") ||
             mentor.headline ||
-            "Hospitality mentor"}
+            "Private chef mentor"}
         </p>
         <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">
           {sessionCountLabel(mentor.sessionCount)}
@@ -171,6 +192,6 @@ export function ExploreCard({ mentor }: { mentor: MentorListing }) {
           </div>
         </div>
       </div>
-    </Link>
+    </Wrapper>
   );
 }

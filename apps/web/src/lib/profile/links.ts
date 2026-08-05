@@ -26,10 +26,6 @@ export function normalizeWebsiteUrl(raw: string): string {
   return `https://${trimmed.replace(/^\/\//, "")}`;
 }
 
-/** @deprecated Use normalizeInstagramUrl or normalizeWebsiteUrl */
-export function normalizeExternalUrl(raw: string): string {
-  return normalizeWebsiteUrl(raw);
-}
 
 export function formatInstagramLabel(url: string): string {
   const normalized = normalizeInstagramUrl(url);

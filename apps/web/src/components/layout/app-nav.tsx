@@ -4,17 +4,14 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
-  Bell,
+  CalendarCheck,
   ChevronDown,
   Compass,
   LogOut,
   GraduationCap,
-  MessageSquare,
-  Newspaper,
   Search,
   Settings,
   User,
-  Users,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,42 +30,29 @@ import { cn, displayName, getInitials } from '@/lib/utils';
 
 const NAV_ITEMS = [
   {
-    href: '/feed',
-    label: 'Feed',
-    icon: Newspaper,
-    match: (p: string) => p === '/feed' || p.startsWith('/posts'),
-  },
-  {
-    href: '/brigade',
-    label: 'Brigade',
-    icon: Users,
-    match: (p: string) => p.startsWith('/brigade') || p.startsWith('/network'),
+    href: '/mentors',
+    label: 'Mentors',
+    icon: GraduationCap,
+    // /mentorship is the mentor's own admin page, not the browse, so it
+    // deliberately does not light this tab.
+    match: (p: string) => p.startsWith('/mentors'),
   },
   {
     href: '/directory',
     label: 'Directory',
     icon: Compass,
-    match: (p: string) => p.startsWith('/directory') || p.startsWith('/discover'),
+    match: (p: string) => p.startsWith('/directory'),
   },
   {
-    href: '/mentors',
-    label: 'Mentors',
-    icon: GraduationCap,
-    // /mentorship is the mentor's own admin page, not the directory, so it
-    // deliberately does not light this tab.
-    match: (p: string) => p.startsWith('/mentors'),
-  },
-  {
-    href: '/messages',
-    label: 'Messages',
-    icon: MessageSquare,
-    match: (p: string) => p.startsWith('/messages'),
+    href: '/sessions',
+    label: 'Sessions',
+    icon: CalendarCheck,
+    match: (p: string) => p.startsWith('/sessions'),
   },
 ] as const;
 
 type AppNavProps = {
   user?: { firstName?: string; lastName?: string; avatarUrl?: string };
-  unreadNotifications?: number;
 };
 
 function AccountMenuItems({
@@ -92,30 +76,12 @@ function AccountMenuItems({
           <Settings className="size-4" /> Edit profile
         </Link>
       </DropdownMenuItem>
-      {/* The bottom tab bar holds five tabs; a sixth is too narrow to hit at
-          375px. These live here so mentoring is still reachable on a phone. */}
-      <DropdownMenuItem asChild>
-        <Link href="/mentors">
-          <GraduationCap className="size-4" /> Mentors
-        </Link>
-      </DropdownMenuItem>
-      <DropdownMenuItem asChild>
-        <Link href="/sessions">
-          <GraduationCap className="size-4" /> Your sessions
-        </Link>
-      </DropdownMenuItem>
+      {/* Teaching lives here rather than in the tab bar: most members are
+          here to learn, and only the ones who mentor need the admin page. */}
       <DropdownMenuItem asChild>
         <Link href="/mentorship">
           <GraduationCap className="size-4" /> Your mentoring
         </Link>
-      </DropdownMenuItem>
-      <DropdownMenuItem asChild>
-        <Link href="/settings/notifications">
-          <Settings className="size-4" /> Settings
-        </Link>
-      </DropdownMenuItem>
-      <DropdownMenuItem asChild>
-        <Link href="/notifications">Alerts</Link>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onSelect={onLogout} className="text-rust focus:text-rust">
@@ -125,7 +91,7 @@ function AccountMenuItems({
   );
 }
 
-export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
+export function AppNav({ user }: AppNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { session, logout } = useAuth();
@@ -167,7 +133,7 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
     >
       <div className="mx-auto flex h-12 max-w-[1128px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
         <Link
-          href="/feed"
+          href="/mentors"
           className="flex min-h-11 shrink-0 items-center font-display text-xl font-black tracking-tight text-ink"
         >
           Brigade
@@ -178,7 +144,7 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-500" />
             <Input
               readOnly
-              placeholder="Search people & companies"
+              placeholder="Search members"
               className="h-9 rounded-md border-neutral-300 bg-neutral-50 pl-9 text-sm"
               onFocus={goDiscover}
               onClick={goDiscover}
@@ -252,21 +218,6 @@ export function AppNav({ user, unreadNotifications = 0 }: AppNavProps) {
             onClick={goDiscover}
           >
             <Search className="size-5" />
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="icon-sm"
-            className="relative min-h-11 min-w-11"
-          >
-            <Link href="/notifications" aria-label="Notifications">
-              <Bell className="size-5" />
-              {unreadNotifications > 0 && (
-                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rust px-1 text-[10px] font-bold text-white">
-                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                </span>
-              )}
-            </Link>
           </Button>
           {session && (
             <DropdownMenu>

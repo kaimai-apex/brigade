@@ -45,12 +45,16 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
   };
   let rails: Awaited<ReturnType<typeof dbPopularMentorRails>> = [];
   try {
-    [{ data: mentors, total }, ownMentor, facets, rails] = await Promise.all([
+    [{ data: mentors, total }, ownMentor, facets] = await Promise.all([
       dbListMentors({ q, role, city, expertise, sort, limit: 36 }),
       session ? dbGetMentor(session.userId) : Promise.resolve(null),
       dbMentorFacets(),
-      filtering ? Promise.resolve([]) : dbPopularMentorRails(12),
     ]);
+
+    // Built from the facets already fetched above rather than fetching them
+    // again, and skipped entirely while filtering — the rails are a browse aid,
+    // and nobody who has typed a query is looking at them.
+    rails = filtering ? [] : await dbPopularMentorRails(facets, 12);
   } catch (err) {
     console.error("[mentors] query failed; rendering empty marketplace", err);
   }
@@ -58,11 +62,11 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
   const active = { q, role, city, expertise, sort };
   const filterCount = [role, city, expertise].filter(Boolean).length + (sort !== "price" ? 1 : 0);
 
-  const emptyCtaHref = ownMentor
-    ? "/sessions"
-    : session
-      ? "/mentorship"
-      : "/login?next=/mentorship";
+  // Where "become a mentor" leads depends on how far along the reader is.
+  // Sending someone who already has a mentor page back through setup, or a
+  // logged-out visitor to a page that will bounce them, both waste the click.
+  const setupHref = session ? "/mentorship/setup" : "/login?next=/mentorship/setup";
+  const emptyCtaHref = ownMentor ? "/sessions" : setupHref;
   const emptyCtaLabel = ownMentor ? "Manage your sessions" : "Become a mentor";
 
   return (
@@ -77,11 +81,11 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
         </nav>
 
         <h1 className="mk-display mt-8 max-w-[26ch]">
-          Learn from chefs who&apos;ve already done it
+          Learn from private chefs who&apos;ve already done it
         </h1>
         <p className="mk-lede mt-3 max-w-[70ch]">
-          Browse verified private chefs, banquet leads, and hospitality operators.
-          Book a 1:1 session in minutes — leave with a plan, not just advice.
+          Private chefs who cook for households, estates, yachts and villas. Book a 1:1
+          session in minutes — leave with a plan, not just advice.
         </p>
 
         <div className="mt-8 flex gap-8 border-b border-[var(--mk-line)]">
@@ -150,6 +154,30 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
               </li>
             ))}
           </ul>
+        )}
+
+        {/* The other side of the marketplace. Shown to anyone who is not
+            already a mentor — this page is where someone realises they could
+            be doing this too, and there was previously no way in from here
+            unless the directory happened to be empty. */}
+        {!ownMentor && (
+          <section className="mt-16 rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-wash)] p-8">
+            <div className="flex flex-wrap items-center justify-between gap-6">
+              <div className="max-w-[52ch]">
+                <h2 className="text-[22px] font-semibold text-[var(--mk-text)]">
+                  Teach what you know
+                </h2>
+                <p className="mt-2 text-[15px] text-[var(--mk-muted)]">
+                  If you cook privately, someone is trying to work out how you did it. You
+                  set the price and the hours; Brigade handles booking, payment and
+                  reminders, and keeps 20%. Setting up takes about ten minutes.
+                </p>
+              </div>
+              <Link href={setupHref} className="mk-btn mk-btn-dark">
+                Become a mentor
+              </Link>
+            </div>
+          </section>
         )}
 
         {(facets.expertise.length > 0 || facets.cities.length > 0) && (

@@ -8,15 +8,6 @@ const monorepoRoot = path.join(appDir, "../..");
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
-  // pino pulls optional native deps (thread-stream) that webpack can't resolve
-  // from the pnpm store layout — keep them as Node requires at runtime.
-  serverExternalPackages: [
-    "pino",
-    "pino-pretty",
-    "thread-stream",
-    "atomic-sleep",
-    "on-exit-leak-free",
-  ],
   async headers() {
     return [
       {
@@ -35,43 +26,20 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/connections", destination: "/network", permanent: true },
-      { source: "/jobs", destination: "/opportunities", permanent: false },
+      // /connections → /network and /jobs → /opportunities are gone: both
+      // destinations were deleted with the social network, so the redirects
+      // pointed at 404s. An old link should say "not here" once, not twice.
       // Edge redirect (not a page-level redirect) so Safari back from /waitlist
       // doesn't bounce through /signup → /waitlist again.
       { source: "/signup", destination: "/waitlist", permanent: false },
       { source: "/signup/:path*", destination: "/waitlist", permanent: false },
     ];
   },
-  webpack: (config, { dev }) => {
-    // pnpm nests pino deps; Next's webpack resolve starts from apps/web and
-    // misses thread-stream unless we include pino's node_modules in the path.
-    config.resolve.modules = [
-      path.join(monorepoRoot, "node_modules/.pnpm/pino@9.14.0/node_modules"),
-      path.join(monorepoRoot, "node_modules"),
-      path.join(appDir, "node_modules"),
-      ...(config.resolve.modules ?? ["node_modules"]),
-    ];
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "thread-stream": path.join(
-        monorepoRoot,
-        "node_modules/.pnpm/thread-stream@3.2.0/node_modules/thread-stream",
-      ),
-    };
-    if (dev) {
-      config.watchOptions = {
-        ...config.watchOptions,
-        ignored: [
-          "**/node_modules/**",
-          "**/.git/**",
-          path.join(appDir, "../../services/**"),
-          path.join(appDir, "../../packages/**"),
-        ],
-      };
-    }
-    return config;
-  },
+  // The webpack block that lived here existed entirely to make pino's
+  // thread-stream resolve through pnpm's store layout. @connectpro/common no
+  // longer bundles a logger — it is pg, jsonwebtoken and node crypto now — so
+  // there is nothing left to alias, and the dev watch ignores pointed at
+  // services/ and packages/ that no longer exist.
   images: {
     remotePatterns: [
       {

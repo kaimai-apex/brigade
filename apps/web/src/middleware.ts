@@ -22,12 +22,22 @@ const PUBLIC_PAGES = new Set([
 const PUBLIC_APIS = new Set([
   "/api/waitlist",
   "/api/demo/login",
+  // Stripe has no Brigade session. Its authentication is the signed
+  // Stripe-Signature header, which the route verifies against the endpoint
+  // secret before reading a single field of the body.
+  "/api/stripe/webhook",
   "/api/auth/session",
   "/api/auth/logout",
   "/api/auth/refresh-token",
   "/api/auth/login",
   "/api/auth/signup",
   "/api/auth/mfa/verify",
+  // Passwordless login. Public by necessity — they are how someone with no
+  // session gets one. Both are rate limited in the database rather than in
+  // memory, because these run as serverless functions and an in-process
+  // counter would reset on every cold start.
+  "/api/auth/request-code",
+  "/api/auth/verify-code",
 ]);
 
 /** Refresh tokens are 48 random bytes, hex-encoded (see connectpro-auth). */
@@ -103,7 +113,23 @@ async function hasVerifiedSession(request: NextRequest): Promise<boolean> {
   return false;
 }
 
+/**
+ * The demo console and the persona API it calls.
+ *
+ * Open without a session because the entire point is to walk the product
+ * without signing in as yourself. NODE_ENV is inlined at build time, so on a
+ * production build this whole branch compiles away and both paths fall back to
+ * the normal rules — which reject them. The routes themselves also return 404
+ * in production; two independent guards, because one of them being wrong would
+ * mean a stranger could mint accounts on the live site.
+ */
+function isDevConsolePath(pathname: string): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return pathname === "/dev" || pathname.startsWith("/api/dev/");
+}
+
 function isPublicPage(pathname: string): boolean {
+  if (isDevConsolePath(pathname)) return true;
   if (PUBLIC_PAGES.has(pathname)) return true;
   // Exact segment match — do not treat /mentorship as /mentors*.
   if (pathname === "/mentors" || pathname.startsWith("/mentors/")) return true;
@@ -112,6 +138,7 @@ function isPublicPage(pathname: string): boolean {
 }
 
 function isPublicApi(pathname: string): boolean {
+  if (isDevConsolePath(pathname)) return true;
   if (PUBLIC_APIS.has(pathname)) return true;
   // List + /:id only — not /api/mentorship/me or bookings.
   if (
@@ -141,17 +168,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Legacy paths, for sessions that still hold old links.
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/feed";
-    return NextResponse.redirect(url);
-  }
-  if (pathname === "/network" || pathname.startsWith("/network/")) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname.replace(/^\/network/, "/brigade") || "/brigade";
-    return NextResponse.redirect(url);
-  }
+  // The /dashboard → /feed and /network → /brigade redirects are gone with
+  // their destinations. An old link to a deleted surface should 404, not
+  // bounce someone to another page that no longer exists either.
 
   return NextResponse.next({ request });
 }

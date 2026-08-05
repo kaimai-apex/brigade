@@ -1,5 +1,6 @@
 import { getFullProfile } from "@/lib/actions/profile";
 import { getConnectProSession } from "@/lib/connectpro/server";
+import { dbGetMentor } from "@/lib/server/mentorship-db";
 import {
   formatEducationDates,
   formatInstagramLabel,
@@ -7,11 +8,10 @@ import {
   normalizeInstagramUrl,
   normalizeWebsiteUrl,
 } from "@/lib/profile/links";
-import { cn, displayName, formatLocation, getInitials } from "@/lib/utils";
+import { cn, displayName, formatLocation, getInitials, isUuid } from "@/lib/utils";
 import { resolveAvatarUrl } from "@/lib/avatars";
 import { resolveBannerUrl } from "@/lib/banners";
 import { ServerAppPage } from "@/components/layout/server-app-page";
-import { ProfileViewRecorder } from "@/components/profile/profile-view-recorder";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,12 +26,24 @@ export default async function ProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
+
   const session = await getConnectProSession();
 
   const profile = await getFullProfile(id);
   if (!profile) notFound();
 
   const isOwner = session?.userId === profile.id;
+  /**
+   * The only thing you can do to someone else here now.
+   *
+   * "Invite to Brigade" and "Message" both went with the social graph, and a
+   * profile whose two buttons are dead is worse than a profile with none. A
+   * member who mentors gets the action this product exists for; a member who
+   * does not gets no button, which is honest.
+   */
+  const mentor = isOwner ? null : await dbGetMentor(profile.id).catch(() => null);
+  const bookable = mentor?.status === "active" ? mentor : null;
   const bannerSrc = resolveBannerUrl(profile.cover_url, profile.id);
 
   const availability = [
@@ -68,7 +80,6 @@ export default async function ProfilePage({
 
   return (
     <ServerAppPage showAuth={false} className="pb-20 pt-8">
-      <ProfileViewRecorder profileId={profile.id} isOwner={isOwner} />
 
       <div className="mx-auto max-w-4xl">
         <section className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
@@ -142,22 +153,11 @@ export default async function ProfilePage({
                 <Button asChild variant="outline" className="mt-5 w-full sm:w-auto">
                   <Link href="/settings/profile">Edit profile</Link>
                 </Button>
-              ) : (
-                <div className="mt-5 flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                  <Button asChild className="w-full sm:w-auto sm:min-w-[10rem]">
-                    <Link href={`/brigade?invite=${profile.id}`}>
-                      Invite to Brigade
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="w-full sm:w-auto sm:min-w-[8rem]"
-                  >
-                    <Link href={`/messages?to=${profile.id}`}>Message</Link>
-                  </Button>
-                </div>
-              )}
+              ) : bookable ? (
+                <Button asChild className="mt-5 w-full sm:w-auto sm:min-w-[10rem]">
+                  <Link href={`/mentors/${profile.id}`}>Book a session</Link>
+                </Button>
+              ) : null}
             </div>
           </div>
         </section>

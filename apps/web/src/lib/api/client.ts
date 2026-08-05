@@ -1,5 +1,17 @@
-const API_BASE = '/api/connectpro';
-
+/**
+ * The browser's client for the app's own route handlers.
+ *
+ * This used to be 450 lines with two transports: `request`, which proxied to an
+ * API gateway in front of fifteen microservices, and `localRequest`, which
+ * called the app's own routes because the gateway was never deployed. The
+ * gateway and the services are gone, so only the transport that actually ran in
+ * production is left, and with it the four calls anything still makes.
+ *
+ * Everything else the app reads — mentors, bookings, the directory listing,
+ * profiles on server-rendered pages — goes through server actions and
+ * `lib/server/*-db.ts` directly against Postgres, which is why this file is
+ * small and getting smaller is the right direction for it.
+ */
 export class ApiClient {
   private accessToken: string | null = null;
 
@@ -15,42 +27,7 @@ export class ApiClient {
     return this.accessToken;
   }
 
-  private async request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
-    // Prefer cookie auth via /api/connectpro proxy — do not send Bearer from localStorage.
-
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers,
-      credentials: 'include',
-    });
-
-    if (res.status === 401 && retry) {
-      const refreshed = await fetch('/api/auth/refresh-token', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (refreshed.ok) {
-        return this.request<T>(path, options, false);
-      }
-    }
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: res.statusText }));
-      throw new Error(err.message ?? 'Request failed');
-    }
-    return res.json();
-  }
-
-  /**
-   * Calls the web app's own route handlers (which read Postgres directly) rather
-   * than proxying to the gateway. Used for features that must work on the hosted
-   * site, where the microservices are not deployed.
-   */
-  private async localRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const res = await fetch(path, {
       ...options,
       headers: {
@@ -59,394 +36,39 @@ export class ApiClient {
       },
       credentials: 'include',
     });
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: res.statusText }));
       throw new Error(err.message ?? 'Request failed');
     }
-    return res.json();
-  }
-
-  signup(data: { email: string; password: string; firstName: string; lastName: string }) {
-    return this.request<{ userId: string; accessToken: string; refreshToken: string }>(
-      '/api/v1/auth/signup',
-      { method: 'POST', body: JSON.stringify(data) },
-    );
-  }
-
-  login(data: { email: string; password: string }) {
-    return this.request<{ userId: string; accessToken: string; refreshToken: string }>(
-      '/api/v1/auth/login',
-      { method: 'POST', body: JSON.stringify(data) },
-    );
+    // 204 and an empty body are ordinary answers from the save/unsave routes.
+    const text = await res.text();
+    return (text ? JSON.parse(text) : null) as T;
   }
 
   getProfile(userId: string) {
-    return this.localRequest(`/api/users/${userId}`);
+    return this.request(`/api/users/${userId}`);
   }
 
   updateProfile(userId: string, data: Record<string, unknown>) {
-    return this.localRequest(`/api/users/${userId}`, {
+    return this.request(`/api/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  recordProfileView(profileId: string) {
-    return this.localRequest(`/api/users/${profileId}/views`, {
-      method: 'POST',
-      body: '{}',
-    });
-  }
-
-  getProfileViews(profileId: string) {
-    return this.request<ProfileViews>(`/api/v1/users/${profileId}/profile-views`);
-  }
-
-  getFeed(limit = 20) {
-    return this.request<{ data: Post[] }>(`/api/v1/feed?limit=${limit}`);
-  }
-
-  getPostsByHashtag(tag: string) {
-    return this.request<{ tag: string; data: Post[] }>(
-      `/api/v1/posts/hashtag/${encodeURIComponent(tag)}`,
-    );
-  }
-
-  createPost(content: string, mediaUrl?: string) {
-    return this.request('/api/v1/posts', {
-      method: 'POST',
-      body: JSON.stringify({ content, mediaUrl }),
-    });
-  }
-
-  likePost(postId: string) {
-    return this.request(`/api/v1/posts/${postId}/likes`, { method: 'POST' });
-  }
-
-  react(postId: string, reaction: ReactionType = 'like') {
-    return this.request<{ success: boolean; reaction: ReactionType }>(
-      `/api/v1/posts/${postId}/reactions`,
-      { method: 'POST', body: JSON.stringify({ reaction }) },
-    );
-  }
-
-  unreact(postId: string) {
-    return this.request(`/api/v1/posts/${postId}/reactions`, { method: 'DELETE' });
-  }
-
-  repost(postId: string, quote?: string) {
-    return this.request<Post>(`/api/v1/posts/${postId}/share`, {
-      method: 'POST',
-      body: JSON.stringify({ quote: quote ?? '' }),
-    });
-  }
-
-  getPost(postId: string) {
-    return this.request<Post & { comments?: Comment[] }>(`/api/v1/posts/${postId}`);
-  }
-
-  addComment(postId: string, content: string, parentId?: string) {
-    return this.request<Comment>(`/api/v1/posts/${postId}/comments`, {
-      method: 'POST',
-      body: JSON.stringify({ content, parentId }),
-    });
-  }
-
-  followCompany(companyId: string) {
-    return this.request(`/api/v1/companies/${companyId}/follow`, { method: 'POST', body: '{}' });
-  }
-
-  createJob(data: {
-    companyId: string;
-    title: string;
-    description?: string;
-    location?: string;
-    employmentType?: string;
-  }) {
-    return this.request('/api/v1/jobs', { method: 'POST', body: JSON.stringify(data) });
-  }
-
-  getApplicants(jobId: string) {
-    return this.request<{ data: JobApplication[] }>(`/api/v1/jobs/${jobId}/applicants`);
-  }
-
-  getConnections(status = 'accepted') {
-    return this.localRequest<{ data: Connection[] }>(
-      `/api/connections?status=${encodeURIComponent(status)}`,
-    );
-  }
-
-  sendConnectionRequest(receiverId: string) {
-    return this.localRequest('/api/connections', {
-      method: 'POST',
-      body: JSON.stringify({ receiverId }),
-    });
-  }
-
-  acceptConnection(connectionId: string) {
-    return this.localRequest(`/api/connections/${connectionId}/accept`, { method: 'POST' });
-  }
-
-  rejectConnection(connectionId: string) {
-    return this.localRequest(`/api/connections/${connectionId}/reject`, { method: 'POST' });
-  }
-
-  followUser(followeeId: string) {
-    return this.request('/api/v1/follows', {
-      method: 'POST',
-      body: JSON.stringify({ followeeId }),
-    });
-  }
-
-  getSavedMemberIds() {
-    return this.localRequest<string[]>('/api/directory/saves');
-  }
-
   saveMember(userId: string) {
-    return this.localRequest(`/api/directory/saves/${userId}`, {
+    return this.request(`/api/directory/saves/${userId}`, {
       method: 'POST',
       body: '{}',
     });
   }
 
   unsaveMember(userId: string) {
-    return this.localRequest(`/api/directory/saves/${userId}`, {
+    return this.request(`/api/directory/saves/${userId}`, {
       method: 'DELETE',
     });
   }
-
-  getJobs(q?: string) {
-    const params = q ? `?q=${encodeURIComponent(q)}` : '';
-    return this.request<{ data: Job[] }>(`/api/v1/jobs${params}`);
-  }
-
-  getJob(jobId: string) {
-    return this.request<Job>(`/api/v1/jobs/${jobId}`);
-  }
-
-  applyToJob(jobId: string) {
-    return this.request(`/api/v1/jobs/${jobId}/apply`, { method: 'POST', body: '{}' });
-  }
-
-  saveJob(jobId: string) {
-    return this.request(`/api/v1/jobs/${jobId}/save`, { method: 'POST', body: '{}' });
-  }
-
-  getCompanies() {
-    return this.request<{ data: Company[] }>('/api/v1/companies');
-  }
-
-  getCompany(companyId: string) {
-    return this.request<Company>(`/api/v1/companies/${companyId}`);
-  }
-
-  createCompany(data: {
-    name: string;
-    industry?: string;
-    website?: string;
-    size?: string;
-    logoUrl?: string;
-  }) {
-    return this.request<Company>('/api/v1/companies', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  search(q: string, type?: string) {
-    const params = new URLSearchParams({ q });
-    if (type) params.set('type', type);
-    return this.request<{ data: SearchResult[] }>(`/api/v1/search?${params}`);
-  }
-
-  autocomplete(q: string) {
-    return this.request<{ suggestions: string[] }>(
-      `/api/v1/search/autocomplete?q=${encodeURIComponent(q)}`,
-    );
-  }
-
-  // Direct-DB, like the directory and connections: notification-service is not
-  // deployed to the hosted site, so proxying these to the gateway made every
-  // notification vanish in production.
-  getNotifications() {
-    return this.localRequest<{ data: Notification[] }>('/api/notifications');
-  }
-
-  markNotificationRead(id: string) {
-    return this.localRequest(`/api/notifications/${id}/read`, { method: 'POST' });
-  }
-
-  markAllNotificationsRead() {
-    return this.localRequest<{ updated: number }>('/api/notifications/read-all', {
-      method: 'POST',
-    });
-  }
-
-  getRecommendedPeople() {
-    return this.request<{ data: Recommendation[] }>('/api/v1/recommendations/people');
-  }
-
-  getConversations() {
-    return this.request<{ data: Conversation[] }>('/api/v1/conversations');
-  }
-
-  getMessages(conversationId: string) {
-    return this.request<{ data: Message[] }>(
-      `/api/v1/conversations/${conversationId}/messages`,
-    );
-  }
-
-  sendMessage(conversationId: string, body: string) {
-    return this.request('/api/v1/messages', {
-      method: 'POST',
-      body: JSON.stringify({ conversationId, body }),
-    });
-  }
-
-  createConversation(participantId: string) {
-    return this.request<{ id: string }>('/api/v1/conversations', {
-      method: 'POST',
-      body: JSON.stringify({ participantIds: [participantId], type: 'direct' }),
-    });
-  }
 }
-
-export type ReactionType =
-  | 'like'
-  | 'celebrate'
-  | 'support'
-  | 'love'
-  | 'insightful'
-  | 'funny';
-
-/** Shared reaction vocabulary — emoji + label + accent, mirrors LinkedIn's set. */
-export const REACTIONS: {
-  type: ReactionType;
-  emoji: string;
-  label: string;
-  color: string;
-}[] = [
-  { type: 'like', emoji: '👍', label: 'Like', color: 'var(--brand-cobalt)' },
-  { type: 'celebrate', emoji: '🎉', label: 'Celebrate', color: 'var(--brand-forest)' },
-  { type: 'support', emoji: '🤝', label: 'Support', color: 'var(--brand-violet)' },
-  { type: 'love', emoji: '❤️', label: 'Love', color: 'var(--brand-rust)' },
-  { type: 'insightful', emoji: '💡', label: 'Insightful', color: 'var(--brand-gold)' },
-  { type: 'funny', emoji: '😄', label: 'Funny', color: 'var(--brand-sky)' },
-];
-
-export type Post = {
-  id: string;
-  authorId: string;
-  content: string;
-  mediaUrl?: string;
-  postType?: string;
-  likeCount: number;
-  reactionCount?: number;
-  reactions?: Partial<Record<ReactionType, number>>;
-  viewerReaction?: ReactionType | null;
-  repostedPostId?: string | null;
-  repostedPost?: RepostedPost | null;
-  createdAt: string;
-};
-
-export type RepostedPost = {
-  id: string;
-  authorId: string;
-  content: string;
-  mediaUrl?: string;
-  createdAt: string;
-};
-
-export type Connection = {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  status: string;
-};
-
-export type Job = {
-  id: string;
-  title: string;
-  companyName?: string;
-  location?: string;
-  description?: string;
-};
-
-export type Company = {
-  id: string;
-  name: string;
-  slug?: string | null;
-  description?: string;
-  industry?: string;
-  website?: string;
-  size?: string;
-  logoUrl?: string;
-  createdBy?: string | null;
-  ownerUserId?: string | null;
-  followerCount?: number;
-};
-
-export type SearchResult = {
-  id: string;
-  type: string;
-  name?: string;
-  title?: string;
-  headline?: string;
-};
-
-export type Notification = {
-  id: string;
-  type: string;
-  payload: Record<string, unknown>;
-  readAt?: string;
-  createdAt: string;
-};
-
-export type Recommendation = {
-  userId: string;
-  name: string;
-  headline?: string;
-  reason?: string;
-};
-
-export type Conversation = {
-  id: string;
-  participants: string[];
-  lastMessageAt: string;
-};
-
-export type Message = {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  body: string;
-  createdAt: string;
-};
-
-export type Comment = {
-  id: string;
-  authorId: string;
-  content: string;
-  parentId?: string | null;
-  createdAt: string;
-};
-
-export type ProfileViews = {
-  total: number;
-  uniqueViewers: number;
-  recent: {
-    viewerId: string;
-    name: string | null;
-    headline: string | null;
-    viewedAt: string;
-  }[];
-};
-
-export type JobApplication = {
-  id: string;
-  user_id: string;
-  status: string;
-  created_at: string;
-};
 
 export const api = new ApiClient();

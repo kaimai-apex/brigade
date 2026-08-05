@@ -1,17 +1,21 @@
-/** Primary app navigation — Feed → Brigade → Directory → Mentors → Messages → Profile */
+/**
+ * Primary app navigation.
+ *
+ * Four places, which is the whole product: find someone to learn from, look
+ * through the members, see your booked sessions, and be findable yourself.
+ * Feed, Brigade, Messages, Companies and Alerts went with the social network —
+ * a nav that still listed them would be six tabs describing a product that no
+ * longer exists.
+ */
 export const PRIMARY_NAV = [
-  { href: "/feed", label: "Feed" },
-  { href: "/brigade", label: "Brigade" },
-  { href: "/directory", label: "Directory" },
   { href: "/mentors", label: "Mentors" },
-  { href: "/messages", label: "Messages" },
+  { href: "/directory", label: "Directory" },
+  { href: "/sessions", label: "Sessions" },
   { href: "/profile/me", label: "Profile" },
 ] as const;
 
+/** Behind the account menu, not in the tab bar. */
 export const SECONDARY_NAV = [
-  { href: "/sessions", label: "Your sessions" },
   { href: "/mentorship", label: "Your mentoring" },
-  { href: "/companies", label: "Companies" },
-  { href: "/notifications", label: "Alerts" },
-  { href: "/settings/notifications", label: "Settings" },
+  { href: "/settings/profile", label: "Settings" },
 ] as const;

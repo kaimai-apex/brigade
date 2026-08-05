@@ -44,7 +44,7 @@ export function MfaForm() {
 
       sessionStorage.removeItem('connectpro_mfa_token');
       if (data.userId) setSession({ userId: data.userId });
-      router.push('/feed');
+      router.push('/mentors');
       router.refresh();
     } catch {
       setError('Could not verify MFA code');

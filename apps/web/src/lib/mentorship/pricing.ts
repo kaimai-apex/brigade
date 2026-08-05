@@ -57,6 +57,64 @@ export function formatMoney(cents: number, currency = "usd", locale = "en-US"): 
   return formatter.format(cents / 10 ** digits);
 }
 
+/**
+ * Cancellation policy.
+ *
+ * Cancel more than this far ahead and the money comes back in full; inside the
+ * window it does not, because the mentor has already turned down other work for
+ * that hour. A mentor cancelling always refunds in full regardless of when —
+ * the person who caused the loss is the one who absorbs it.
+ */
+export const FREE_CANCELLATION_HOURS = 24;
+
+export interface RefundDecision {
+  refundCents: number;
+  /** Shown to whoever is cancelling, before they confirm. */
+  reason: string;
+}
+
+/**
+ * How much comes back if this booking is cancelled now.
+ *
+ * Pure arithmetic over two timestamps so the number quoted in the confirmation
+ * dialog and the number actually refunded come from one place. Anything already
+ * refunded is subtracted, so calling this twice cannot pay out twice.
+ */
+export function refundForCancellation(input: {
+  priceCents: number;
+  refundedCents?: number;
+  startsAt: Date;
+  now: Date;
+  cancelledBy: "mentee" | "mentor";
+}): RefundDecision {
+  const outstanding = input.priceCents - (input.refundedCents ?? 0);
+  if (outstanding <= 0) {
+    return { refundCents: 0, reason: "This booking has already been refunded." };
+  }
+
+  if (input.cancelledBy === "mentor") {
+    return {
+      refundCents: outstanding,
+      reason: "The mentor cancelled, so the session is refunded in full.",
+    };
+  }
+
+  const hoursUntil = (input.startsAt.getTime() - input.now.getTime()) / 3_600_000;
+  if (hoursUntil >= FREE_CANCELLATION_HOURS) {
+    return {
+      refundCents: outstanding,
+      reason: `Cancelled more than ${FREE_CANCELLATION_HOURS} hours ahead, so it is refunded in full.`,
+    };
+  }
+
+  return {
+    refundCents: 0,
+    reason:
+      `Cancelled within ${FREE_CANCELLATION_HOURS} hours of the session, so it is not refunded — ` +
+      "the mentor has already held the time.",
+  };
+}
+
 /** Guardrails on what a mentor may charge, checked before anything is stored. */
 export const MIN_PRICE_CENTS = 0;
 export const MAX_PRICE_CENTS = 500_000;

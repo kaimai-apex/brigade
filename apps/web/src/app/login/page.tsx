@@ -19,7 +19,9 @@ export default function LoginPage() {
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Welcome back</CardTitle>
-            <CardDescription>Log in to your Brigade profile.</CardDescription>
+            <CardDescription>
+              Type your email and we will send you a code. There is no password.
+            </CardDescription>
           </CardHeader>
           <Suspense fallback={null}>
             <LoginErrorBanner />

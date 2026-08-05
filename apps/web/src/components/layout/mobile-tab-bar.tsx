@@ -2,33 +2,27 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Compass, MessageSquare, Newspaper, User, Users } from 'lucide-react';
+import { CalendarCheck, Compass, GraduationCap, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TABS = [
   {
-    href: '/feed',
-    label: 'Feed',
-    icon: Newspaper,
-    match: (p: string) => p === '/feed' || p.startsWith('/posts'),
-  },
-  {
-    href: '/brigade',
-    label: 'Brigade',
-    icon: Users,
-    match: (p: string) => p.startsWith('/brigade') || p.startsWith('/network'),
+    href: '/mentors',
+    label: 'Mentors',
+    icon: GraduationCap,
+    match: (p: string) => p.startsWith('/mentors'),
   },
   {
     href: '/directory',
     label: 'Directory',
     icon: Compass,
-    match: (p: string) => p.startsWith('/directory') || p.startsWith('/discover'),
+    match: (p: string) => p.startsWith('/directory'),
   },
   {
-    href: '/messages',
-    label: 'Messages',
-    icon: MessageSquare,
-    match: (p: string) => p.startsWith('/messages'),
+    href: '/sessions',
+    label: 'Sessions',
+    icon: CalendarCheck,
+    match: (p: string) => p.startsWith('/sessions'),
   },
   {
     href: '/profile/me',
@@ -40,7 +34,11 @@ const TABS = [
 
 /**
  * Mobile-web-app bottom navigation (authenticated pages, < md only).
- * Top nav keeps search/alerts/account; primary destinations live here.
+ * Top nav keeps search and account; primary destinations live here.
+ *
+ * Four tabs, down from five: Feed, Brigade and Messages went with the social
+ * network, and Sessions replaced them because a booked call is the thing a
+ * member actually comes back to check.
  */
 export function MobileTabBar() {
   const pathname = usePathname();
