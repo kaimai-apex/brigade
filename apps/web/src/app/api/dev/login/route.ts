@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
 import { login } from '@/lib/auth/auth-api';
+import { DEV_SESSION_SECONDS, devLongLivedAccessToken } from '@/lib/auth/connectpro-auth';
 import { setConnectProCookies } from '@/lib/auth/session-cookies';
 
 /**
  * DEV-ONLY shortcut: log in as a seeded demo member and jump straight into the app,
  * bypassing the waitlist/login screens. Never available in production.
+ *
+ * The session it hands out lasts a month rather than the usual fifteen minutes.
+ * That is the whole point of it — a fifteen-minute session means anyone looking
+ * at more than a couple of screens gets thrown back to /login halfway through,
+ * and the habit that builds is re-running this route rather than reading what
+ * is on the page. Production is untouched: this route 404s there, and
+ * devLongLivedAccessToken throws rather than shortens if it is ever reached.
  *
  * Credentials must come from DEMO_LOGIN_EMAIL / DEMO_LOGIN_PASSWORD — no hardcoded
  * password fallback. Visit /api/dev/login?next=/directory.
@@ -48,12 +56,21 @@ export async function GET(request: Request) {
     userId: string;
     accessToken: string;
     refreshToken?: string;
+    roles?: string[];
   };
+
+  // The token from `login()` is the standard 15-minute one. Re-sign it for the
+  // development lifetime rather than lengthening it at the source, so the only
+  // long session in existence is the one this route hands out.
   const response = NextResponse.redirect(new URL(next, request.url));
-  setConnectProCookies(response, {
-    userId: tokens.userId,
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-  });
+  setConnectProCookies(
+    response,
+    {
+      userId: tokens.userId,
+      accessToken: devLongLivedAccessToken(tokens.userId, email, tokens.roles ?? ['USER']),
+      refreshToken: tokens.refreshToken,
+    },
+    DEV_SESSION_SECONDS,
+  );
   return response;
 }

@@ -35,6 +35,31 @@ function jwtConfig() {
   };
 }
 
+/**
+ * How long a development session lasts.
+ *
+ * Real sessions are 15 minutes, which is right for production and miserable to
+ * work against: looking at four screens takes longer than that, and being
+ * bounced to /login mid-click is the tax every person who touches this app pays
+ * all day. Thirty days locally, unchanged everywhere else.
+ */
+export const DEV_SESSION_SECONDS = 60 * 60 * 24 * 30;
+
+/**
+ * An access token for local work only.
+ *
+ * Throws rather than shortens in production. A helper that quietly degrades is
+ * a helper someone eventually calls from the wrong place, and the failure mode
+ * would be month-long production sessions that nobody notices.
+ */
+export function devLongLivedAccessToken(userId: string, email: string, roles: string[]) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("devLongLivedAccessToken must never be reached in production");
+  }
+  const { secret } = jwtConfig();
+  return signAccessToken({ sub: userId, email, roles }, secret, `${DEV_SESSION_SECONDS}s`);
+}
+
 function databaseConfigured() {
   return Boolean(
     process.env.DATABASE_URL ||
