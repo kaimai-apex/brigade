@@ -122,7 +122,7 @@ export function LoginForm() {
 
         setSession({ userId: data.userId });
         const next = searchParams.get("next");
-        router.push(next && next.startsWith("/") ? next : "/feed");
+        router.push(next && next.startsWith("/") ? next : "/mentors");
         router.refresh();
       } catch (err) {
         setError(formatAuthError(err, "proxy"));

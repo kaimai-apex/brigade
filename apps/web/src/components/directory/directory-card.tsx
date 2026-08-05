@@ -12,7 +12,6 @@ import {
 import { resolveAvatarUrl } from '@/lib/avatars';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { InviteButton } from '@/components/discover/invite-button';
 import { SaveButton } from '@/components/directory/save-button';
 
 export function DirectoryCard({
@@ -109,11 +108,10 @@ export function DirectoryCard({
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between gap-2 border-t border-neutral-100 pt-2">
-          <span className="truncate text-[11px] text-ink/45">
+        <div className="mt-3 border-t border-neutral-100 pt-2">
+          <span className="truncate text-[11px] text-ink/65">
             {profile.created_at ? `Joined ${relativeTime(profile.created_at)}` : ''}
           </span>
-          <InviteButton userId={profile.id} name={name} />
         </div>
       </div>
     </div>
@@ -178,7 +176,6 @@ export function DirectoryRow({
 
       <div className="flex shrink-0 items-center gap-2">
         <SaveButton userId={profile.id} name={name} initialSaved={saved} />
-        <InviteButton userId={profile.id} name={name} />
       </div>
     </div>
   );

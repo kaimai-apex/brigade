@@ -168,17 +168,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Legacy paths, for sessions that still hold old links.
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/feed";
-    return NextResponse.redirect(url);
-  }
-  if (pathname === "/network" || pathname.startsWith("/network/")) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname.replace(/^\/network/, "/brigade") || "/brigade";
-    return NextResponse.redirect(url);
-  }
+  // The /dashboard → /feed and /network → /brigade redirects are gone with
+  // their destinations. An old link to a deleted surface should 404, not
+  // bounce someone to another page that no longer exists either.
 
   return NextResponse.next({ request });
 }

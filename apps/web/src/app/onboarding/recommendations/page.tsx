@@ -144,11 +144,11 @@ export default async function RecommendationsPage() {
         <Link href="/mentors" className="mk-btn mk-btn-dark">
           Browse all mentors
         </Link>
-        <Link href="/onboarding/experience" className="mk-btn">
+        <Link href="/settings/profile" className="mk-btn">
           Finish your profile
         </Link>
-        <Link href="/feed" className="mk-btn">
-          Explore Brigade
+        <Link href="/directory" className="mk-btn">
+          Browse members
         </Link>
       </div>
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/auth-provider';
 import { api } from '@/lib/api/client';
 import { AppNav } from '@/components/layout/app-nav';
@@ -54,40 +53,6 @@ function useCurrentUser(userId: string | undefined) {
   return user;
 }
 
-function useUnreadNotifications(enabled: boolean) {
-  const [unread, setUnread] = useState(0);
-
-  useEffect(() => {
-    if (!enabled) {
-      setUnread(0);
-      return;
-    }
-
-    api
-      .getNotifications()
-      .then((res) => setUnread(res.data.filter((n) => !n.readAt).length))
-      .catch(() => setUnread(0));
-
-    const es = new EventSource('/api/stream/notifications');
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.event === 'init') {
-          setUnread(data.unread ?? 0);
-        } else if (data.event === 'new') {
-          setUnread((u) => u + 1);
-          toast('New notification');
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    return () => es.close();
-  }, [enabled]);
-
-  return unread;
-}
-
 type PageHeaderProps = {
   showAuth?: boolean;
 };
@@ -96,7 +61,6 @@ type PageHeaderProps = {
 export function PageHeader({ showAuth = true }: PageHeaderProps) {
   const { session, loading } = useAuth();
   const user = useCurrentUser(session?.userId);
-  const unread = useUnreadNotifications(Boolean(session));
 
   // While cookies hydrate, show the public nav so the mentorship landing
   // SSR/first paint already has Log in / Waitlist. Authed users swap to AppNav.
@@ -106,7 +70,7 @@ export function PageHeader({ showAuth = true }: PageHeaderProps) {
 
   return (
     <>
-      <AppNav user={user ?? undefined} unreadNotifications={unread} />
+      <AppNav user={user ?? undefined} />
       <MobileTabBar />
     </>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MapPin, MessageSquare } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import type { Profile } from '@/lib/types/database';
 import { displayName, formatLocation, getInitials } from '@/lib/utils';
 import { resolveAvatarUrl } from '@/lib/avatars';
@@ -15,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { InviteButton } from '@/components/discover/invite-button';
 import { SaveButton } from '@/components/directory/save-button';
 
 const AVAILABILITY_FLAGS: { key: keyof typeof AVAILABILITY_LABELS; field: keyof Profile }[] = [
@@ -106,16 +105,11 @@ export function DirectoryQuickLook({
             </div>
           )}
 
+          {/* Connecting and messaging went with the social graph. What is left
+              is the thing this product is for: read the profile, and book them
+              if they mentor. */}
           <div className="mt-5 flex items-center gap-2">
-            <div className="flex-1">
-              <InviteButton userId={profile.id} name={name} />
-            </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/messages?to=${profile.id}`}>
-                <MessageSquare className="size-4" /> Message
-              </Link>
-            </Button>
-            <Button asChild size="sm">
+            <Button asChild size="sm" className="flex-1">
               <Link href={`/profile/${profile.id}`}>View profile</Link>
             </Button>
           </div>

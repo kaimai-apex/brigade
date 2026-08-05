@@ -34,11 +34,15 @@ export default async function DirectoryPage({
       <div className="mb-4">
         <h1 className="text-page-title">Member Directory</h1>
         <p className="text-body-md text-ink/60">
+          {/* "Connect with your Brigade" described a social graph that no
+              longer exists — there is nothing to connect to. What the directory
+              is for now is finding the person who has already done the thing
+              you are trying to do. */}
           {result.total > 0
-            ? `${result.total} hospitality ${result.total === 1 ? 'pro' : 'pros'}${
+            ? `${result.total} private ${result.total === 1 ? 'chef' : 'chefs'}${
                 cityCount > 1 ? ` across ${cityCount} cities` : ''
-              } — find and connect with your Brigade.`
-            : 'Find and connect with hospitality pros in your Brigade.'}
+              }. Find someone who has cooked the job you want.`
+            : 'Find a private chef who has cooked the job you want.'}
         </p>
       </div>
 

@@ -16,7 +16,7 @@ export function ComingSoon({
         <h1 className="text-page-title">{title}</h1>
         <p className="text-body-md text-ink/65">{description}</p>
         <Button asChild className="mt-2">
-          <Link href="/feed">Back to Feed</Link>
+          <Link href="/mentors">Back to Mentors</Link>
         </Button>
       </div>
     </ServerAppPage>
