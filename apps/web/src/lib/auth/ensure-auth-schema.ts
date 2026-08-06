@@ -10,6 +10,22 @@ export async function ensureAuthSchema() {
     const auth = getAuthSchema();
     const pool = getPool();
 
+    // Production often connects as a limited role that can DML but not
+    // CREATE SCHEMA / CREATE TABLE. If the passwordless shape is already
+    // present, skip every DDL statement — login only needs the tables.
+    const ready = await pool.query(
+      `SELECT 1
+         FROM information_schema.columns
+        WHERE table_schema = $1
+          AND table_name = 'login_codes'
+          AND column_name = 'code_hash'
+        LIMIT 1`,
+      [auth],
+    );
+    if (ready.rows.length > 0) {
+      return;
+    }
+
     await pool.query("CREATE EXTENSION IF NOT EXISTS citext");
     await pool.query(`CREATE SCHEMA IF NOT EXISTS ${auth}`);
 
