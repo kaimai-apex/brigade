@@ -62,8 +62,8 @@ export function PageHeader({ showAuth = true }: PageHeaderProps) {
   const { session, loading } = useAuth();
   const user = useCurrentUser(session?.userId);
 
-  // While cookies hydrate, show the public nav so the mentorship landing
-  // SSR/first paint already has Log in / Waitlist. Authed users swap to AppNav.
+  // While cookies hydrate, show the public nav so SSR/first paint already has
+  // Log in / Book a call. Authed users swap to AppNav.
   if (loading || !session) {
     return <PublicNav showAuth={showAuth} />;
   }

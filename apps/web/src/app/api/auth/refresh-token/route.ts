@@ -16,8 +16,10 @@ export async function POST(request: Request) {
   const refreshToken =
     body.refreshToken ?? cookieStore.get("connectpro_refresh_token")?.value;
 
+  // Logged-out hydrate always POSTs here with an empty body. Return 200 so
+  // browsers don't spam "Failed to load resource: 400" on every public page.
   if (!refreshToken) {
-    return NextResponse.json({ message: "Refresh token required" }, { status: 400 });
+    return NextResponse.json({ ok: false });
   }
 
   const { ok, status, data } = await refreshSession(refreshToken);

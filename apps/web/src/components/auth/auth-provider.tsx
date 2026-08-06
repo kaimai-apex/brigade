@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function hydrate() {
       try {
         // Access tokens expire in ~15m while the refresh cookie lasts a week.
-        // Middleware already accepts a well-formed refresh cookie, so without
-        // this step the shell shows PublicNav ("Join Waitlist") on authed pages.
+        // Middleware only accepts a valid access JWT, so hydrate must refresh
+        // before AppNav can replace PublicNav for returning visitors.
         let next = await readSession();
         if (!next) {
           const refreshed = await fetch('/api/auth/refresh-token', {
@@ -45,7 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             headers: { 'Content-Type': 'application/json' },
             body: '{}',
           });
-          if (refreshed.ok) next = await readSession();
+          const body = (await refreshed.json().catch(() => null)) as {
+            ok?: boolean;
+          } | null;
+          if (refreshed.ok && body?.ok === true) next = await readSession();
         }
         if (next) {
           saveSession(next);

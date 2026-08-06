@@ -37,12 +37,12 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
             </Link>
             <Link
               href="/login"
-              className="mk-btn mk-btn-outline hidden md:inline-flex"
+              className="mk-btn mk-btn-outline hidden sm:inline-flex"
             >
               Log in
             </Link>
-            <Link href="/login" className="mk-btn mk-btn-dark">
-              Get started
+            <Link href="/book" className="mk-btn mk-btn-dark">
+              Book a call
             </Link>
           </div>
         )}

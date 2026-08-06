@@ -76,10 +76,10 @@ export function CommandMenu() {
       open={open}
       onOpenChange={setOpen}
       title="Command menu"
-      description="Search members and jump around Brigade"
+      description="Search mentors and jump around Brigade"
     >
       <CommandInput
-        placeholder="Search members…"
+        placeholder="Search mentors…"
         value={query}
         onValueChange={setQuery}
       />
@@ -91,11 +91,11 @@ export function CommandMenu() {
               <CommandItem
                 value={`search ${trimmed}`}
                 onSelect={() =>
-                  go(`/directory?q=${encodeURIComponent(trimmed)}`)
+                  go(`/mentors?q=${encodeURIComponent(trimmed)}`)
                 }
               >
                 <Search />
-                Search for “{trimmed}”
+                Search mentors for “{trimmed}”
               </CommandItem>
             </CommandGroup>
             <CommandSeparator />
