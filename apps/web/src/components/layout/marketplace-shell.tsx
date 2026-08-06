@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { WelcomeBanner } from '@/components/auth/welcome-banner';
 import { PageHeader } from '@/components/layout/app-shell';
 
 type MarketplaceShellProps = {
@@ -10,6 +12,9 @@ export function MarketplaceShell({ children, showAuth = true }: MarketplaceShell
   return (
     <div className="adp-mk min-h-screen bg-white">
       <PageHeader showAuth={showAuth} />
+      <Suspense fallback={null}>
+        <WelcomeBanner />
+      </Suspense>
       {children}
     </div>
   );

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
+import { WelcomeBanner } from '@/components/auth/welcome-banner';
 import { api } from '@/lib/api/client';
 import { AppNav } from '@/components/layout/app-nav';
 import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
@@ -96,6 +97,9 @@ export function AppPage({
   return (
     <div className={cn('min-h-screen bg-white text-ink', className)}>
       <PageHeader showAuth={showAuth} />
+      <Suspense fallback={null}>
+        <WelcomeBanner />
+      </Suspense>
       <div
         className={cn(
           'mx-auto px-4 py-6',

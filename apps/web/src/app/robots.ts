@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/mentors", "/waitlist", "/login"],
+        allow: ["/", "/mentors", "/waitlist", "/login", "/signup"],
         disallow: [
           "/demo",
           "/api/",
@@ -19,7 +19,6 @@ export default function robots(): MetadataRoute.Robots {
           "/onboarding",
           "/sessions",
           "/mentorship",
-          "/signup",
         ],
       },
     ],

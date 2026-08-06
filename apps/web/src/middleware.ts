@@ -12,6 +12,7 @@ const PUBLIC_PAGES = new Set([
   "/",
   "/waitlist",
   "/login",
+  "/signup",
   "/demo",
   "/book",
   "/book/thanks",

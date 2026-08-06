@@ -10,13 +10,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/**
- * Logging in, in two screens: an address, then six digits mailed to it.
- *
- * Login only works for existing accounts. New emails are nudged to Sign up
- * rather than shown a fake "code sent" screen.
- */
-
 /** Seconds before "Send it again" becomes available. */
 const RESEND_COOLDOWN = 30;
 
@@ -29,30 +22,31 @@ function isAuthErrorDetail(data: unknown): data is AuthErrorDetail {
   );
 }
 
-export function LoginForm() {
+/**
+ * Sign up: name + email → create passwordless account → six-digit code → session.
+ */
+export function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setSession } = useAuth();
 
-  const [stage, setStage] = useState<"email" | "code">("email");
+  const [stage, setStage] = useState<"details" | "code">("details");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<AuthErrorDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  /** Only ever set in development with no mail provider — see send-login-code. */
   const [debugCode, setDebugCode] = useState<string | null>(null);
-  /** Whether the server has RESEND_API_KEY — not whether this address exists. */
   const [mailConfigured, setMailConfigured] = useState<boolean | null>(null);
 
   const codeInput = useRef<HTMLInputElement>(null);
-  // Guards the auto-submit, which fires from an effect and would otherwise run
-  // again on every keystroke after the sixth while the request is in flight.
   const submitting = useRef(false);
 
-  const signupHref = searchParams.get("next")
-    ? `/signup?next=${encodeURIComponent(searchParams.get("next")!)}`
-    : "/signup";
+  const loginHref = searchParams.get("next")
+    ? `/login?next=${encodeURIComponent(searchParams.get("next")!)}`
+    : "/login";
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -60,14 +54,14 @@ export function LoginForm() {
     return () => window.clearTimeout(timer);
   }, [cooldown]);
 
-  async function requestCode(address: string) {
+  async function createAccountAndSendCode() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/request-code", {
+      const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: address }),
+        body: JSON.stringify({ email, firstName, lastName }),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -75,7 +69,7 @@ export function LoginForm() {
         setError(
           isAuthErrorDetail(data)
             ? data
-            : formatAuthError(new Error(data.message ?? "Could not send a code"), "login"),
+            : formatAuthError(new Error(data.message ?? "Could not create account"), "signup"),
         );
         return;
       }
@@ -85,6 +79,39 @@ export function LoginForm() {
         typeof data.mailConfigured === "boolean" ? data.mailConfigured : null,
       );
       setStage("code");
+      setCooldown(RESEND_COOLDOWN);
+      setCode("");
+      window.setTimeout(() => codeInput.current?.focus(), 0);
+    } catch (err) {
+      setError(formatAuthError(err, "proxy"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendCode() {
+    setLoading(true);
+    setError(null);
+    try {
+      // Account already exists from the first step — resend via login path.
+      const res = await fetch("/api/auth/request-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(
+          isAuthErrorDetail(data)
+            ? data
+            : formatAuthError(new Error(data.message ?? "Could not send a code"), "signup"),
+        );
+        return;
+      }
+      setDebugCode(typeof data.debugCode === "string" ? data.debugCode : null);
+      setMailConfigured(
+        typeof data.mailConfigured === "boolean" ? data.mailConfigured : null,
+      );
       setCooldown(RESEND_COOLDOWN);
       setCode("");
       window.setTimeout(() => codeInput.current?.focus(), 0);
@@ -114,7 +141,7 @@ export function LoginForm() {
           setError(
             isAuthErrorDetail(data)
               ? data
-              : formatAuthError(new Error(data.message ?? "That code did not work"), "login"),
+              : formatAuthError(new Error(data.message ?? "That code did not work"), "signup"),
           );
           setCode("");
           codeInput.current?.focus();
@@ -123,7 +150,11 @@ export function LoginForm() {
 
         setSession({ userId: data.userId });
         const next = searchParams.get("next");
-        router.push(next && next.startsWith("/") ? next : "/mentors");
+        const dest =
+          next && next.startsWith("/")
+            ? `${next}${next.includes("?") ? "&" : "?"}welcome=1`
+            : "/onboarding?welcome=1";
+        router.push(dest);
         router.refresh();
       } catch (err) {
         setError(formatAuthError(err, "proxy"));
@@ -139,16 +170,42 @@ export function LoginForm() {
     if (stage === "code" && code.length === 6) void verifyCode(code);
   }, [code, stage, verifyCode]);
 
-  if (stage === "email") {
+  if (stage === "details") {
     return (
       <div className="space-y-6 px-6 pb-6">
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void requestCode(email);
+            void createAccountAndSendCode();
           }}
           className="space-y-4"
         >
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="firstName">First name</Label>
+              <Input
+                id="firstName"
+                name="firstName"
+                autoComplete="given-name"
+                autoFocus
+                required
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName">Last name</Label>
+              <Input
+                id="lastName"
+                name="lastName"
+                autoComplete="family-name"
+                required
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+              />
+            </div>
+          </div>
+
           <div>
             <Label htmlFor="email">Email</Label>
             <Input
@@ -157,17 +214,16 @@ export function LoginForm() {
               type="email"
               inputMode="email"
               autoComplete="email"
-              autoFocus
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
             <p className="mt-2 text-sm text-ink/65">
-              We&apos;ll email a six-digit code to your existing account. No password.
+              We&apos;ll create your account and email a six-digit code. No password.
             </p>
           </div>
 
-          {error?.code === "NOT_FOUND" ? (
+          {error?.code === "CONFLICT" ? (
             <div
               className="rounded-lg border border-[var(--brand-hairline)] bg-[var(--brand-paper-warm)] px-4 py-3 text-sm text-ink"
               role="alert"
@@ -175,39 +231,35 @@ export function LoginForm() {
               <p className="font-medium">{error.message}</p>
               <p className="mt-1 text-ink/70">
                 <Link
-                  href={signupHref}
+                  href={loginHref}
                   className="font-semibold text-forest underline-offset-2 hover:underline"
                 >
-                  Create an account
+                  Log in
                 </Link>{" "}
-                to get started.
+                with a code instead.
               </p>
             </div>
           ) : (
             error && <AuthErrorPanel info={error} />
           )}
 
-          <Button type="submit" className="w-full" disabled={loading || !email}>
-            {loading ? "Sending…" : "Email me a code"}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || !email || !firstName || !lastName}
+          >
+            {loading ? "Creating…" : "Create account"}
           </Button>
         </form>
 
         <p className="text-center text-sm text-ink/65">
-          New here?{" "}
+          Already have an account?{" "}
           <Link
-            href={signupHref}
+            href={loginHref}
             className="font-semibold text-forest underline-offset-2 hover:underline"
           >
-            Sign up
-          </Link>{" "}
-          — or{" "}
-          <Link
-            href="/mentors"
-            className="font-semibold text-forest underline-offset-2 hover:underline"
-          >
-            browse mentors
-          </Link>{" "}
-          first.
+            Log in
+          </Link>
         </p>
       </div>
     );
@@ -240,7 +292,7 @@ export function LoginForm() {
           <p className="mt-2 text-sm text-ink/65">
             {mailConfigured === false
               ? "Email delivery isn't configured on this server yet."
-              : `Sent to ${email}. It expires in ten minutes.`}
+              : `Account created — we sent a code to ${email}. It expires in ten minutes.`}
           </p>
         </div>
 
@@ -269,7 +321,7 @@ export function LoginForm() {
         {error && <AuthErrorPanel info={error} />}
 
         <Button type="submit" className="w-full" disabled={loading || code.length !== 6}>
-          {loading ? "Checking…" : "Log in"}
+          {loading ? "Checking…" : "Continue"}
         </Button>
       </form>
 
@@ -277,17 +329,17 @@ export function LoginForm() {
         <button
           type="button"
           onClick={() => {
-            setStage("email");
+            setStage("details");
             setError(null);
             setDebugCode(null);
           }}
           className="text-ink/65 underline underline-offset-4 hover:text-ink"
         >
-          Use a different email
+          Edit details
         </button>
         <button
           type="button"
-          onClick={() => void requestCode(email)}
+          onClick={() => void resendCode()}
           disabled={cooldown > 0 || loading}
           className="text-forest underline underline-offset-4 disabled:text-ink/40 disabled:no-underline"
         >

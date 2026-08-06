@@ -48,7 +48,13 @@ function inferPgCode(error: unknown, message: string) {
 
 export function formatAuthError(error: unknown, step = "unknown"): AuthErrorDetail {
   const appCode = appErrorCode(error);
-  if (appCode === "CONFLICT" || appCode === "UNAUTHORIZED" || appCode === "NOT_FOUND") {
+  if (
+    appCode === "CONFLICT" ||
+    appCode === "UNAUTHORIZED" ||
+    appCode === "NOT_FOUND" ||
+    appCode === "RATE_LIMITED" ||
+    appCode === "VALIDATION"
+  ) {
     const message = error instanceof Error ? error.message : appCode;
     return {
       step,

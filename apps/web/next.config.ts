@@ -24,17 +24,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async redirects() {
-    return [
-      // /connections → /network and /jobs → /opportunities are gone: both
-      // destinations were deleted with the social network, so the redirects
-      // pointed at 404s. An old link should say "not here" once, not twice.
-      // Edge redirect (not a page-level redirect) so Safari back from /waitlist
-      // doesn't bounce through /signup → /waitlist again.
-      { source: "/signup", destination: "/waitlist", permanent: false },
-      { source: "/signup/:path*", destination: "/waitlist", permanent: false },
-    ];
-  },
   // The webpack block that lived here existed entirely to make pino's
   // thread-stream resolve through pnpm's store layout. @connectpro/common no
   // longer bundles a logger — it is pg, jsonwebtoken and node crypto now — so

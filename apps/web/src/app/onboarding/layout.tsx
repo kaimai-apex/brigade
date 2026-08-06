@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { WelcomeBanner } from "@/components/auth/welcome-banner";
 import { SoundToggle } from "@/components/onboarding/sound-toggle";
 
 /**
@@ -27,6 +29,9 @@ export default function OnboardingLayout({
         </Link>
         <SoundToggle />
       </header>
+      <Suspense fallback={null}>
+        <WelcomeBanner />
+      </Suspense>
       <div className="mx-auto max-w-lg px-4 py-6">{children}</div>
     </div>
   );

@@ -41,8 +41,8 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
             >
               Log in
             </Link>
-            <Link href="/book" className="mk-btn mk-btn-dark">
-              Book a call
+            <Link href="/signup" className="mk-btn mk-btn-dark">
+              Sign up
             </Link>
           </div>
         )}

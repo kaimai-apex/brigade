@@ -69,10 +69,10 @@ export function MarketingHeader() {
             Log in
           </Link>
           <Link
-            href="/book"
+            href="/signup"
             className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink)] px-4 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:px-5"
           >
-            Book a call
+            Sign up
           </Link>
         </div>
       </div>

@@ -402,55 +402,16 @@ async function withinRateLimits(email: string, ip: string | null) {
 }
 
 /**
- * Send a login code, if that address has an account.
- *
- * Always resolves the same way whether or not the account exists. Telling an
- * anonymous caller "no account here" turns this endpoint into a membership
- * oracle for anyone with a list of email addresses, and the members are named
- * professionals. The caller returns one message either way.
+ * Mint a fresh login code for an address that already has an account, email it,
+ * and return delivery diagnostics. Caller is responsible for rate limits and
+ * confirming the account exists.
  */
-export async function connectProRequestLoginCode(dto: {
-  email: string;
-  ip?: string | null;
-}): Promise<{ delivered: boolean; mailConfigured: boolean; debugCode?: string }> {
-  if (!databaseConfigured()) {
-    throw new Error("DATABASE_URL is not configured");
-  }
-
-  await ensureAuthSchema();
-
-  const email = dto.email.trim().toLowerCase();
-  const ip = dto.ip?.trim() || null;
+async function issueAndSendLoginCode(
+  email: string,
+  ip: string | null,
+): Promise<{ mailConfigured: boolean; debugCode?: string }> {
   const pool = getPool();
-  // Safe to expose: whether Resend is wired up, not whether this address exists.
   const mailConfigured = isEmailConfigured();
-
-  if (!(await withinRateLimits(email, ip))) {
-    throw new AppError(
-      "RATE_LIMITED",
-      "Too many codes requested. Try again in a few minutes.",
-      429,
-    );
-  }
-
-  const user = await pool.query(
-    `SELECT id, status FROM ${auth}.users WHERE email = $1 AND deleted_at IS NULL`,
-    [email],
-  );
-
-  // No account, or a suspended one. Still record a rate-limit row so unknown
-  // addresses hit 429 the same way known ones do — otherwise "never rate
-  // limited" becomes a membership oracle.
-  if (user.rows.length === 0 || user.rows[0].status !== "active") {
-    const decoyExpires = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
-    await pool.query(
-      `INSERT INTO ${auth}.login_codes (email, code_hash, expires_at, request_ip, consumed_at)
-       VALUES ($1, $2, $3, $4, now())`,
-      [email, hashCode(email, `decoy:${randomBytes(16).toString("hex")}`), decoyExpires, ip],
-    );
-    return { delivered: false, mailConfigured };
-  }
-
   const code = generateLoginCode();
   const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
 
@@ -472,10 +433,133 @@ export async function connectProRequestLoginCode(dto: {
   await sendLoginCode({ to: email, code });
 
   return {
-    delivered: true,
     mailConfigured,
     ...(canRevealCode() ? { debugCode: code } : {}),
   };
+}
+
+/** Still count toward rate limits when we decline to send a code. */
+async function recordRateLimitDecoy(email: string, ip: string | null) {
+  const pool = getPool();
+  const decoyExpires = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
+  await pool.query(
+    `INSERT INTO ${auth}.login_codes (email, code_hash, expires_at, request_ip, consumed_at)
+     VALUES ($1, $2, $3, $4, now())`,
+    [email, hashCode(email, `decoy:${randomBytes(16).toString("hex")}`), decoyExpires, ip],
+  );
+}
+
+/**
+ * Send a login code for an existing account.
+ *
+ * Login and signup are distinct product actions: unknown emails get a clear
+ * "no account" response (and a nudge to Sign up) rather than a fake success.
+ * Rate-limit decoys still land so hammering unknown addresses hits 429 the
+ * same way known ones do.
+ */
+export async function connectProRequestLoginCode(dto: {
+  email: string;
+  ip?: string | null;
+}): Promise<{ delivered: boolean; mailConfigured: boolean; debugCode?: string }> {
+  if (!databaseConfigured()) {
+    throw new Error("DATABASE_URL is not configured");
+  }
+
+  await ensureAuthSchema();
+
+  const email = dto.email.trim().toLowerCase();
+  const ip = dto.ip?.trim() || null;
+  const pool = getPool();
+
+  if (!(await withinRateLimits(email, ip))) {
+    throw new AppError(
+      "RATE_LIMITED",
+      "Too many codes requested. Try again in a few minutes.",
+      429,
+    );
+  }
+
+  const user = await pool.query(
+    `SELECT id, status FROM ${auth}.users WHERE email = $1 AND deleted_at IS NULL`,
+    [email],
+  );
+
+  if (user.rows.length === 0) {
+    await recordRateLimitDecoy(email, ip);
+    throw new NotFoundError("No account with that email — Sign up instead.");
+  }
+
+  if (user.rows[0].status !== "active") {
+    await recordRateLimitDecoy(email, ip);
+    throw new UnauthorizedError("Account is suspended or banned");
+  }
+
+  const sent = await issueAndSendLoginCode(email, ip);
+  return { delivered: true, ...sent };
+}
+
+/**
+ * Create a passwordless account (profile + null password), then email a login
+ * code. Session is issued only after the code is verified — same as login.
+ */
+export async function connectProSignupPasswordless(dto: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  ip?: string | null;
+}): Promise<{ mailConfigured: boolean; debugCode?: string }> {
+  if (!databaseConfigured()) {
+    throw new Error("DATABASE_URL is not configured");
+  }
+
+  await ensureAuthSchema();
+
+  const email = dto.email.trim().toLowerCase();
+  const firstName = dto.firstName.trim();
+  const lastName = dto.lastName.trim();
+  const ip = dto.ip?.trim() || null;
+  const pool = getPool();
+
+  if (!firstName || !lastName) {
+    throw new AppError("VALIDATION", "First and last name are required.", 400);
+  }
+
+  if (!(await withinRateLimits(email, ip))) {
+    throw new AppError(
+      "RATE_LIMITED",
+      "Too many codes requested. Try again in a few minutes.",
+      429,
+    );
+  }
+
+  const existing = await pool.query(
+    `SELECT id FROM ${auth}.users WHERE email = $1 AND deleted_at IS NULL`,
+    [email],
+  );
+  if (existing.rows.length > 0) {
+    await recordRateLimitDecoy(email, ip);
+    throw new ConflictError("Account already exists — Log in.");
+  }
+
+  const result = await pool.query(
+    `INSERT INTO ${auth}.users (email, password_hash)
+     VALUES ($1, NULL) RETURNING id, email`,
+    [email],
+  );
+  const user = result.rows[0];
+
+  await pool.query(`INSERT INTO ${auth}.user_roles (user_id, role) VALUES ($1, $2)`, [
+    user.id,
+    "USER",
+  ]);
+
+  await pool.query(
+    `INSERT INTO users.profiles (user_id, first_name, last_name, completeness, onboarding_step)
+     VALUES ($1, $2, $3, 10, 0) ON CONFLICT (user_id) DO NOTHING`,
+    [user.id, firstName, lastName],
+  );
+
+  return issueAndSendLoginCode(email, ip);
 }
 
 /**
