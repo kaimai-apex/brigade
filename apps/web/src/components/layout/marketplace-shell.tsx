@@ -1,4 +1,4 @@
-import { PublicNav } from '@/components/layout/public-nav';
+import { PageHeader } from '@/components/layout/app-shell';
 
 type MarketplaceShellProps = {
   children: React.ReactNode;
@@ -9,7 +9,7 @@ type MarketplaceShellProps = {
 export function MarketplaceShell({ children, showAuth = true }: MarketplaceShellProps) {
   return (
     <div className="adp-mk min-h-screen bg-white">
-      <PublicNav showAuth={showAuth} />
+      <PageHeader showAuth={showAuth} />
       {children}
     </div>
   );

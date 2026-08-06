@@ -1440,7 +1440,7 @@ export async function dbMentorFacets(): Promise<MentorFacets> {
  * "Popular in …" rails.
  *
  * `facets` is passed in rather than fetched, because every caller has already
- * computed them for the filter chips — recomputing meant three more GROUP BY
+ * computed them for browse/rails — recomputing meant three more GROUP BY
  * queries over the whole join on each page load, for an identical answer.
  *
  * The rails themselves run concurrently. They used to be a sequential `await`

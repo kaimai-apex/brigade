@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/components/auth/auth-provider';
+import { AppNav } from '@/components/layout/app-nav';
+import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
+import { useAppUser } from '@/components/layout/app-shell';
 import { cn } from '@/lib/utils';
 
 const SCROLL_THRESHOLD = 20;
@@ -9,8 +13,11 @@ const SCROLL_THRESHOLD = 20;
 /**
  * FilmUGC-style floating liquid-glass nav — fixed inset bar that stays
  * visible for the whole scroll, gaining a stronger glass fill after 20px.
+ * Logged-in visitors get the same AppNav chrome as the rest of the product.
  */
 export function MarketingHeader() {
+  const { session, loading } = useAuth();
+  const user = useAppUser(session?.userId);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -19,6 +26,15 @@ export function MarketingHeader() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  if (!loading && session) {
+    return (
+      <>
+        <AppNav user={user ?? undefined} />
+        <MobileTabBar />
+      </>
+    );
+  }
 
   return (
     <header

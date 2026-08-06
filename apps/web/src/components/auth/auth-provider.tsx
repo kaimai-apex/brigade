@@ -52,8 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSessionState(next);
           dispatch(setAuth({ userId: next.userId, accessToken: '' }));
         } else {
-          clearSession();
-          setSessionState(null);
+          // Don't clobber a session set while hydrate was in flight (verify-code).
+          setSessionState((prev) => {
+            if (prev) return prev;
+            clearSession();
+            return null;
+          });
         }
       } catch {
         /* ignore */

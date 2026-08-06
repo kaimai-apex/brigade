@@ -9,7 +9,6 @@ import {
   type MentorSort,
 } from "@/lib/server/mentorship-db";
 import { MentorSearch } from "@/components/mentorship/mentor-search";
-import { CategoryRail } from "@/components/mentorship/category-rail";
 import { MentorRail } from "@/components/mentorship/mentor-rail";
 import { ExploreCard } from "@/components/mentorship/mentor-card";
 
@@ -59,8 +58,6 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
     console.error("[mentors] query failed; rendering empty marketplace", err);
   }
 
-  const active = { q, role, city, expertise, sort };
-
   // Where "become a mentor" leads depends on how far along the reader is.
   // Sending someone who already has a mentor page back through setup, or a
   // logged-out visitor to a page that will bounce them, both waste the click.
@@ -104,7 +101,6 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
             initialQuery={q ?? ""}
             filters={{ role, city, expertise, sort }}
           />
-          <CategoryRail facets={facets} active={active} />
         </div>
 
         {!filtering && rails.length > 0 && (
