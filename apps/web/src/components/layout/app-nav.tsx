@@ -55,7 +55,7 @@ type AppNavProps = {
   user?: { firstName?: string; lastName?: string; avatarUrl?: string };
 };
 
-function AccountMenuItems({
+export function AccountMenuItems({
   name,
   onLogout,
 }: {
