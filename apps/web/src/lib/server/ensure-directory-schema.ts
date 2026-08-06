@@ -19,6 +19,20 @@ export function ensureDirectorySchema() {
   ready = (async () => {
     const pool = getPool();
 
+    // Limited production roles cannot ALTER TABLE. If directory columns already
+    // exist, skip additive DDL entirely.
+    const present = await pool.query(
+      `SELECT 1
+         FROM information_schema.columns
+        WHERE table_schema = 'users'
+          AND table_name = 'profiles'
+          AND column_name = 'visible_in_directory'
+        LIMIT 1`,
+    );
+    if (present.rows.length > 0) {
+      return;
+    }
+
     await pool.query(`
       ALTER TABLE users.profiles
         ADD COLUMN IF NOT EXISTS visible_in_directory BOOLEAN NOT NULL DEFAULT true

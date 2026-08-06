@@ -8,6 +8,18 @@ export async function ensureWaitlistSchema() {
 
   ready = (async () => {
     const pool = getPool();
+
+    const present = await pool.query(
+      `SELECT 1
+         FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'waitlist_signups'
+        LIMIT 1`,
+    );
+    if (present.rows.length > 0) {
+      return;
+    }
+
     await pool.query("CREATE EXTENSION IF NOT EXISTS citext");
     await pool.query(`
       CREATE TABLE IF NOT EXISTS public.waitlist_signups (

@@ -21,6 +21,19 @@ export function ensureMentorshipSchema() {
   ready = (async () => {
     const pool = getPool();
 
+    // Production often uses a limited role that can DML but not CREATE SCHEMA.
+    // If the marketplace tables are already present, skip every DDL statement.
+    const present = await pool.query(
+      `SELECT 1
+         FROM information_schema.tables
+        WHERE table_schema = 'mentorship'
+          AND table_name = 'mentors'
+        LIMIT 1`,
+    );
+    if (present.rows.length > 0) {
+      return;
+    }
+
     await pool.query("CREATE SCHEMA IF NOT EXISTS mentorship");
     // Needed by the bookings exclusion constraint, which mixes an equality
     // column with a range column in one GiST index.
