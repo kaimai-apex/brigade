@@ -26,6 +26,7 @@ export async function getConnectProSession(): Promise<ConnectProSession | null> 
 
   try {
     const payload = verifyAccessToken(accessToken, secret);
+    if (payload.purpose === 'mfa') return null;
     const cookieUserId = cookieStore.get('connectpro_user_id')?.value;
     if (cookieUserId && cookieUserId !== payload.sub) {
       return null;

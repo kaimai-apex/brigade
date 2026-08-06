@@ -40,9 +40,6 @@ const PUBLIC_APIS = new Set([
   "/api/auth/verify-code",
 ]);
 
-/** Refresh tokens are 48 random bytes, hex-encoded (see connectpro-auth). */
-const REFRESH_HEX = /^[0-9a-f]{96}$/i;
-
 function base64UrlToBytes(input: string): Uint8Array {
   const pad = "=".repeat((4 - (input.length % 4)) % 4);
   const b64 = (input + pad).replace(/-/g, "+").replace(/_/g, "/");
@@ -102,12 +99,11 @@ async function accessTokenIsValid(token: string, secret: string): Promise<boolea
 async function hasVerifiedSession(request: NextRequest): Promise<boolean> {
   const secret = process.env.JWT_SECRET?.trim();
   const access = request.cookies.get("connectpro_access_token")?.value;
-  const refresh = request.cookies.get("connectpro_refresh_token")?.value;
 
+  // Access JWT only. A refresh cookie is just random hex — treating "looks like
+  // a refresh token" as authenticated let anyone forge a session past this gate.
+  // Clients refresh via the public /api/auth/refresh-token route, then retry.
   if (secret && access && (await accessTokenIsValid(access, secret))) {
-    return true;
-  }
-  if (refresh && REFRESH_HEX.test(refresh)) {
     return true;
   }
   return false;

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { dbGetMentor, dbListSessionTypes, dbGetSlots } from "@/lib/server/mentorship-db";
+import {
+  dbGetMentor,
+  dbListSessionTypes,
+  dbGetSlots,
+  toPublicMentor,
+} from "@/lib/server/mentorship-db";
 
 /**
  * One mentor's public offering: GET /api/mentorship/mentors/:id[?sessionTypeId=]
@@ -16,7 +21,8 @@ export async function GET(
 
   try {
     const mentor = await dbGetMentor(id);
-    if (!mentor || mentor.status === "draft") {
+    // Only live mentors are public. Draft and paused stay out of the open API.
+    if (!mentor || mentor.status !== "active") {
       return NextResponse.json({ message: "Mentor not found" }, { status: 404 });
     }
 
@@ -40,7 +46,7 @@ export async function GET(
     const visible = slots.slice(0, MAX_SLOTS);
 
     return NextResponse.json({
-      mentor,
+      mentor: toPublicMentor(mentor),
       sessionTypes,
       selectedSessionTypeId: chosen?.id ?? null,
       slots: visible.map((s) => ({

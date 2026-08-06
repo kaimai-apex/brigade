@@ -21,7 +21,13 @@ export function signAccessToken(
 }
 
 export function verifyAccessToken(token: string, secret: string): JwtPayload {
-  return jwt.verify(token, secret, VERIFY_OPTS) as JwtPayload;
+  const payload = jwt.verify(token, secret, VERIFY_OPTS) as JwtPayload;
+  // MFA challenge tokens share the same signing key but must never be treated
+  // as a logged-in session — they only prove "password ok, enter TOTP next".
+  if (payload.purpose === "mfa") {
+    throw new Error("MFA challenge is not an access token");
+  }
+  return payload;
 }
 
 /** Short-lived challenge after password OK when MFA is enabled. */

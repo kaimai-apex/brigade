@@ -438,8 +438,16 @@ export async function connectProRequestLoginCode(dto: {
     [email],
   );
 
-  // No account, or a suspended one. Nothing is sent and nothing is said.
+  // No account, or a suspended one. Still record a rate-limit row so unknown
+  // addresses hit 429 the same way known ones do — otherwise "never rate
+  // limited" becomes a membership oracle.
   if (user.rows.length === 0 || user.rows[0].status !== "active") {
+    const decoyExpires = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
+    await pool.query(
+      `INSERT INTO ${auth}.login_codes (email, code_hash, expires_at, request_ip, consumed_at)
+       VALUES ($1, $2, $3, $4, now())`,
+      [email, hashCode(email, `decoy:${randomBytes(16).toString("hex")}`), decoyExpires, ip],
+    );
     return { delivered: false, mailConfigured };
   }
 

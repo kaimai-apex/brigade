@@ -87,6 +87,39 @@ function mapMentor(row: Record<string, unknown>): Mentor {
   };
 }
 
+/**
+ * What strangers may see on a mentor page.
+ *
+ * Meeting rooms and Stripe account ids stay off the wire until a booking is
+ * confirmed — they are for the people in the session, not the open directory.
+ */
+export type PublicMentor = Omit<
+  Mentor,
+  | "defaultMeetingUrl"
+  | "payoutAccountId"
+  | "payoutsOnboardedAt"
+  | "payoutsEnabled"
+  | "onboardingStep"
+>;
+
+export function toPublicMentor(mentor: Mentor): PublicMentor {
+  return {
+    userId: mentor.userId,
+    headline: mentor.headline,
+    bio: mentor.bio,
+    timezone: mentor.timezone,
+    currency: mentor.currency,
+    status: mentor.status,
+    minNoticeHours: mentor.minNoticeHours,
+    bookingHorizonDays: mentor.bookingHorizonDays,
+    expertise: mentor.expertise,
+    menteeTypes: mentor.menteeTypes,
+    helpOffered: mentor.helpOffered,
+    industries: mentor.industries,
+    languages: mentor.languages,
+  };
+}
+
 function mapSessionType(row: Record<string, unknown>): SessionType {
   return {
     id: row.id as string,

@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { logout } from "@/lib/auth/auth-api";
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) as {
+    refreshToken?: unknown;
+  };
+  const jar = await cookies();
+  const fromBody =
+    typeof body.refreshToken === "string" ? body.refreshToken.trim() : "";
+  const fromCookie = jar.get("connectpro_refresh_token")?.value?.trim() ?? "";
+  const refreshToken = fromBody || fromCookie;
 
-  if (body.refreshToken) {
-    await logout(body.refreshToken);
+  if (refreshToken) {
+    await logout(refreshToken);
   }
 
   const response = NextResponse.json({ success: true });
