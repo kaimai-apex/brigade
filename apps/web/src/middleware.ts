@@ -42,6 +42,8 @@ const PUBLIC_APIS = new Set([
   // counter would reset on every cold start.
   "/api/auth/request-code",
   "/api/auth/verify-code",
+  // DB connectivity probe (no secrets; used to diagnose Vercel ↔ Supabase).
+  "/api/auth/status",
   // Platform Book-a-call Checkout (no login required).
   "/api/book-call",
 ]);
