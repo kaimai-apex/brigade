@@ -13,6 +13,8 @@ import {
   assertSellablePrice,
   refundForCancellation,
   PLATFORM_FEE_BPS,
+  getPlatformFeeBps,
+  DEFAULT_PLATFORM_FEE_BPS,
 } from "../src/lib/mentorship/pricing.ts";
 import {
   verifyWebhookSignature,
@@ -56,6 +58,10 @@ group("Platform fee");
   check("takes 20% of a $150 session", split.platformFeeCents === 3000, String(split.platformFeeCents));
   check("mentor keeps the rest", split.mentorPayoutCents === 12000, String(split.mentorPayoutCents));
   check("the rate is recorded on the split", split.platformFeeBps === PLATFORM_FEE_BPS);
+  check(
+    "env default matches the documented 20%",
+    getPlatformFeeBps() === DEFAULT_PLATFORM_FEE_BPS,
+  );
 }
 
 {

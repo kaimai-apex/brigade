@@ -1,6 +1,6 @@
 import { getAuthSchema, getPool } from "@connectpro/common";
 import { ensureMentorshipSchema } from "@/lib/server/ensure-mentorship-schema";
-import { splitPrice, assertSellablePrice, PLATFORM_FEE_BPS } from "@/lib/mentorship/pricing";
+import { splitPrice, assertSellablePrice } from "@/lib/mentorship/pricing";
 import { generateConfirmationCode } from "@/lib/mentorship/webhook-signature";
 import { HOLD_WINDOW_MINUTES } from "@/lib/mentorship/holds";
 import {
@@ -256,6 +256,52 @@ export async function dbSetPayoutsEnabled(userId: string, enabled: boolean): Pro
   );
   if (res.rows.length === 0) throw new Error("You have not set up mentoring yet");
   return mapMentor(res.rows[0]);
+}
+
+/** Resolve a mentor from their Stripe Connect account id (webhook path). */
+export async function dbFindMentorByPayoutAccountId(
+  accountId: string,
+): Promise<Mentor | null> {
+  if (!accountId) return null;
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT * FROM mentorship.mentors WHERE payout_account_id = $1`,
+    [accountId],
+  );
+  return res.rows[0] ? mapMentor(res.rows[0]) : null;
+}
+
+/** Look up a session type by id (for checkout aliases that omit mentorUserId). */
+export async function dbGetSessionTypeById(
+  sessionTypeId: string,
+): Promise<SessionType | null> {
+  if (
+    typeof sessionTypeId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      sessionTypeId,
+    )
+  ) {
+    return null;
+  }
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT * FROM mentorship.session_types WHERE id = $1`,
+    [sessionTypeId],
+  );
+  return res.rows[0] ? mapSessionType(res.rows[0]) : null;
+}
+
+/** Pending (or any) booking tied to a Checkout Session id. */
+export async function dbGetBookingByCheckoutSession(
+  checkoutSessionId: string,
+): Promise<Booking | null> {
+  if (!checkoutSessionId) return null;
+  await ensureMentorshipSchema();
+  const res = await pool().query(
+    `SELECT * FROM mentorship.bookings WHERE checkout_session_id = $1`,
+    [checkoutSessionId],
+  );
+  return res.rows[0] ? mapBooking(res.rows[0]) : null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -731,7 +777,7 @@ export async function dbCreateBooking(
   });
   if (!offered) throw new SlotUnavailableError();
 
-  const split = splitPrice(sessionType.priceCents, PLATFORM_FEE_BPS);
+  const split = splitPrice(sessionType.priceCents);
   const endsAt = new Date(input.startsAt.getTime() + sessionType.durationMinutes * 60_000);
 
   try {

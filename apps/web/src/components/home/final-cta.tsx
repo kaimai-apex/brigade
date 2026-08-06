@@ -9,20 +9,20 @@ export function FinalCta() {
           Ready when you are
         </h2>
         <p className="mx-auto mt-5 max-w-[40ch] text-[16px] text-[var(--brand-white)]/75">
-          Pick a skill. Find a private chef who teaches it. Book the session.
+          Book a 30-minute call for CA$20 — or browse mentors when you&apos;re ready.
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/mentors"
+            href="/book"
             className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--mk-surface)] px-6 text-sm font-semibold text-[var(--mk-ink)] hover:bg-[var(--mk-surface)]/90"
           >
-            Find a mentor
+            Book a call
           </Link>
           <Link
-            href="/login?next=/mentorship/setup"
+            href="/mentors"
             className="inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm font-semibold text-[var(--brand-white)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)] hover:bg-[var(--mk-surface)]/10"
           >
-            Become a mentor
+            Find a mentor
           </Link>
         </div>
       </div>

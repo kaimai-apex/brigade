@@ -1,15 +1,44 @@
 /**
- * The money. Pure functions, no I/O, so the arithmetic can be tested directly
- * and reused by the server and the booking UI without drifting apart.
+ * The money. Pure functions, no I/O (except reading the fee env), so the
+ * arithmetic can be tested directly and reused by the server and the booking
+ * UI without drifting apart.
  *
  * Everything is integer minor units ("cents"). No floats anywhere near a price:
  * 0.1 + 0.2 !== 0.3, and a marketplace ledger is the worst place to learn that.
  */
 
-/** Brigade's cut, in basis points. 2000 bps = 20%. */
-export const PLATFORM_FEE_BPS = 2000;
+/** Default Brigade cut when STRIPE_PLATFORM_FEE_BPS is unset. 2000 bps = 20%. */
+export const DEFAULT_PLATFORM_FEE_BPS = 2000;
+
+/**
+ * Documented default / test constant. Prefer {@link getPlatformFeeBps} at
+ * charge time so ops can override via env without a code change.
+ */
+export const PLATFORM_FEE_BPS = DEFAULT_PLATFORM_FEE_BPS;
+
+/** Ops may set up to 50% without a deploy; higher values are ignored. */
+const MAX_CONFIGURED_FEE_BPS = 5000;
 
 const BPS_DIVISOR = 10_000;
+
+/**
+ * Platform fee in basis points for new bookings.
+ *
+ * Reads `STRIPE_PLATFORM_FEE_BPS` when set and valid; otherwise 20%. Invalid
+ * values fall back to the default rather than taking 0% by accident.
+ */
+export function getPlatformFeeBps(): number {
+  const raw = process.env.STRIPE_PLATFORM_FEE_BPS?.trim();
+  if (!raw) return DEFAULT_PLATFORM_FEE_BPS;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0 || n > MAX_CONFIGURED_FEE_BPS) {
+    console.warn(
+      `[pricing] ignoring invalid STRIPE_PLATFORM_FEE_BPS=${JSON.stringify(raw)}; using ${DEFAULT_PLATFORM_FEE_BPS}`,
+    );
+    return DEFAULT_PLATFORM_FEE_BPS;
+  }
+  return n;
+}
 
 export interface Split {
   priceCents: number;
@@ -26,7 +55,7 @@ export interface Split {
  * database enforces the same identity as a CHECK constraint, so a rounding bug
  * here becomes a failed insert rather than a silently wrong payout.
  */
-export function splitPrice(priceCents: number, feeBps = PLATFORM_FEE_BPS): Split {
+export function splitPrice(priceCents: number, feeBps = getPlatformFeeBps()): Split {
   if (!Number.isInteger(priceCents) || priceCents < 0) {
     throw new Error("priceCents must be a non-negative integer");
   }

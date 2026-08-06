@@ -1,4 +1,4 @@
-import { splitPrice, PLATFORM_FEE_BPS } from "@/lib/mentorship/pricing";
+import { splitPrice } from "@/lib/mentorship/pricing";
 
 /**
  * Payment seam for the mentorship marketplace.
@@ -150,6 +150,27 @@ function formEncode(data: Record<string, string | number | boolean | undefined>)
   return params.toString();
 }
 
+async function stripeFormPost<T>(
+  secretKey: string,
+  path: string,
+  body: Record<string, string | number | boolean | undefined>,
+): Promise<T> {
+  const res = await fetch(`${STRIPE_API}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: formEncode(body),
+  });
+  const json = (await res.json()) as { error?: { message?: string } };
+  if (!res.ok) {
+    // Stripe's message is safe to surface; it is written for the integrator.
+    throw new Error(json.error?.message ?? `Stripe request failed (${res.status})`);
+  }
+  return json as T;
+}
+
 class StripeConnectProvider implements PaymentProvider {
   readonly configured = true;
   constructor(private readonly secretKey: string) {}
@@ -158,20 +179,7 @@ class StripeConnectProvider implements PaymentProvider {
     path: string,
     body: Record<string, string | number | boolean | undefined>,
   ): Promise<T> {
-    const res = await fetch(`${STRIPE_API}${path}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.secretKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: formEncode(body),
-    });
-    const json = (await res.json()) as { error?: { message?: string } };
-    if (!res.ok) {
-      // Stripe's message is safe to surface; it is written for the integrator.
-      throw new Error(json.error?.message ?? `Stripe request failed (${res.status})`);
-    }
-    return json as T;
+    return stripeFormPost<T>(this.secretKey, path, body);
   }
 
   private async get<T>(path: string): Promise<T> {
@@ -242,7 +250,7 @@ class StripeConnectProvider implements PaymentProvider {
     // The fee is recomputed here rather than passed in, so the amount Stripe
     // keeps for Brigade always comes from the same function the booking row
     // was written with.
-    const split = splitPrice(input.priceCents, PLATFORM_FEE_BPS);
+    const split = splitPrice(input.priceCents);
 
     const session = await this.call<{ id: string; url: string }>("/checkout/sessions", {
       mode: "payment",
@@ -332,4 +340,38 @@ export function getWebhookSecret(): string | null {
  */
 export function paymentsFullyConfigured(): boolean {
   return paymentsConfigured() && getWebhookSecret() !== null;
+}
+
+/**
+ * Direct Checkout to Brigade's own Stripe account — no Connect destination.
+ *
+ * Used for simple products (e.g. Book a call) while the mentorship marketplace
+ * still uses destination charges. Money lands on the platform balance only.
+ */
+export async function createPlatformCheckoutSession(input: {
+  currency: string;
+  priceCents: number;
+  description: string;
+  successUrl: string;
+  cancelUrl: string;
+  /** Distinguishes this Checkout from mentorship bookings in the webhook. */
+  kind: string;
+}): Promise<CheckoutSession> {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key) throw new PaymentsNotConfiguredError();
+
+  const session = await stripeFormPost<{ id: string; url: string }>(key, "/checkout/sessions", {
+    mode: "payment",
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+    "line_items[0][quantity]": 1,
+    "line_items[0][price_data][currency]": input.currency,
+    "line_items[0][price_data][unit_amount]": input.priceCents,
+    "line_items[0][price_data][product_data][name]": input.description,
+    "metadata[brigade_kind]": input.kind,
+    // Let Stripe collect the buyer's email on Checkout.
+    customer_creation: "if_required",
+  });
+
+  return { url: session.url, sessionId: session.id };
 }

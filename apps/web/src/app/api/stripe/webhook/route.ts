@@ -4,10 +4,13 @@ import {
   dbFinishWebhookEvent,
   dbReleaseWebhookEvent,
   dbFindPaidAfterRelease,
+  dbFindMentorByPayoutAccountId,
   dbGetBooking,
+  dbGetBookingByCheckoutSession,
   dbGetBookingByPaymentIntent,
   dbMarkBookingPaid,
   dbRecordRefund,
+  dbSetPayoutsEnabled,
 } from "@/lib/server/mentorship-db";
 import { dbNotify } from "@/lib/server/notify-db";
 import { getPaymentProvider, getWebhookSecret } from "@/lib/server/payments";
@@ -42,7 +45,11 @@ type StripeEvent = {
   data: {
     object: {
       id?: string;
+      object?: string;
       payment_intent?: string | null;
+      payment_status?: string | null;
+      amount_total?: number | null;
+      charges_enabled?: boolean;
       metadata?: Record<string, string> | null;
       // Present on charge.refunded.
       refunds?: { data?: Array<{ id: string; amount: number }> };
@@ -122,6 +129,10 @@ async function handleEvent(event: StripeEvent): Promise<void> {
       await onChargeRefunded(event);
       return;
 
+    case "account.updated":
+      await onAccountUpdated(event);
+      return;
+
     default:
       // Acknowledged without acting. Stripe sends a lot that Brigade has no
       // opinion about, and 400-ing them would look like an outage on their
@@ -134,7 +145,35 @@ async function onCheckoutCompleted(event: StripeEvent): Promise<void> {
   const checkoutSessionId = event.data.object.id;
   if (!checkoutSessionId) throw new Error("checkout.session.completed with no session id");
 
+  // Platform "Book a call" Checkout — no mentorship booking row. Ack and stop.
+  if (event.data.object.metadata?.brigade_kind === "book_call") {
+    if (event.data.object.payment_status && event.data.object.payment_status !== "paid") {
+      throw new Error(
+        `book_call session ${checkoutSessionId} payment_status=${event.data.object.payment_status}`,
+      );
+    }
+    return;
+  }
+
   const paymentIntentId = event.data.object.payment_intent ?? null;
+  const paymentStatus = event.data.object.payment_status ?? null;
+  const amountTotal = event.data.object.amount_total;
+
+  // Defense in depth: Checkout amounts are set server-side from the booking
+  // row, but we still refuse to confirm if Stripe's event disagrees.
+  const held = await dbGetBookingByCheckoutSession(checkoutSessionId);
+  if (held && held.status === "pending_payment") {
+    if (paymentStatus && paymentStatus !== "paid") {
+      throw new Error(
+        `checkout.session.completed for ${checkoutSessionId} has payment_status=${paymentStatus}`,
+      );
+    }
+    if (typeof amountTotal === "number" && amountTotal !== held.priceCents) {
+      throw new Error(
+        `checkout amount mismatch for booking ${held.id}: stripe=${amountTotal} booking=${held.priceCents}`,
+      );
+    }
+  }
 
   const booking = await dbMarkBookingPaid({
     checkoutSessionId,
@@ -191,6 +230,38 @@ async function onCheckoutCompleted(event: StripeEvent): Promise<void> {
       currency: booking.currency,
     }),
   ]);
+}
+
+/**
+ * Stripe finished reviewing a Connect account (or restricted it). Sync the
+ * local flag so mentors do not need to revisit the payouts step for charges
+ * to unlock — and so a restricted account stops taking paid bookings.
+ */
+async function onAccountUpdated(event: StripeEvent): Promise<void> {
+  const accountId = event.data.object.id;
+  if (!accountId) return;
+
+  const mentor = await dbFindMentorByPayoutAccountId(accountId);
+  if (!mentor) {
+    // Not one of ours (or onboarding never stored the id). Nothing to sync.
+    return;
+  }
+
+  // Prefer a live read from Stripe over the event payload — capabilities can
+  // lag the boolean on the event, and retrieveAccountStatus is what GET
+  // /payouts already trusts.
+  try {
+    const status = await getPaymentProvider().retrieveAccountStatus(accountId);
+    await dbSetPayoutsEnabled(mentor.userId, status.chargesEnabled);
+  } catch (error) {
+    // Fall back to the event field if Stripe is briefly unreachable; still
+    // better than leaving the local flag stale until the mentor clicks again.
+    if (typeof event.data.object.charges_enabled === "boolean") {
+      await dbSetPayoutsEnabled(mentor.userId, event.data.object.charges_enabled);
+      return;
+    }
+    throw error;
+  }
 }
 
 async function onChargeRefunded(event: StripeEvent): Promise<void> {

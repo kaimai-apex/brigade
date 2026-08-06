@@ -13,6 +13,8 @@ const PUBLIC_PAGES = new Set([
   "/waitlist",
   "/login",
   "/demo",
+  "/book",
+  "/book/thanks",
 ]);
 
 /**
@@ -26,6 +28,8 @@ const PUBLIC_APIS = new Set([
   // Stripe-Signature header, which the route verifies against the endpoint
   // secret before reading a single field of the body.
   "/api/stripe/webhook",
+  // Prompt-shaped alias of the same handler (signature-authenticated).
+  "/api/webhooks/stripe",
   "/api/auth/session",
   "/api/auth/logout",
   "/api/auth/refresh-token",
@@ -38,6 +42,8 @@ const PUBLIC_APIS = new Set([
   // counter would reset on every cold start.
   "/api/auth/request-code",
   "/api/auth/verify-code",
+  // Platform Book-a-call Checkout (no login required).
+  "/api/book-call",
 ]);
 
 function base64UrlToBytes(input: string): Uint8Array {
