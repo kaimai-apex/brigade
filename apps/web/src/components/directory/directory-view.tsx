@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutGrid,
@@ -320,15 +321,26 @@ export function DirectoryView({
         {/* Results */}
         {items.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-neutral-200 bg-white p-10 text-center">
-            <p className="text-section-title">No matches</p>
-            <p className="mt-2 text-body-md text-ink/65">
-              Try a different location, role, or specialty — or clear your filters.
+            <p className="text-section-title">
+              {activeCount > 0 || params.q ? 'No matches' : 'No members yet'}
             </p>
-            {(activeCount > 0 || params.q) && (
-              <Button variant="outline" className="mt-4" onClick={() => apply({})}>
-                Clear filters
-              </Button>
-            )}
+            <p className="mx-auto mt-2 max-w-[40ch] text-body-md text-ink/65">
+              {activeCount > 0 || params.q
+                ? 'Try a different location, role, or specialty — or clear your filters.'
+                : 'When people join Brigade, they show up here. Meanwhile, browse mentors who are taking sessions.'}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+              {(activeCount > 0 || params.q) && (
+                <Button variant="outline" onClick={() => apply({})}>
+                  Clear filters
+                </Button>
+              )}
+              {!(activeCount > 0 || params.q) && (
+                <Button asChild>
+                  <Link href="/mentors">Find a mentor</Link>
+                </Button>
+              )}
+            </div>
           </div>
         ) : view === 'grid' ? (
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

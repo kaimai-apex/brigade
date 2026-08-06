@@ -48,6 +48,8 @@ export function LoginForm() {
   const [cooldown, setCooldown] = useState(0);
   /** Only ever set in development with no mail provider — see send-login-code. */
   const [debugCode, setDebugCode] = useState<string | null>(null);
+  /** Whether the server has RESEND_API_KEY — not whether this address exists. */
+  const [mailConfigured, setMailConfigured] = useState<boolean | null>(null);
 
   const codeInput = useRef<HTMLInputElement>(null);
   // Guards the auto-submit, which fires from an effect and would otherwise run
@@ -81,6 +83,9 @@ export function LoginForm() {
       }
 
       setDebugCode(typeof data.debugCode === "string" ? data.debugCode : null);
+      setMailConfigured(
+        typeof data.mailConfigured === "boolean" ? data.mailConfigured : null,
+      );
       setStage("code");
       setCooldown(RESEND_COOLDOWN);
       setCode("");
@@ -175,13 +180,14 @@ export function LoginForm() {
         </form>
 
         <p className="text-center text-sm text-ink/65">
-          New to Brigade?{" "}
+          New here? Use your email above — we&apos;ll create your account. Or{" "}
           <Link
-            href="/waitlist"
+            href="/mentors"
             className="font-semibold text-forest underline-offset-2 hover:underline"
           >
-            Join the waitlist
-          </Link>
+            browse mentors
+          </Link>{" "}
+          first.
         </p>
       </div>
     );
@@ -215,16 +221,39 @@ export function LoginForm() {
             className="text-center text-2xl tracking-[0.4em]"
           />
           <p className="mt-2 text-sm text-ink/65">
-            Sent to {email}. It expires in ten minutes.
+            {mailConfigured === false
+              ? "Email delivery isn't configured on this server yet."
+              : `Sent to ${email}. It expires in ten minutes.`}
           </p>
         </div>
+
+        {mailConfigured === false && (
+          <p className="rounded-lg bg-gold/15 px-3 py-2 text-sm text-ink">
+            Add <code className="font-mono text-[13px]">RESEND_API_KEY</code> and{" "}
+            <code className="font-mono text-[13px]">RESEND_FROM</code> so codes go
+            to your inbox via Resend.
+            {debugCode ? (
+              <>
+                {" "}
+                Until then, your code is{" "}
+                <strong className="font-mono tracking-widest">{debugCode}</strong>.
+              </>
+            ) : (
+              <>
+                {" "}
+                If nothing appears below, this address may not have an account in
+                the database this app is using.
+              </>
+            )}
+          </p>
+        )}
 
         {/* Development only: with no mail provider configured there is no
             inbox to read, so the code is shown rather than lost. The server
             only ever returns it when NODE_ENV is not production. */}
-        {debugCode && (
+        {mailConfigured !== false && debugCode && (
           <p className="rounded-lg bg-gold/15 px-3 py-2 text-sm text-ink">
-            No mail provider configured — your code is{" "}
+            Dev fallback — your code is{" "}
             <strong className="font-mono tracking-widest">{debugCode}</strong>
           </p>
         )}

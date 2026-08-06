@@ -60,7 +60,6 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
   }
 
   const active = { q, role, city, expertise, sort };
-  const filterCount = [role, city, expertise].filter(Boolean).length + (sort !== "price" ? 1 : 0);
 
   // Where "become a mentor" leads depends on how far along the reader is.
   // Sending someone who already has a mentor page back through setup, or a
@@ -76,7 +75,7 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
           <Link href="/" className="hover:text-[var(--mk-text)]">
             Home
           </Link>
-          <span className="mx-2 text-[var(--mk-subtle)]">/</span>
+          <span className="mx-2 text-[var(--mk-muted)]">/</span>
           <span className="text-[var(--mk-text)]">Explore</span>
         </nav>
 
@@ -96,7 +95,7 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
             href={session ? "/sessions" : "/login?next=/sessions"}
             className="mk-tab"
           >
-            Group Sessions
+            My sessions
           </Link>
         </div>
 
@@ -104,7 +103,6 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
           <MentorSearch
             initialQuery={q ?? ""}
             filters={{ role, city, expertise, sort }}
-            filterCount={filterCount}
           />
           <CategoryRail facets={facets} active={active} />
         </div>
@@ -130,21 +128,31 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
         </p>
 
         {mentors.length === 0 ? (
-          <div className="py-20 text-center">
+          <div className="py-16 text-center sm:py-20">
             <p className="text-[18px] font-semibold text-[var(--mk-text)]">
-              {filtering ? "No mentors match that yet." : "No mentors yet."}
+              {expertise
+                ? `No mentors teach ${expertise} yet.`
+                : filtering
+                  ? "No mentors match that yet."
+                  : "No mentors published yet."}
             </p>
-            <p className="mt-2 text-[15px] text-[var(--mk-muted)]">
-              {filtering
-                ? "Try a broader search, or clear the filters."
-                : "Be the first — publish your sessions and start taking bookings."}
+            <p className="mx-auto mt-2 max-w-[42ch] text-[15px] text-[var(--mk-muted)]">
+              {expertise
+                ? "Be the first — set up your mentoring page and list that skill."
+                : filtering
+                  ? "Try another skill, or clear the filters and browse everyone."
+                  : "Publish your sessions and start taking bookings. Setting up takes about ten minutes."}
             </p>
-            <Link
-              href={filtering ? "/mentors" : emptyCtaHref}
-              className="mk-btn mk-btn-outline mt-6"
-            >
-              {filtering ? "Clear everything" : emptyCtaLabel}
-            </Link>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              {filtering && (
+                <Link href="/mentors" className="mk-btn mk-btn-outline">
+                  Clear filters
+                </Link>
+              )}
+              <Link href={emptyCtaHref} className="mk-btn mk-btn-dark">
+                {emptyCtaLabel}
+              </Link>
+            </div>
           </div>
         ) : (
           <ul className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -156,11 +164,9 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
           </ul>
         )}
 
-        {/* The other side of the marketplace. Shown to anyone who is not
-            already a mentor — this page is where someone realises they could
-            be doing this too, and there was previously no way in from here
-            unless the directory happened to be empty. */}
-        {!ownMentor && (
+        {/* Supply-side CTA under a populated directory. When the list is empty
+            the empty state already carries "Become a mentor" — don't stack it. */}
+        {!ownMentor && mentors.length > 0 && (
           <section className="mt-16 rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-wash)] p-8">
             <div className="flex flex-wrap items-center justify-between gap-6">
               <div className="max-w-[52ch]">

@@ -36,6 +36,8 @@ export async function POST(request: Request) {
     const result = await connectProRequestLoginCode({ email, ip });
     return NextResponse.json({
       ok: true,
+      // Whether Resend is wired — never whether this address has an account.
+      mailConfigured: result.mailConfigured,
       // Development convenience only — connectProRequestLoginCode returns this
       // exclusively when there is no mail provider and NODE_ENV is not
       // production. It is never present in a deployed response.

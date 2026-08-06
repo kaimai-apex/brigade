@@ -7,8 +7,7 @@ type PublicNavProps = {
 };
 
 /**
- * ADPList app header — 72px, white, Log in outline + dark "Get started today".
- * Brigade wordmark only; layout/sizes match the ADPList clone.
+ * Marketplace header — white bar, wordmark, clear next actions.
  */
 export function PublicNav({ showAuth = true }: PublicNavProps) {
   return (
@@ -25,6 +24,12 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
         {showAuth && (
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <Link
+              href="/mentors"
+              className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] sm:inline-flex"
+            >
+              Find a mentor
+            </Link>
+            <Link
               href="/login?next=/mentorship/setup"
               className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] md:inline-flex"
             >
@@ -36,8 +41,8 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
             >
               Log in
             </Link>
-            <Link href="/waitlist" className="mk-btn mk-btn-dark">
-              Get started today
+            <Link href="/login" className="mk-btn mk-btn-dark">
+              Get started
             </Link>
           </div>
         )}

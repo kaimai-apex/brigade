@@ -115,14 +115,14 @@ export default function SessionsPage() {
       <p className="mt-1 text-ink/60">Mentorship you have booked, and time you are teaching.</p>
 
       {nothing ? (
-        <div className="mt-8 rounded-xl border border-ink/10 p-10 text-center">
-          <h2 className="text-lg font-semibold">No sessions yet</h2>
-          <p className="mt-2 text-ink/60">
-            Book time with someone who has done the job you want next.
+        <div className="mt-8 rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] p-10 text-center shadow-[var(--mk-shadow-card)]">
+          <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">No sessions yet</h2>
+          <p className="mx-auto mt-2 max-w-[36ch] text-[15px] text-[var(--mk-muted)]">
+            Book time with a private chef who has already made the move you want next.
           </p>
-          <Button asChild className="mt-4">
-            <Link href="/mentors">Find a mentor</Link>
-          </Button>
+          <Link href="/mentors" className="mk-btn mk-btn-dark mt-6 inline-flex">
+            Find a mentor
+          </Link>
         </div>
       ) : (
         <>

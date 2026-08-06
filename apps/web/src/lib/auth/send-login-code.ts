@@ -34,7 +34,7 @@ function resendKey() {
  * greppable way rather than sending from a stranger's domain.
  */
 function fromAddress() {
-  return process.env.RESEND_FROM?.trim() || "Brigade <login@joinbrigade.co>";
+  return process.env.RESEND_FROM?.trim() || "Brigade <hello@joinbrigade.co>";
 }
 
 export function isEmailConfigured() {

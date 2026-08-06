@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatMoney, splitPrice } from "@/lib/mentorship/pricing";
@@ -120,10 +121,17 @@ export function BookingPanel({
 
   if (sessionTypes.length === 0) {
     return (
-      <div className="mk-card p-6">
-        <p className="text-[15px] text-[var(--mk-muted)]">
-          This mentor has not published any sessions yet.
+      <div className="mk-card p-6 shadow-[var(--mk-shadow-card)]">
+        <h2 className="text-[22px] font-semibold text-[var(--mk-text)]">
+          Available sessions
+        </h2>
+        <p className="mt-2 text-[15px] leading-relaxed text-[var(--mk-muted)]">
+          This mentor hasn&apos;t published bookable sessions yet. Check back
+          soon, or browse other mentors.
         </p>
+        <Link href="/mentors" className="mk-btn mk-btn-outline mt-5 h-10 px-5">
+          Browse mentors
+        </Link>
       </div>
     );
   }
@@ -132,7 +140,7 @@ export function BookingPanel({
     <div className="mk-card p-6 shadow-[var(--mk-shadow-card)]">
       <h2 className="text-[22px] font-semibold text-[var(--mk-text)]">Available sessions</h2>
       <p className="mt-1.5 text-[14px] text-[var(--mk-muted)]">
-        Book 1:1 sessions from the options based on your needs
+        Choose a session, then pick a time that works.
       </p>
 
       <ul className="mt-5 space-y-3">
@@ -192,10 +200,10 @@ export function BookingPanel({
       </ul>
 
       <div className="mt-5">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--mk-subtle)]">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--mk-muted)]">
           Available times
         </h3>
-        <p className="mt-1 text-[13px] text-[var(--mk-subtle)]">
+        <p className="mt-1 text-[13px] text-[var(--mk-muted)]">
           Shown in your timezone · mentor is in {timezone.replace(/_/g, " ")}
         </p>
 
@@ -232,7 +240,7 @@ export function BookingPanel({
       </div>
 
       {selected && (
-        <p className="mt-4 text-[13px] text-[var(--mk-subtle)]">
+        <p className="mt-4 text-[13px] text-[var(--mk-muted)]">
           {formatMoney(selected.priceCents, currency)} · Brigade keeps{" "}
           {formatMoney(splitPrice(selected.priceCents).platformFeeCents, currency)} (20%), the
           mentor receives{" "}
@@ -263,7 +271,7 @@ export function BookingPanel({
                 : "Reserve this time"}
           </button>
           {paymentsEnabled && (selected?.priceCents ?? 0) > 0 && (
-            <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">
+            <p className="mt-2 text-[13px] text-[var(--mk-muted)]">
               Payment is taken by Stripe. The time is held for you for{" "}
               {CHECKOUT_WINDOW_MINUTES} minutes while you check out, and the session is only
               confirmed once the payment goes through.

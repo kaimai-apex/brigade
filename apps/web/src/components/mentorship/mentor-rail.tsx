@@ -34,12 +34,6 @@ export function MentorRail({
           <RailCard key={m.userId} mentor={m} />
         ))}
       </ScrollRail>
-
-      <div className="mt-5">
-        <Link href={href} className="mk-btn mk-btn-outline h-10 px-5">
-          Show all
-        </Link>
-      </div>
     </section>
   );
 }

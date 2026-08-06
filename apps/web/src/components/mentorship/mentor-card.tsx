@@ -106,7 +106,7 @@ export function RailCard({ mentor }: { mentor: MentorListing }) {
         {mentor.currentEmployer && (
           <p className="truncate text-[14px] text-[var(--mk-muted)]">{mentor.currentEmployer}</p>
         )}
-        <p className="mt-1.5 truncate text-[13px] text-[var(--mk-subtle)]">
+        <p className="mt-1.5 truncate text-[13px] text-[var(--mk-muted)]">
           {sessionCountLabel(mentor.sessionCount)} · {country}
         </p>
       </div>
@@ -176,18 +176,18 @@ export function ExploreCard({
             mentor.headline ||
             "Private chef mentor"}
         </p>
-        <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">
+        <p className="mt-2 text-[13px] text-[var(--mk-muted)]">
           {sessionCountLabel(mentor.sessionCount)}
           {place ? ` · ${place}` : ""}
         </p>
 
         <div className="mt-auto grid grid-cols-2 gap-3 border-t border-[var(--mk-line)] pt-3 text-[13px]">
           <div>
-            <p className="text-[var(--mk-subtle)]">Experience</p>
+            <p className="text-[var(--mk-muted)]">Experience</p>
             <p className="font-semibold text-[var(--mk-text)]">{experience}</p>
           </div>
           <div>
-            <p className="text-[var(--mk-subtle)]">Sessions</p>
+            <p className="text-[var(--mk-muted)]">Sessions</p>
             <p className="font-semibold text-[var(--mk-text)]">{mentor.sessionCount}</p>
           </div>
         </div>

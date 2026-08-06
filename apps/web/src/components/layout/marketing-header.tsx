@@ -28,29 +28,35 @@ export function MarketingHeader() {
         <Link
           href="/"
           aria-label="Brigade home"
-          className="font-display text-[22px] font-black tracking-[-0.02em] text-[var(--brand-ink,var(--brand-ink))]"
+          className="font-display text-[22px] font-black tracking-[-0.02em] text-[var(--brand-ink)]"
         >
           Brigade
         </Link>
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
           <Link
+            href="/mentors"
+            className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] md:inline-flex"
+          >
+            Find a mentor
+          </Link>
+          <Link
             href="/login?next=/mentorship/setup"
-            className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink,var(--brand-ink))]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink,var(--brand-ink))] md:inline-flex"
+            className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] lg:inline-flex"
           >
             Become a mentor
           </Link>
           <Link
             href="/login"
-            className="hidden h-10 items-center rounded-xl px-4 text-[13px] font-semibold text-[var(--brand-ink,var(--brand-ink))] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5 sm:inline-flex"
+            className="hidden h-10 items-center rounded-xl px-4 text-[13px] font-semibold text-[var(--brand-ink)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5 sm:inline-flex"
           >
             Log in
           </Link>
           <Link
-            href="/waitlist"
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink,var(--mk-ink))] px-4 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:px-5"
+            href="/login"
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink)] px-4 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:px-5"
           >
-            Get started today
+            Get started
           </Link>
         </div>
       </div>

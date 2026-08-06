@@ -9,7 +9,7 @@ export default function LoginPage() {
     <div className="min-h-dvh bg-white text-ink">
       <header className="flex h-12 items-center border-b border-neutral-100 px-4">
         <Link
-          href="/mentors"
+          href="/"
           className="font-display text-xl font-black tracking-tight text-ink"
         >
           Brigade
@@ -18,9 +18,9 @@ export default function LoginPage() {
       <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-md items-center px-4 py-8">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Welcome back</CardTitle>
+            <CardTitle>Sign in to Brigade</CardTitle>
             <CardDescription>
-              Type your email and we will send you a code. There is no password.
+              Enter your email and we&apos;ll send a one-time code. No password.
             </CardDescription>
           </CardHeader>
           <Suspense fallback={null}>

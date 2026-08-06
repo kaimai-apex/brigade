@@ -84,11 +84,11 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
           <Link href="/mentors" className="hover:text-[var(--mk-text)]">
             Home
           </Link>
-          <span className="mx-2 text-[var(--mk-subtle)]">/</span>
+          <span className="mx-2 text-[var(--mk-muted)]">/</span>
           <Link href="/mentors" className="hover:text-[var(--mk-text)]">
             Explore
           </Link>
-          <span className="mx-2 text-[var(--mk-subtle)]">/</span>
+          <span className="mx-2 text-[var(--mk-muted)]">/</span>
           <span className="text-[var(--mk-text)]">{name}</span>
         </nav>
 
@@ -129,7 +129,7 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
                   )}
                 </p>
               )}
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-[var(--mk-subtle)]">
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-[var(--mk-muted)]">
                 {place && <span>{place}</span>}
                 {profile.years_experience != null && (
                   <span>
@@ -142,13 +142,6 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </header>
-
-        <div className="mt-10 flex gap-8 overflow-x-auto border-b border-[var(--mk-line)] mk-no-scrollbar">
-          <span className="mk-tab text-[16px]" aria-current="true">
-            Overview
-          </span>
-          <span className="mk-tab text-[16px]">Sessions</span>
-        </div>
 
         <div className="grid gap-8 py-8 lg:grid-cols-[1fr_380px]">
           <div className="min-w-0 space-y-6">
@@ -202,7 +195,7 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
                       <span>
                         {minutesToLabel(r.startMinute)}–{minutesToLabel(r.endMinute)}
                       </span>
-                      <span className="text-[var(--mk-subtle)]">
+                      <span className="text-[var(--mk-muted)]">
                         ({mentor.timezone.replace(/_/g, " ")})
                       </span>
                     </li>

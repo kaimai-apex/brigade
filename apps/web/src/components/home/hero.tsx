@@ -1,24 +1,21 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { RoleDeck } from '@/components/landing/role-deck';
+import { Select } from '@/components/ui/select';
+import { SKILLS } from '@/lib/onboarding/taxonomy';
+
+const SKILL_OPTIONS = SKILLS.map((skill) => ({ value: skill, label: skill }));
 
 /**
- * ADPList hero chrome (odometer, serif H1, expertise search) over the
- * Brigade role-deck cards instead of a stock photo.
+ * Landing hero — pick a skill from the same list mentors teach, then land on
+ * mentors who tagged that skill. No free-text theatre, no invented counts.
  */
-export function HomeHero({
-  minutesShared,
-  mentorCount,
-}: {
-  minutesShared: number;
-  mentorCount: number;
-}) {
+export function HomeHero() {
   return (
-    <section className="relative flex min-h-[860px] flex-col items-center overflow-hidden bg-[var(--brand-paper-warm)] pb-16 pt-[108px] lg:min-h-[92vh]">
-      {/* Color blobs — same atmosphere as the original Brigade hero art */}
+    <section className="relative flex flex-col items-center overflow-hidden bg-[var(--brand-paper-warm)] pb-14 pt-[100px] md:pb-16 md:pt-[108px] lg:min-h-[88vh]">
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <span className="art-blob blob-cobalt opacity-90" />
         <span className="art-blob blob-forest opacity-90" />
@@ -27,22 +24,18 @@ export function HomeHero({
       </div>
 
       <div className="relative z-10 w-full max-w-[900px] px-5 text-center">
-        <Odometer value={minutesShared} />
-
-        <h1 className="mk-serif-display mt-8 text-balance text-[var(--brand-ink,var(--brand-ink))]">
+        <h1 className="mk-serif-display text-balance text-[var(--brand-ink)]">
           The fastest way to get unstuck in hospitality
         </h1>
 
-        <p className="mx-auto mt-6 max-w-[640px] text-[17px] leading-relaxed text-[var(--brand-ink-muted,var(--brand-ink-muted))] md:text-[19px]">
-          Meet a chef who already made the move you want to make.{' '}
-          {Math.max(mentorCount, 1).toLocaleString('en-US')}+ mentors. Real kitchens.
-          Book a 1:1 session.
+        <p className="mx-auto mt-5 max-w-[36ch] text-[17px] leading-relaxed text-[var(--brand-ink-muted)] md:mt-6 md:max-w-[640px] md:text-[19px]">
+          Meet a private chef who already made the move you want to make. Book a
+          1:1 session and leave with a plan.
         </p>
 
-        <HeroSearch />
+        <HeroExpertisePicker />
       </div>
 
-      {/* Brigade hero cards — the visual that used to own the landing */}
       <div className="relative z-10 mt-10 w-full max-w-[640px] px-4 lg:mt-12">
         <RoleDeck />
       </div>
@@ -50,85 +43,50 @@ export function HomeHero({
   );
 }
 
-function Odometer({ value }: { value: number }) {
-  const chars = value.toLocaleString('en-US').split('');
-
-  return (
-    <div className="inline-flex items-center gap-3 rounded-full bg-[var(--brand-ink,var(--brand-ink))]/90 px-4 py-2 text-[14px] text-[var(--brand-white)]/90 backdrop-blur-sm">
-      <span>Knowledge shared</span>
-      <span className="inline-flex items-center gap-2 rounded-full bg-[var(--mk-surface)]/15 px-3 py-1 font-medium tabular-nums">
-        <span className="inline-flex">
-          {chars.map((c, i) =>
-            c === ',' ? (
-              <span key={i} className="px-px">
-                ,
-              </span>
-            ) : (
-              <DigitReel key={i} digit={Number(c)} />
-            ),
-          )}
-        </span>
-        <span>minutes</span>
-      </span>
-    </div>
-  );
-}
-
-function DigitReel({ digit }: { digit: number }) {
-  return (
-    <span className="relative inline-block h-5 w-2.5 overflow-hidden align-middle">
-      <span className="sr-only">{digit}</span>
-      <span
-        aria-hidden
-        className="absolute left-0 top-0 flex flex-col transition-transform duration-700 ease-out"
-        style={{ transform: `translateY(-${digit * 20}px)` }}
-      >
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-          <span key={n} className="flex h-5 items-center justify-center leading-none">
-            {n}
-          </span>
-        ))}
-      </span>
-    </span>
-  );
-}
-
-function HeroSearch() {
+function HeroExpertisePicker() {
   const router = useRouter();
-  const [q, setQ] = useState('');
-  const input = useRef<HTMLInputElement>(null);
+  const [skill, setSkill] = useState('');
+
+  function go(next: string) {
+    if (!next) {
+      router.push('/mentors');
+      return;
+    }
+    router.push(`/mentors?expertise=${encodeURIComponent(next)}`);
+  }
 
   return (
     <form
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
-        router.push(q.trim() ? `/mentors?q=${encodeURIComponent(q.trim())}` : '/mentors');
+        go(skill);
       }}
-      className="mx-auto mt-10 flex w-full max-w-[720px] items-center gap-3 rounded-full border border-black/8 bg-[var(--mk-surface)] p-2.5 pl-6 shadow-[0_16px_48px_rgba(16,24,40,0.12)]"
+      className="mx-auto mt-8 flex w-full max-w-[720px] flex-col gap-3 rounded-[28px] border border-black/8 bg-[var(--mk-surface)] p-3 shadow-[0_16px_48px_rgba(16,24,40,0.12)] sm:mt-10 sm:flex-row sm:items-end sm:gap-2 sm:rounded-full sm:p-2.5 sm:pl-6"
     >
-      <label
-        className="min-w-0 flex-1 cursor-text text-left"
-        onClick={() => input.current?.focus()}
-      >
-        <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--mk-text)]">
-          Expertise
+      <label className="min-w-0 flex-1 text-left sm:px-1">
+        <span className="block px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--mk-muted)] sm:px-0">
+          Find a mentor within
         </span>
-        <input
-          ref={input}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="What do you want to get better at?"
-          aria-label="What do you want to get better at?"
-          className="mt-0.5 w-full border-0 bg-transparent p-0 text-[16px] text-[var(--mk-text)] outline-none placeholder:text-[var(--mk-subtle)]"
+        <Select
+          value={skill}
+          onValueChange={(value) => {
+            setSkill(value);
+            // One tap is enough — don't make them also hit the button.
+            go(value);
+          }}
+          options={SKILL_OPTIONS}
+          placeholder="Choose what you want to get better at"
+          aria-label="Find a mentor within"
+          className="mt-0.5 h-11 border-0 bg-transparent px-1 text-[16px] shadow-none hover:border-0 focus-visible:ring-0 focus-visible:ring-offset-0 sm:px-0"
         />
       </label>
       <button
         type="submit"
-        aria-label="Search mentors"
-        className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--mk-ink)] text-[var(--brand-white)] transition hover:scale-105"
+        className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--mk-ink)] px-5 text-[15px] font-semibold text-[var(--brand-white)] transition hover:scale-[1.02] sm:w-auto"
       >
-        <Search className="size-5" />
+        {skill ? 'Find mentors' : 'Browse mentors'}
+        <ArrowRight className="size-4" aria-hidden />
       </button>
     </form>
   );

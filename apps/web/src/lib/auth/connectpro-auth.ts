@@ -15,6 +15,7 @@ import {
 import {
   CODE_TTL_MINUTES,
   canRevealCode,
+  isEmailConfigured,
   sendLoginCode,
 } from "@/lib/auth/send-login-code";
 import { ensureAuthSchema } from "@/lib/auth/ensure-auth-schema";
@@ -411,7 +412,7 @@ async function withinRateLimits(email: string, ip: string | null) {
 export async function connectProRequestLoginCode(dto: {
   email: string;
   ip?: string | null;
-}): Promise<{ delivered: boolean; debugCode?: string }> {
+}): Promise<{ delivered: boolean; mailConfigured: boolean; debugCode?: string }> {
   if (!databaseConfigured()) {
     throw new Error("DATABASE_URL is not configured");
   }
@@ -421,6 +422,8 @@ export async function connectProRequestLoginCode(dto: {
   const email = dto.email.trim().toLowerCase();
   const ip = dto.ip?.trim() || null;
   const pool = getPool();
+  // Safe to expose: whether Resend is wired up, not whether this address exists.
+  const mailConfigured = isEmailConfigured();
 
   if (!(await withinRateLimits(email, ip))) {
     throw new AppError(
@@ -437,7 +440,7 @@ export async function connectProRequestLoginCode(dto: {
 
   // No account, or a suspended one. Nothing is sent and nothing is said.
   if (user.rows.length === 0 || user.rows[0].status !== "active") {
-    return { delivered: false };
+    return { delivered: false, mailConfigured };
   }
 
   const code = generateLoginCode();
@@ -460,7 +463,11 @@ export async function connectProRequestLoginCode(dto: {
 
   await sendLoginCode({ to: email, code });
 
-  return { delivered: true, ...(canRevealCode() ? { debugCode: code } : {}) };
+  return {
+    delivered: true,
+    mailConfigured,
+    ...(canRevealCode() ? { debugCode: code } : {}),
+  };
 }
 
 /**

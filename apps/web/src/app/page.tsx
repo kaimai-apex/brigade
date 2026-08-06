@@ -1,7 +1,5 @@
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { HomeHero } from "@/components/home/hero";
-import { LogoMarquee } from "@/components/home/logo-marquee";
-import { PracticeRail } from "@/components/home/practice-rail";
 import { FinalCta } from "@/components/home/final-cta";
 import { MentorRail } from "@/components/mentorship/mentor-rail";
 import {
@@ -13,13 +11,10 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * ADPList-style marketing homepage for Brigade:
- * hero photo → logo strip → popular rails → practice → final CTA.
+ * Marketing homepage. Mentor rails come straight from the database — if there
+ * are no published mentors, those bands simply do not render.
  */
 export default async function HomePage() {
-  // Marketing home must render even if Postgres is unreachable (wrong
-  // DATABASE_URL password, pooler outage, etc.). Mentor rails are progressive
-  // enhancement — a blank rail is better than a site-wide 500.
   let facets: Awaited<ReturnType<typeof dbMentorFacets>> = {
     roles: [],
     cities: [],
@@ -44,31 +39,26 @@ export default async function HomePage() {
         ? [{ expertise: "Private cheffing", mentors: allMentors.data }]
         : [];
 
-  // Split like ADPList: first rails, practice band, then remaining rails.
   const upper = displayRails.slice(0, 2);
   const lower = displayRails.slice(2);
-
-  const mentorCount = allMentors.total;
-  const minutesShared = 128_400 + mentorCount * 47;
 
   return (
     <div className="adp-mk min-h-screen bg-white">
       <MarketingHeader />
-      <HomeHero minutesShared={minutesShared} mentorCount={mentorCount} />
-      <LogoMarquee />
+      <HomeHero />
 
-      <div className="mk-shell">
-        {upper.map((rail) => (
-          <MentorRail
-            key={rail.expertise}
-            title={`Popular in ${rail.expertise}`}
-            expertise={rail.expertise}
-            mentors={rail.mentors}
-          />
-        ))}
-      </div>
-
-      <PracticeRail />
+      {upper.length > 0 && (
+        <div className="mk-shell">
+          {upper.map((rail) => (
+            <MentorRail
+              key={rail.expertise}
+              title={`Popular in ${rail.expertise}`}
+              expertise={rail.expertise}
+              mentors={rail.mentors}
+            />
+          ))}
+        </div>
+      )}
 
       {lower.length > 0 && (
         <div className="mk-shell">

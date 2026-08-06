@@ -60,7 +60,7 @@ export function MobileTabBar() {
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition',
-                active ? 'text-ink' : 'text-neutral-500 active:text-ink',
+                active ? 'text-ink' : 'text-neutral-600 active:text-ink',
               )}
             >
               {active && (

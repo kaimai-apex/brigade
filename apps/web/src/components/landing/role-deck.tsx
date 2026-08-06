@@ -10,35 +10,34 @@ type ValueCard = {
   dot: string;
 };
 
-// Value-first cards: say what you'll DO here, not who you are. The hero
-// answers "is this for me?"; these answer "what can I actually do?".
+// Value-first cards for private-chef mentorship — what you can actually do here.
 const CARDS: ValueCard[] = [
   {
     className: 'bg-forest text-paper',
-    title: ['Build Your', 'Network'],
+    title: ['Find a', 'Mentor'],
     art: '/hero/hero-host.png',
-    blurb: 'Connect with trusted hospitality professionals.',
+    blurb: 'Private chefs who already made the move.',
     dot: 'var(--brand-forest)',
   },
   {
     className: 'bg-rust text-paper',
-    title: ['Learn', 'Together'],
+    title: ['Book a', 'Session'],
     art: '/hero/chef-chef.png',
-    blurb: 'Share knowledge, advice, and industry insights.',
+    blurb: '1:1 time. Leave with a plan, not advice.',
     dot: 'var(--brand-rust)',
   },
   {
     className: 'bg-gold text-ink',
-    title: ['Discover', 'Opportunities'],
+    title: ['Learn the', 'Craft'],
     art: '/hero/hero-manager.png',
-    blurb: 'Find jobs, collaborations, and referrals.',
+    blurb: 'Menus, costing, clients, yacht work.',
     dot: 'var(--brand-gold)',
   },
   {
     className: 'bg-cobalt text-paper',
-    title: ['Build Your', 'Brigade'],
+    title: ['Teach', 'What You Know'],
     art: '/hero/chef-cook.png',
-    blurb: "Create trusted teams you'll work with again.",
+    blurb: 'Set your price. Brigade handles the rest.',
     dot: 'var(--brand-cobalt)',
   },
 ];
@@ -68,7 +67,7 @@ export function RoleDeck() {
 
   const select = (i: number) => {
     setActive(i);
-    setKick((k) => k + 1); // restart the countdown so the picked card lingers
+    setKick((k) => k + 1);
   };
 
   return (
@@ -84,6 +83,7 @@ export function RoleDeck() {
             className={`fan-card ${c.className} ${i === active ? 'is-active' : ''}`}
             style={{ '--i': i, zIndex: i + 1 } as React.CSSProperties}
             onMouseEnter={() => setActive(i)}
+            aria-hidden={i !== active}
           >
             <span className="fan-masthead">Brigade</span>
             <span className="fan-art" aria-hidden>
@@ -100,14 +100,13 @@ export function RoleDeck() {
         ))}
       </div>
 
-      <div className="fan-dots" role="tablist" aria-label="What you can do on Brigade">
+      <div className="fan-dots" role="group" aria-label="What you can do on Brigade">
         {CARDS.map((c, i) => (
           <button
             key={c.title.join(' ')}
             type="button"
             className="fan-dot"
-            role="tab"
-            aria-selected={i === active}
+            aria-current={i === active ? 'true' : undefined}
             aria-label={`${c.title.join(' ')} — ${c.blurb}`}
             data-active={i === active}
             style={{ '--dot': c.dot } as React.CSSProperties}
