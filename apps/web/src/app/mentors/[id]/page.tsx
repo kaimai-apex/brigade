@@ -8,6 +8,7 @@ import {
   dbListSessionTypes,
   dbListAvailabilityRules,
   dbListMentors,
+  mentorUsesCalendly,
 } from "@/lib/server/mentorship-db";
 import { paymentsFullyConfigured } from "@/lib/server/payments";
 import { resolveAvatarUrl } from "@/lib/avatars";
@@ -73,6 +74,7 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
    * and offering a checkout that never appears is worse than saying nothing.
    */
   const takingPayments = paymentsFullyConfigured();
+  const usesCalendly = mentorUsesCalendly(mentor);
 
   const titleLine = [profile.role, profile.current_employer].filter(Boolean);
   const cover = typeof profile.cover_url === "string" ? profile.cover_url : null;
@@ -181,28 +183,53 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
               </section>
             )}
 
-            <section className="mk-card p-6">
-              <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">
-                Typical availability
-              </h2>
-              {rules.length === 0 ? (
-                <p className="mt-3 text-[15px] text-[var(--mk-muted)]">No hours published yet.</p>
-              ) : (
-                <ul className="mt-3 space-y-2 text-[15px] text-[var(--mk-muted)]">
-                  {rules.map((r, i) => (
-                    <li key={i} className="flex flex-wrap gap-x-2">
-                      <span className="font-medium text-[var(--mk-text)]">{WEEKDAYS[r.weekday]}</span>
-                      <span>
-                        {minutesToLabel(r.startMinute)}–{minutesToLabel(r.endMinute)}
-                      </span>
-                      <span className="text-[var(--mk-muted)]">
-                        ({mentor.timezone.replace(/_/g, " ")})
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            {usesCalendly ? (
+              <section className="mk-card p-6">
+                <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">
+                  Scheduling
+                </h2>
+                <p className="mt-3 text-[15px] text-[var(--mk-muted)]">
+                  After you pay, you&apos;ll get a Calendly link to pick a time that works
+                  for both of you.
+                </p>
+              </section>
+            ) : (
+              <section className="mk-card p-6">
+                <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">
+                  Typical availability
+                </h2>
+                {rules.length === 0 ? (
+                  <p className="mt-3 text-[15px] text-[var(--mk-muted)]">No hours published yet.</p>
+                ) : (
+                  <ul className="mt-3 space-y-2 text-[15px] text-[var(--mk-muted)]">
+                    {rules.map((r, i) => (
+                      <li key={i} className="flex flex-wrap gap-x-2">
+                        <span className="font-medium text-[var(--mk-text)]">
+                          {WEEKDAYS[r.weekday]}
+                        </span>
+                        <span>
+                          {minutesToLabel(r.startMinute)}–{minutesToLabel(r.endMinute)}
+                        </span>
+                        <span className="text-[var(--mk-muted)]">
+                          ({mentor.timezone.replace(/_/g, " ")})
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
+            {mentor.helpOffered[0] && (
+              <section className="mk-card p-6">
+                <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">
+                  Mentorship offered
+                </h2>
+                <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-[var(--mk-muted)]">
+                  {mentor.helpOffered[0]}
+                </p>
+              </section>
+            )}
           </div>
 
           <aside className="lg:sticky lg:top-[calc(var(--mk-header-h)+1rem)] lg:self-start">
@@ -215,6 +242,7 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
               isSelf={isSelf}
               paymentsEnabled={takingPayments}
               paused={mentor.status === "paused"}
+              usesCalendly={usesCalendly}
             />
           </aside>
         </div>

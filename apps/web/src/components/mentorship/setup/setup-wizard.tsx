@@ -1,29 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { SETUP_STEPS, stepIndex } from "@/lib/mentorship/readiness";
 import { MentorCardPreview } from "./card-preview";
-import { StepProfile } from "./step-profile";
-import { StepAudience } from "./step-audience";
-import { StepSessions } from "./step-sessions";
-import { StepHours } from "./step-hours";
-import { StepMeeting } from "./step-meeting";
-import { StepPayouts } from "./step-payouts";
-import { StepReview } from "./step-review";
-import type { SetupDraft, SetupState, StepProps } from "./types";
-
-const STEP_COMPONENTS: Record<string, (props: StepProps) => React.ReactNode> = {
-  profile: StepProfile,
-  audience: StepAudience,
-  sessions: StepSessions,
-  hours: StepHours,
-  meeting: StepMeeting,
-  payouts: StepPayouts,
-  review: StepReview,
-};
+import type { SetupDraft, SetupState } from "./types";
 
 const EMPTY_PROFILE = {
   firstName: null,
@@ -38,20 +20,12 @@ const EMPTY_PROFILE = {
 };
 
 /**
- * Becoming a mentor, one step at a time.
+ * Become a mentor — one short form.
  *
- * The step lives in the URL (`?step=sessions`) rather than in component state,
- * so the back button works, a step can be linked to from the checklist, and
- * Stripe's hosted onboarding can return the mentor to exactly where they left.
- *
- * Progress is also written to the server (`onboarding_step`), because Stripe's
- * flow leaves the site entirely — a mentor who connects their bank on their
- * phone and comes back on a laptop should not start again.
+ * Name, title, place, description, what you offer, Calendly. Publish sets the
+ * card live; payment is platform-collected and scheduling happens on Calendly.
  */
 export function SetupWizard() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [state, setState] = useState<SetupState>({
     mentor: null,
     sessionTypes: [],
@@ -63,10 +37,37 @@ export function SetupWizard() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [bio, setBio] = useState("");
+  const [mentorshipOffered, setMentorshipOffered] = useState("");
+  const [calendlyUrl, setCalendlyUrl] = useState("");
 
   const setDraft = useCallback((patch: SetupDraft) => {
     setState((current) => ({ ...current, draft: { ...current.draft, ...patch } }));
+  }, []);
+
+  const hydrateForm = useCallback((json: {
+    mentor: SetupState["mentor"];
+    profile: SetupState["profile"];
+  }) => {
+    const mentor = json.mentor;
+    const profile = json.profile ?? EMPTY_PROFILE;
+    setFirstName(profile.firstName ?? "");
+    setLastName(profile.lastName ?? "");
+    setHeadline(mentor?.headline ?? "");
+    setCity(profile.city ?? "");
+    setCountry(profile.country ?? "");
+    setBio(mentor?.bio ?? "");
+    setMentorshipOffered(
+      mentor?.helpOffered?.[0] ?? mentor?.expertise?.join(", ") ?? "",
+    );
+    setCalendlyUrl(mentor?.calendlyUrl ?? mentor?.defaultMeetingUrl ?? "");
   }, []);
 
   const reload = useCallback(async () => {
@@ -83,12 +84,11 @@ export function SetupWizard() {
       profile: json.profile ?? EMPTY_PROFILE,
       readiness: json.readiness ?? null,
       paymentsConfigured: json.paymentsConfigured !== false,
-      // Cleared on reload: whatever was pending has now either been saved or
-      // discarded, and a stale draft would keep overriding the real values.
       draft: {},
     });
+    hydrateForm({ mentor: json.mentor ?? null, profile: json.profile ?? EMPTY_PROFILE });
     setLoading(false);
-  }, []);
+  }, [hydrateForm]);
 
   useEffect(() => {
     void reload();
@@ -108,8 +108,6 @@ export function SetupWizard() {
           toast.error(json.message ?? "Could not save");
           return false;
         }
-        // Re-read rather than trusting the PUT's echo: readiness and the
-        // session list both move as a side effect of what was just saved.
         await reload();
         return true;
       } catch {
@@ -122,162 +120,334 @@ export function SetupWizard() {
     [reload],
   );
 
-  const current = stepIndex(searchParams.get("step") ?? "profile");
-
-  const goTo = useCallback(
-    (index: number) => {
-      const clamped = Math.max(0, Math.min(index, SETUP_STEPS.length - 1));
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("step", SETUP_STEPS[clamped].slug);
-      router.push(`/mentorship/setup?${params.toString()}`, { scroll: false });
-      // Long steps push the heading off screen; landing mid-form reads as a
-      // page that did not change.
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    [router, searchParams],
-  );
+  function formPatch(extra: Record<string, unknown> = {}) {
+    return {
+      firstName,
+      lastName,
+      headline,
+      city,
+      country,
+      bio,
+      mentorshipOffered,
+      calendlyUrl,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      ...extra,
+    };
+  }
 
   if (loading) {
     return <p className="text-[var(--mk-muted)]">Loading…</p>;
   }
 
-  // Nobody has started: the pitch, then one button that creates the row.
   if (!state.mentor) {
     return (
       <div className="mx-auto max-w-xl py-8 text-center">
         <h1 className="mk-title">Teach what you know</h1>
         <p className="mt-3 text-[15px] text-[var(--mk-muted)]">
-          Private chefs sell one-to-one sessions to cooks trying to break into private
-          service. You set the price and the hours; Brigade handles the booking, the
-          payment and the reminders, and keeps 20% of each session.
+          One short form: who you are, what you share, and your Calendly link.
+          Brigade takes payment; mentees pick a time on Calendly.
         </p>
         <ul className="mt-6 space-y-2 text-left text-[15px] text-[var(--mk-muted)]">
-          <li>· Takes about ten minutes, and you can stop halfway.</li>
-          <li>· Your card is a draft until you publish it.</li>
-          <li>· Payouts go to your own Stripe account.</li>
+          <li>· Takes a couple of minutes.</li>
+          <li>· Your card stays a draft until you publish.</li>
+          <li>· No Stripe Connect or weekly hours required to go live.</li>
         </ul>
         <Button
           className="mt-6"
-          disabled={starting}
+          disabled={saving}
           onClick={async () => {
-            setStarting(true);
             const ok = await save({
-              // The browser's zone is a good first guess; the hours step lets
-              // them change it, and shows a warning if the two disagree.
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
               status: "draft",
               onboardingStep: 0,
             });
-            setStarting(false);
-            if (ok) goTo(0);
+            if (ok) toast.success("Draft started — fill in the form below");
           }}
         >
-          {starting ? "Setting up…" : "Start setting up"}
+          {saving ? "Setting up…" : "Start setting up"}
         </Button>
       </div>
     );
   }
 
-  const StepComponent = STEP_COMPONENTS[SETUP_STEPS[current].slug];
-  const stepProps: StepProps = {
-    state,
-    save,
-    reload,
-    setDraft,
-    saving,
-    onNext: () => goTo(current + 1),
-  };
+  const live = state.mentor.status === "active";
 
   return (
     <div>
       <header className="mb-6">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="mk-title">
-            {state.mentor.status === "active" ? "Your mentoring" : "Set up mentoring"}
+            {live ? "Your mentoring" : "Set up mentoring"}
           </h1>
           <p className="text-[14px] text-[var(--mk-muted)]">
-            {state.mentor.status === "active"
+            {live
               ? "Live in the directory"
               : state.mentor.status === "paused"
                 ? "Paused — not taking new bookings"
                 : "Draft — nobody can see this yet"}
           </p>
         </div>
-
         {state.readiness && (
-          <div className="mt-4">
-            <div
-              className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--mk-wash-strong)]"
-              role="progressbar"
-              aria-valuenow={state.readiness.percentComplete}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Setup progress"
-            >
-              <div
-                className="h-full rounded-full bg-[var(--mk-ink)] transition-[width] duration-300"
-                style={{ width: `${state.readiness.percentComplete}%` }}
-              />
-            </div>
-            <p className="mt-1.5 text-[13px] text-[var(--mk-subtle)]">
-              {state.readiness.percentComplete}% set up
-            </p>
-          </div>
+          <p className="mt-2 text-[13px] text-[var(--mk-subtle)]">
+            {state.readiness.percentComplete}% ready to publish
+          </p>
         )}
       </header>
 
-      {/* Step navigation. Every step is reachable — someone who wants to fix
-          their price before finishing their bio should not have to click
-          through everything in between. */}
-      <nav className="mb-8 flex flex-wrap gap-2" aria-label="Setup steps">
-        {SETUP_STEPS.map((step, index) => {
-          const isCurrent = index === current;
-          return (
-            <button
-              key={step.slug}
-              type="button"
-              onClick={() => goTo(index)}
-              aria-current={isCurrent ? "step" : undefined}
-              className={
-                isCurrent
-                  ? "rounded-full bg-[var(--mk-ink)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--brand-white)]"
-                  : "rounded-full px-3.5 py-1.5 text-[13px] text-[var(--mk-text)] shadow-[inset_0_0_0_1px_var(--mk-chip-line)] hover:bg-[var(--mk-wash)]"
-              }
-            >
-              <span className="text-[var(--mk-subtle)]">{index + 1}.</span>{" "}
-              <span className={isCurrent ? "text-[var(--brand-white)]" : ""}>{step.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0">
-          {StepComponent ? <StepComponent {...stepProps} /> : null}
+        <form
+          className="min-w-0 space-y-6"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const ok = await save(formPatch({ status: "draft", onboardingStep: 1 }));
+            if (ok) toast.success("Saved");
+          }}
+        >
+          <div>
+            <h2 className="text-[20px] font-semibold text-[var(--mk-text)]">
+              Mentor profile
+            </h2>
+            <p className="mt-1 text-[14px] text-[var(--mk-muted)]">
+              These six fields are enough to publish. Mentees pay on Brigade, then
+              book a time on your Calendly.
+            </p>
+          </div>
 
-          <div className="mt-10 flex items-center justify-between border-t border-[var(--mk-line)] pt-5">
-            <button
-              type="button"
-              onClick={() => goTo(current - 1)}
-              disabled={current === 0}
-              className="text-[14px] text-[var(--mk-muted)] underline underline-offset-4 hover:text-[var(--mk-text)] disabled:opacity-40 disabled:no-underline"
-            >
-              Back
-            </button>
-            {current < SETUP_STEPS.length - 1 && (
-              <button
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[13px] font-semibold text-[var(--mk-text)]">Name</span>
+              <input
+                value={firstName}
+                onChange={(event) => {
+                  setFirstName(event.target.value);
+                  setDraft({ firstName: event.target.value });
+                }}
+                placeholder="First"
+                maxLength={80}
+                className="mt-1 h-12 w-full rounded-lg border border-[var(--mk-line)] px-3 text-base"
+                required
+              />
+            </label>
+            <label className="block">
+              <span className="text-[13px] font-semibold text-[var(--mk-text)]">
+                &nbsp;
+              </span>
+              <input
+                value={lastName}
+                onChange={(event) => {
+                  setLastName(event.target.value);
+                  setDraft({ lastName: event.target.value });
+                }}
+                placeholder="Last"
+                maxLength={80}
+                className="mt-1 h-12 w-full rounded-lg border border-[var(--mk-line)] px-3 text-base"
+                required
+              />
+            </label>
+          </div>
+
+          <label className="block">
+            <span className="text-[13px] font-semibold text-[var(--mk-text)]">Title</span>
+            <input
+              value={headline}
+              onChange={(event) => {
+                setHeadline(event.target.value);
+                setDraft({ headline: event.target.value });
+              }}
+              maxLength={120}
+              placeholder="Private chef · menus and costing"
+              className="mt-1 h-12 w-full rounded-lg border border-[var(--mk-line)] px-3 text-base"
+              required
+            />
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[13px] font-semibold text-[var(--mk-text)]">
+                Where you are based
+              </span>
+              <input
+                value={city}
+                onChange={(event) => {
+                  setCity(event.target.value);
+                  setDraft({ city: event.target.value });
+                }}
+                placeholder="City"
+                maxLength={80}
+                className="mt-1 h-12 w-full rounded-lg border border-[var(--mk-line)] px-3 text-base"
+                required
+              />
+            </label>
+            <label className="block">
+              <span className="text-[13px] font-semibold text-[var(--mk-text)]">
+                &nbsp;
+              </span>
+              <input
+                value={country}
+                onChange={(event) => {
+                  setCountry(event.target.value);
+                  setDraft({ country: event.target.value });
+                }}
+                placeholder="Country"
+                maxLength={80}
+                className="mt-1 h-12 w-full rounded-lg border border-[var(--mk-line)] px-3 text-base"
+                required
+              />
+            </label>
+          </div>
+
+          <label className="block">
+            <span className="text-[13px] font-semibold text-[var(--mk-text)]">
+              Description
+            </span>
+            <textarea
+              value={bio}
+              onChange={(event) => {
+                setBio(event.target.value);
+                setDraft({ bio: event.target.value });
+              }}
+              rows={5}
+              maxLength={2000}
+              placeholder="Your resume / about — background, experience, how you work."
+              className="mt-1 w-full rounded-lg border border-[var(--mk-line)] p-3 text-base"
+              required
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-[13px] font-semibold text-[var(--mk-text)]">
+              Mentorship offered
+            </span>
+            <textarea
+              value={mentorshipOffered}
+              onChange={(event) => {
+                setMentorshipOffered(event.target.value);
+                setDraft({
+                  mentorshipOffered: event.target.value,
+                  expertise: event.target.value
+                    .split(/[\n,]+/)
+                    .map((t) => t.trim())
+                    .filter(Boolean),
+                });
+              }}
+              rows={4}
+              maxLength={2000}
+              placeholder="What you want to share — costing, menu design, private service, etc."
+              className="mt-1 w-full rounded-lg border border-[var(--mk-line)] p-3 text-base"
+              required
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-[13px] font-semibold text-[var(--mk-text)]">
+              Calendly booking link
+            </span>
+            <input
+              value={calendlyUrl}
+              onChange={(event) => {
+                setCalendlyUrl(event.target.value);
+                setDraft({ calendlyUrl: event.target.value });
+              }}
+              type="url"
+              inputMode="url"
+              placeholder="https://calendly.com/your-name/mentoring"
+              className="mt-1 h-12 w-full rounded-lg border border-[var(--mk-line)] px-3 text-base"
+              required
+            />
+            <span className="mt-1 block text-[13px] text-[var(--mk-subtle)]">
+              Shown to the mentee after they pay. Not on your public page until then.
+            </span>
+          </label>
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-[var(--mk-line)] pt-5">
+            <Button type="submit" variant="outline" disabled={saving || publishing}>
+              {saving ? "Saving…" : "Save draft"}
+            </Button>
+
+            {live ? (
+              <>
+                <Button asChild>
+                  <Link href={`/mentors/${state.mentor.userId}`}>View public page</Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving || publishing}
+                  onClick={async () => {
+                    setPublishing(true);
+                    try {
+                      const ok = await save(formPatch({ status: "paused" }));
+                      if (ok) toast.success("Bookings paused");
+                    } finally {
+                      setPublishing(false);
+                    }
+                  }}
+                >
+                  Pause bookings
+                </Button>
+              </>
+            ) : (
+              <Button
                 type="button"
-                onClick={() => goTo(current + 1)}
-                className="text-[14px] text-[var(--mk-muted)] underline underline-offset-4 hover:text-[var(--mk-text)]"
+                disabled={
+                  saving ||
+                  publishing ||
+                  !firstName.trim() ||
+                  !lastName.trim() ||
+                  !headline.trim() ||
+                  !city.trim() ||
+                  !country.trim() ||
+                  !bio.trim() ||
+                  !mentorshipOffered.trim() ||
+                  !calendlyUrl.trim()
+                }
+                onClick={async () => {
+                  setPublishing(true);
+                  try {
+                    const ok = await save(
+                      formPatch({ status: "active", onboardingStep: 1 }),
+                    );
+                    if (ok) toast.success("You are live in the mentor directory");
+                  } finally {
+                    setPublishing(false);
+                  }
+                }}
               >
-                Skip for now
-              </button>
+                {publishing ? "Publishing…" : "Publish"}
+              </Button>
             )}
           </div>
-        </div>
+
+          {state.readiness && !state.readiness.canPublish && !live && (
+            <p className="text-[13px] text-[var(--mk-subtle)]">
+              Still to do:{" "}
+              {state.readiness.blocking.map((item) => item.label.toLowerCase()).join(", ")}.
+            </p>
+          )}
+        </form>
 
         <aside className="lg:sticky lg:top-8 lg:self-start">
-          <MentorCardPreview state={state} />
+          <MentorCardPreview
+            state={{
+              ...state,
+              profile: {
+                ...state.profile,
+                firstName: firstName || state.profile.firstName,
+                lastName: lastName || state.profile.lastName,
+                city: city || state.profile.city,
+                country: country || state.profile.country,
+              },
+              draft: {
+                ...state.draft,
+                headline,
+                bio,
+                expertise: mentorshipOffered
+                  .split(/[\n,]+/)
+                  .map((t) => t.trim())
+                  .filter(Boolean),
+              },
+            }}
+          />
         </aside>
       </div>
     </div>

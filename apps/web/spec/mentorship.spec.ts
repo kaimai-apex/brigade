@@ -520,72 +520,46 @@ group("Publish readiness");
 
 {
   const complete = {
+    name: "Rita Chef",
     headline: "Private chef, 15 years",
+    location: "Toronto, Canada",
     bio: "Bring a menu, leave with margins.",
-    expertise: ["Food costing"],
-    activeSessionCount: 1,
-    hasPaidSession: true,
-    weeklyWindowCount: 2,
-    defaultMeetingUrl: "https://calendly.com/chef",
-    payoutsEnabled: true,
-    paymentsConfigured: true,
+    mentorshipOffered: "Food costing and menu design",
+    calendlyUrl: "https://calendly.com/chef",
   };
 
   check("a finished mentor can publish", evaluateReadiness(complete).canPublish);
 
   check(
-    "no sessions blocks publishing",
-    !evaluateReadiness({ ...complete, activeSessionCount: 0 }).canPublish,
-  );
-  check(
-    "no hours blocks publishing",
-    !evaluateReadiness({ ...complete, weeklyWindowCount: 0 }).canPublish,
+    "no Calendly blocks publishing",
+    !evaluateReadiness({ ...complete, calendlyUrl: null }).canPublish,
   );
   check(
     "no headline blocks publishing",
     !evaluateReadiness({ ...complete, headline: "   " }).canPublish,
   );
   check(
-    "selling for money without payouts blocks publishing",
-    !evaluateReadiness({ ...complete, payoutsEnabled: false }).canPublish,
-  );
-
-  // The two cases where demanding Stripe would block someone for no reason.
-  check(
-    "a free-only mentor can publish without payouts",
-    evaluateReadiness({ ...complete, hasPaidSession: false, payoutsEnabled: false })
-      .canPublish,
+    "no name blocks publishing",
+    !evaluateReadiness({ ...complete, name: null }).canPublish,
   );
   check(
-    "payouts are not required when the deployment has no Stripe at all",
-    evaluateReadiness({ ...complete, payoutsEnabled: false, paymentsConfigured: false })
-      .canPublish,
-  );
-
-  check(
-    "a missing meeting link is advisory, not blocking",
-    evaluateReadiness({ ...complete, defaultMeetingUrl: null }).canPublish,
-  );
-  // Tags are how the directory finds people, but discovery falls back to the
-  // profile's expertise areas — so this nudges without keeping anyone off.
-  check(
-    "no tags is advisory, not blocking",
-    evaluateReadiness({ ...complete, expertise: [] }).canPublish,
+    "no location blocks publishing",
+    !evaluateReadiness({ ...complete, location: "" }).canPublish,
   );
   check(
-    "but no tags still counts against the progress figure",
-    evaluateReadiness({ ...complete, expertise: [] }).percentComplete < 100,
+    "no mentorship offered blocks publishing",
+    !evaluateReadiness({ ...complete, mentorshipOffered: null }).canPublish,
   );
   check(
-    "but it still counts against the progress figure",
-    evaluateReadiness({ ...complete, defaultMeetingUrl: null }).percentComplete < 100,
+    "no description blocks publishing",
+    !evaluateReadiness({ ...complete, bio: null }).canPublish,
   );
   check("a finished mentor reads as 100%", evaluateReadiness(complete).percentComplete === 100);
 
   const blocked = evaluateReadiness({
     ...complete,
-    activeSessionCount: 0,
-    weeklyWindowCount: 0,
+    calendlyUrl: null,
+    name: null,
   });
   check("blocking items are listed for the message", blocked.blocking.length === 2);
 }

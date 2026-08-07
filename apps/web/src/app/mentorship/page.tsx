@@ -7,20 +7,11 @@ import { toast } from "sonner";
 import { AppPage } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { MentorCardPreview } from "@/components/mentorship/setup/card-preview";
-import { TimeOff, type TimeOffEntry } from "@/components/mentorship/time-off";
 import { formatMoney } from "@/lib/mentorship/pricing";
-import { SETUP_STEPS } from "@/lib/mentorship/readiness";
 import type { SetupState } from "@/components/mentorship/setup/types";
 
 /**
- * The mentoring dashboard.
- *
- * Deliberately NOT an editor. Every field lives in the setup flow, and this
- * page links to the step that owns it — two editors for the same rows drift,
- * and the one that drifts is always the one you did not test.
- *
- * What belongs here is the ongoing stuff: are you live, what have you earned,
- * when are you away.
+ * The mentoring dashboard — status, earnings, link back to the short setup form.
  */
 
 const EMPTY_PROFILE = {
@@ -55,7 +46,6 @@ export default function MentorshipDashboard() {
     paymentsConfigured: true,
     draft: {},
   });
-  const [exceptions, setExceptions] = useState<TimeOffEntry[]>([]);
   const [teaching, setTeaching] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -77,7 +67,6 @@ export default function MentorshipDashboard() {
         paymentsConfigured: json.paymentsConfigured !== false,
         draft: {},
       });
-      setExceptions(json.exceptions ?? []);
     }
     if (bookingsRes.ok) {
       const json = await bookingsRes.json();
@@ -90,8 +79,6 @@ export default function MentorshipDashboard() {
     void load();
   }, [load]);
 
-  // Never started: the setup flow is the whole experience, so go straight there
-  // rather than showing a dashboard of nothing.
   useEffect(() => {
     if (!loading && !state.mentor) router.replace("/mentorship/setup");
   }, [loading, state.mentor, router]);
@@ -127,8 +114,6 @@ export default function MentorshipDashboard() {
   const mentor = state.mentor;
   const readiness = state.readiness;
 
-  // Only settled money, and only what is actually the mentor's after the fee
-  // and any refunds. A gross figure here would be a number they never see.
   const confirmed = teaching.filter(
     (booking) => booking.status === "confirmed" || booking.status === "completed",
   );
@@ -193,7 +178,7 @@ export default function MentorshipDashboard() {
               <li key={item.id} className="text-[14px] text-[var(--mk-muted)]">
                 ·{" "}
                 <Link
-                  href={`/mentorship/setup?step=${item.id}`}
+                  href="/mentorship/setup"
                   className="underline underline-offset-4 hover:text-[var(--mk-text)]"
                 >
                   {item.label}
@@ -239,7 +224,7 @@ export default function MentorshipDashboard() {
           </section>
 
           <section>
-            <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">What you sell</h2>
+            <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">Your offer</h2>
             <ul className="mt-3 space-y-2">
               {state.sessionTypes
                 .filter((type) => type.active)
@@ -262,32 +247,19 @@ export default function MentorshipDashboard() {
                   </li>
                 ))}
             </ul>
+            {(mentor.calendlyUrl || mentor.defaultMeetingUrl) && (
+              <p className="mt-3 text-[14px] text-[var(--mk-muted)]">
+                Scheduling via Calendly after payment.
+              </p>
+            )}
             <p className="mt-3 text-[14px]">
               <Link
-                href="/mentorship/setup?step=sessions"
+                href="/mentorship/setup"
                 className="text-[var(--mk-muted)] underline underline-offset-4 hover:text-[var(--mk-text)]"
               >
-                Change your prices
+                Edit your mentor card
               </Link>
             </p>
-          </section>
-
-          <TimeOff entries={exceptions} timezone={mentor.timezone} onChange={load} />
-
-          <section>
-            <h2 className="text-[18px] font-semibold text-[var(--mk-text)]">Everything else</h2>
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {SETUP_STEPS.filter((step) => step.slug !== "review").map((step) => (
-                <li key={step.slug}>
-                  <Link
-                    href={`/mentorship/setup?step=${step.slug}`}
-                    className="inline-block rounded-full px-3.5 py-1.5 text-[13px] text-[var(--mk-text)] shadow-[inset_0_0_0_1px_var(--mk-chip-line)] hover:bg-[var(--mk-wash)]"
-                  >
-                    {step.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </section>
         </div>
 

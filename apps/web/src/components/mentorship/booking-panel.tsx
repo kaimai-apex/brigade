@@ -12,11 +12,10 @@ import { cn } from "@/lib/utils";
 type Slot = { startsAt: string; endsAt: string };
 
 /**
- * Pick a session, pick a time, book it.
+ * Book a mentor session.
  *
- * Slots are re-fetched whenever the session type changes, because a 30-minute
- * and a 90-minute session divide the same availability window differently — the
- * list is not a filter over one fixed set of times.
+ * Calendly mentors: pay on Brigade, then schedule on Calendly (no slot grid).
+ * Legacy mentors: pick a native slot, then Checkout / reserve.
  */
 export function BookingPanel({
   mentorUserId,
@@ -27,6 +26,7 @@ export function BookingPanel({
   isSelf,
   paymentsEnabled,
   paused,
+  usesCalendly = false,
 }: {
   mentorUserId: string;
   mentorName: string;
@@ -36,6 +36,7 @@ export function BookingPanel({
   isSelf: boolean;
   paymentsEnabled: boolean;
   paused: boolean;
+  usesCalendly?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,7 +48,7 @@ export function BookingPanel({
   const selected = sessionTypes.find((t) => t.id === selectedId);
 
   const loadSlots = useCallback(async () => {
-    if (!selectedId) return;
+    if (!selectedId || usesCalendly) return;
     setSlots(null);
     setChosen(null);
     try {
@@ -59,29 +60,37 @@ export function BookingPanel({
     } catch {
       setSlots([]);
     }
-  }, [mentorUserId, selectedId]);
+  }, [mentorUserId, selectedId, usesCalendly]);
 
   useEffect(() => {
     void loadSlots();
   }, [loadSlots]);
 
-  async function book() {
-    if (!chosen || !selected) return;
+  async function book(opts?: { calendly?: boolean }) {
+    if (!opts?.calendly && (!chosen || !selected)) return;
     setBooking(true);
     try {
       const res = await fetch("/api/mentorship/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mentorUserId,
-          sessionTypeId: selected.id,
-          startsAt: chosen,
-        }),
+        body: JSON.stringify(
+          opts?.calendly
+            ? {
+                mentorUserId,
+                sessionTypeId: selected?.id,
+              }
+            : {
+                mentorUserId,
+                sessionTypeId: selected!.id,
+                startsAt: chosen,
+              },
+        ),
       });
       const json = (await res.json()) as {
         message?: string;
         checkoutUrl?: string | null;
         id?: string;
+        calendlyUrl?: string | null;
       };
       if (!res.ok) {
         if (res.status === 401 || res.status === 404) {
@@ -90,28 +99,21 @@ export function BookingPanel({
           return;
         }
         toast.error(json.message ?? "Could not book");
-        // 409 means somebody took it while this page was open — the times on
-        // screen are stale, so replace them rather than leaving a dead button.
-        if (res.status === 409) await loadSlots();
+        if (res.status === 409 && !opts?.calendly) await loadSlots();
         return;
       }
 
-      // Paid session: the slot is held, but it is not a booking until the
-      // charge settles. Hand off to Stripe rather than showing a success the
-      // mentee has not earned yet. `location.assign` rather than the router —
-      // Checkout is not part of this app.
       if (json.checkoutUrl) {
         window.location.assign(json.checkoutUrl);
         return;
       }
 
-      // Free session, or a deployment with payments switched off.
       toast.success(`Reserved with ${mentorName}`);
       if (json.id) {
         router.push(`/sessions/${json.id}`);
         return;
       }
-      await loadSlots();
+      if (!opts?.calendly) await loadSlots();
     } catch {
       toast.error("Could not book");
     } finally {
@@ -119,7 +121,7 @@ export function BookingPanel({
     }
   }
 
-  if (sessionTypes.length === 0) {
+  if (sessionTypes.length === 0 && !usesCalendly) {
     return (
       <div className="mk-card p-6 shadow-[var(--mk-shadow-card)]">
         <h2 className="text-[22px] font-semibold text-[var(--mk-text)]">
@@ -132,6 +134,69 @@ export function BookingPanel({
         <Link href="/mentors" className="mk-btn mk-btn-outline mt-5 h-10 px-5">
           Browse mentors
         </Link>
+      </div>
+    );
+  }
+
+  if (usesCalendly) {
+    const priceCents = selected?.priceCents ?? sessionTypes[0]?.priceCents ?? 5000;
+    const title = selected?.title ?? sessionTypes[0]?.title ?? "Mentorship session";
+    const duration =
+      selected?.durationMinutes ?? sessionTypes[0]?.durationMinutes ?? 30;
+
+    return (
+      <div className="mk-card p-6 shadow-[var(--mk-shadow-card)]">
+        <h2 className="text-[22px] font-semibold text-[var(--mk-text)]">Book a session</h2>
+        <p className="mt-1.5 text-[14px] text-[var(--mk-muted)]">
+          Pay on Brigade, then pick a time on {mentorName.split(" ")[0]}&apos;s Calendly.
+        </p>
+
+        <div className="mt-5 rounded-xl border border-[var(--mk-line)] p-4">
+          <p className="text-[16px] font-medium text-[var(--mk-text)]">{title}</p>
+          <p className="mt-1 text-[13px] text-[var(--mk-muted)]">{duration} minutes</p>
+          <p className="mt-3 text-[18px] font-semibold text-[var(--mk-text)]">
+            {formatMoney(priceCents, currency)}
+          </p>
+        </div>
+
+        {priceCents > 0 && (
+          <p className="mt-4 text-[13px] text-[var(--mk-muted)]">
+            Brigade keeps {formatMoney(splitPrice(priceCents).platformFeeCents, currency)}{" "}
+            (20%).
+          </p>
+        )}
+
+        {isSelf ? (
+          <p className="mt-4 rounded-lg bg-[var(--mk-wash)] p-3 text-[14px] text-[var(--mk-muted)]">
+            This is your own mentor page.
+          </p>
+        ) : paused ? (
+          <p className="mt-4 rounded-lg bg-[var(--mk-warn-bg)] p-3 text-[13px] text-[var(--mk-badge-gold-text)]">
+            This mentor has paused new bookings.
+          </p>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="mk-btn mk-btn-dark mt-4 w-full"
+              disabled={booking}
+              onClick={() => void book({ calendly: true })}
+            >
+              {booking
+                ? "Starting…"
+                : paymentsEnabled && priceCents > 0
+                  ? `Book & pay · ${formatMoney(priceCents, currency)}`
+                  : "Book session"}
+            </button>
+            {paymentsEnabled && priceCents > 0 && (
+              <p className="mt-2 text-[13px] text-[var(--mk-muted)]">
+                Payment is taken by Stripe. After it clears, you get their Calendly link
+                to choose a time. The hold lasts {CHECKOUT_WINDOW_MINUTES} minutes while
+                you check out.
+              </p>
+            )}
+          </>
+        )}
       </div>
     );
   }
@@ -262,7 +327,7 @@ export function BookingPanel({
             type="button"
             className="mk-btn mk-btn-dark mt-4 w-full"
             disabled={!chosen || booking}
-            onClick={book}
+            onClick={() => void book()}
           >
             {booking
               ? "Reserving…"

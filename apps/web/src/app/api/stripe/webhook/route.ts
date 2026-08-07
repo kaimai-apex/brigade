@@ -8,16 +8,21 @@ import {
   dbGetBooking,
   dbGetBookingByCheckoutSession,
   dbGetBookingByPaymentIntent,
+  dbGetBillingEmail,
+  dbGetMentor,
   dbMarkBookingPaid,
   dbRecordRefund,
   dbSetPayoutsEnabled,
+  mentorScheduleUrl,
 } from "@/lib/server/mentorship-db";
+import { sendMentorBookingReminder } from "@/lib/auth/send-mentor-booking-email";
 import { dbNotify } from "@/lib/server/notify-db";
 import { getPaymentProvider, getWebhookSecret } from "@/lib/server/payments";
 import {
   verifyWebhookSignature,
   WebhookSignatureError,
 } from "@/lib/mentorship/webhook-signature";
+import { getPool } from "@connectpro/common";
 
 /**
  * Stripe's side of the conversation.
@@ -230,6 +235,61 @@ async function onCheckoutCompleted(event: StripeEvent): Promise<void> {
       currency: booking.currency,
     }),
   ]);
+
+  // Email the mentor — same Resend path as login codes. Best-effort so a mail
+  // outage never fails the webhook after money moved.
+  await emailMentorAboutPaidBooking(booking).catch((error) => {
+    console.error(
+      "[stripe/webhook] mentor email failed:",
+      error instanceof Error ? error.message : error,
+    );
+  });
+}
+
+async function emailMentorAboutPaidBooking(booking: {
+  id: string;
+  mentorUserId: string;
+  menteeUserId: string;
+  startsAt: string;
+  sessionTypeId: string;
+  meetingUrl: string | null;
+}): Promise<void> {
+  const mentorEmail = await dbGetBillingEmail(booking.mentorUserId);
+  if (!mentorEmail) {
+    console.warn(
+      `[stripe/webhook] no email for mentor ${booking.mentorUserId} — skipped reminder`,
+    );
+    return;
+  }
+
+  const [mentor, names, menteeEmail, sessionTitle] = await Promise.all([
+    dbGetMentor(booking.mentorUserId),
+    getPool().query(
+      `SELECT
+         trim(concat_ws(' ', mp.first_name, mp.last_name)) AS mentor_name,
+         trim(concat_ws(' ', ep.first_name, ep.last_name)) AS mentee_name
+       FROM users.profiles mp
+       LEFT JOIN users.profiles ep ON ep.user_id = $2
+       WHERE mp.user_id = $1`,
+      [booking.mentorUserId, booking.menteeUserId],
+    ),
+    dbGetBillingEmail(booking.menteeUserId),
+    getPool().query(`SELECT title FROM mentorship.session_types WHERE id = $1`, [
+      booking.sessionTypeId,
+    ]),
+  ]);
+
+  const row = names.rows[0] ?? {};
+  await sendMentorBookingReminder({
+    to: mentorEmail,
+    mentorName: (row.mentor_name as string) || undefined,
+    menteeName: (row.mentee_name as string) || null,
+    menteeEmail,
+    sessionTitle: (sessionTitle.rows[0]?.title as string) || null,
+    startsAt: booking.startsAt,
+    calendlyUrl: booking.meetingUrl || (mentor ? mentorScheduleUrl(mentor) : null),
+    bookingId: booking.id,
+  });
 }
 
 /**

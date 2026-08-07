@@ -1,6 +1,7 @@
 import { getAuthSchema, getPool } from "@connectpro/common";
 import { ensureMentorshipSchema } from "@/lib/server/ensure-mentorship-schema";
 import { splitPrice, assertSellablePrice } from "@/lib/mentorship/pricing";
+import { DEFAULT_MENTORSHIP_SESSION } from "@/lib/mentorship/default-session";
 import { generateConfirmationCode } from "@/lib/mentorship/webhook-signature";
 import { HOLD_WINDOW_MINUTES } from "@/lib/mentorship/holds";
 import {
@@ -9,6 +10,8 @@ import {
   type AvailabilityRule,
   type Slot,
 } from "@/lib/mentorship/availability";
+
+export { DEFAULT_MENTORSHIP_SESSION };
 
 /**
  * Direct-Postgres data layer for the mentorship marketplace.
@@ -34,6 +37,11 @@ export interface Mentor {
   payoutsEnabled: boolean;
   /** The mentor's standing meeting room, copied onto bookings on acceptance. */
   defaultMeetingUrl: string | null;
+  /**
+   * Calendly booking page. When set, mentees pay on Brigade then schedule on
+   * Calendly — native slot picking is skipped.
+   */
+  calendlyUrl: string | null;
   /** What they teach, authored by them — not their profile's expertise areas. */
   expertise: string[];
   /** How far through setup they got, so the flow resumes instead of restarting. */
@@ -74,6 +82,7 @@ function mapMentor(row: Record<string, unknown>): Mentor {
     bookingHorizonDays: Number(row.booking_horizon_days),
     payoutsEnabled: Boolean(row.payouts_enabled),
     defaultMeetingUrl: (row.default_meeting_url as string) ?? null,
+    calendlyUrl: (row.calendly_url as string) ?? null,
     expertise: Array.isArray(row.expertise) ? (row.expertise as string[]) : [],
     onboardingStep: Number(row.onboarding_step ?? 0),
     payoutAccountId: (row.payout_account_id as string) ?? null,
@@ -96,11 +105,15 @@ function mapMentor(row: Record<string, unknown>): Mentor {
 export type PublicMentor = Omit<
   Mentor,
   | "defaultMeetingUrl"
+  | "calendlyUrl"
   | "payoutAccountId"
   | "payoutsOnboardedAt"
   | "payoutsEnabled"
   | "onboardingStep"
->;
+> & {
+  /** True when booking goes through Calendly after payment (URL stays private). */
+  usesCalendly: boolean;
+};
 
 export function toPublicMentor(mentor: Mentor): PublicMentor {
   return {
@@ -117,7 +130,19 @@ export function toPublicMentor(mentor: Mentor): PublicMentor {
     helpOffered: mentor.helpOffered,
     industries: mentor.industries,
     languages: mentor.languages,
+    usesCalendly: mentorUsesCalendly(mentor),
   };
+}
+
+/** Prefer Calendly; fall back to a standing Meet/Zoom room. */
+export function mentorScheduleUrl(mentor: Mentor): string | null {
+  return mentor.calendlyUrl?.trim() || mentor.defaultMeetingUrl?.trim() || null;
+}
+
+/** True when booking should pay-then-schedule (no native slots). */
+export function mentorUsesCalendly(mentor: Mentor): boolean {
+  if (mentor.calendlyUrl?.trim()) return true;
+  return /calendly\.com/i.test(mentor.defaultMeetingUrl ?? "");
 }
 
 function mapSessionType(row: Record<string, unknown>): SessionType {
@@ -176,6 +201,14 @@ export async function dbUpsertMentor(
   }
   if (patch.defaultMeetingUrl !== undefined) {
     columns.default_meeting_url = patch.defaultMeetingUrl;
+  }
+  if (patch.calendlyUrl !== undefined) {
+    columns.calendly_url = patch.calendlyUrl;
+    // Keep the older meeting-url column in sync so receipts and confirm paths
+    // that still read default_meeting_url keep working.
+    if (patch.calendlyUrl && patch.defaultMeetingUrl === undefined) {
+      columns.default_meeting_url = patch.calendlyUrl;
+    }
   }
   if (patch.expertise !== undefined) columns.expertise = patch.expertise;
   if (patch.menteeTypes !== undefined) columns.mentee_types = patch.menteeTypes;
@@ -343,6 +376,16 @@ export async function dbCreateSessionType(
     ],
   );
   return mapSessionType(res.rows[0]);
+}
+
+/**
+ * Ensure the mentor has at least one active session type so checkout has a
+ * price. Idempotent — never duplicates when something is already listed.
+ */
+export async function dbEnsureDefaultSessionType(mentorUserId: string): Promise<SessionType> {
+  const existing = await dbListSessionTypes(mentorUserId, { activeOnly: true });
+  if (existing[0]) return existing[0];
+  return dbCreateSessionType(mentorUserId, { ...DEFAULT_MENTORSHIP_SESSION });
 }
 
 /**
@@ -809,6 +852,80 @@ export async function dbCreateBooking(
   }
 }
 
+/**
+ * Hold a Calendly-backed booking: pay on Brigade, schedule on Calendly.
+ *
+ * No availability rules — the real time is chosen on Calendly after payment.
+ * `starts_at` is a placeholder so the row satisfies NOT NULL / overlap checks;
+ * the receipt and mentor email point people at Calendly instead.
+ */
+export async function dbCreateCalendlyBooking(
+  menteeUserId: string,
+  input: { mentorUserId: string; sessionTypeId?: string },
+): Promise<Booking> {
+  await ensureMentorshipSchema();
+  await dbExpireStalePendingBookings();
+
+  if (menteeUserId === input.mentorUserId) {
+    throw new Error("You cannot book your own session");
+  }
+
+  const mentor = await dbGetMentor(input.mentorUserId);
+  if (!mentor || mentor.status !== "active") throw new Error("This mentor is not taking bookings");
+  if (!mentorScheduleUrl(mentor)) {
+    throw new Error("This mentor has not added a Calendly link yet");
+  }
+
+  const sessionType =
+    (input.sessionTypeId
+      ? (await dbListSessionTypes(input.mentorUserId)).find((t) => t.id === input.sessionTypeId)
+      : null) ?? (await dbEnsureDefaultSessionType(input.mentorUserId));
+
+  const pending = await pool().query(
+    `SELECT count(*)::int AS n FROM mentorship.bookings
+      WHERE mentee_user_id = $1 AND status = 'pending_payment'`,
+    [menteeUserId],
+  );
+  if ((pending.rows[0]?.n as number) >= MAX_PENDING_PER_MENTEE) {
+    throw new TooManyPendingBookingsError();
+  }
+
+  // Placeholders spaced far enough apart that concurrent Calendly holds rarely
+  // collide on the exclusion constraint; if they do, the caller retries.
+  const startsAt = new Date(Date.now() + 14 * 24 * 60 * 60_000 + Math.floor(Math.random() * 3_600_000));
+  const endsAt = new Date(startsAt.getTime() + sessionType.durationMinutes * 60_000);
+  const split = splitPrice(sessionType.priceCents);
+  const scheduleUrl = mentorScheduleUrl(mentor);
+
+  try {
+    const res = await pool().query(
+      `INSERT INTO mentorship.bookings
+         (mentor_user_id, mentee_user_id, session_type_id, starts_at, ends_at,
+          status, currency, price_cents, platform_fee_bps, platform_fee_cents,
+          mentor_payout_cents, meeting_url)
+       VALUES ($1, $2, $3, $4, $5, 'pending_payment', $6, $7, $8, $9, $10, $11)
+       RETURNING *`,
+      [
+        input.mentorUserId,
+        menteeUserId,
+        sessionType.id,
+        startsAt.toISOString(),
+        endsAt.toISOString(),
+        mentor.currency,
+        split.priceCents,
+        split.platformFeeBps,
+        split.platformFeeCents,
+        split.mentorPayoutCents,
+        scheduleUrl,
+      ],
+    );
+    return mapBooking(res.rows[0]);
+  } catch (error) {
+    if ((error as { code?: string }).code === "23P01") throw new SlotUnavailableError();
+    throw error;
+  }
+}
+
 export async function dbListBookingsForMentee(menteeUserId: string): Promise<Booking[]> {
   await ensureMentorshipSchema();
   const res = await pool().query(
@@ -933,7 +1050,11 @@ export async function dbMarkBookingPaid(input: {
                 payment_intent_id = COALESCE($2, b.payment_intent_id),
                 receipt_url = COALESCE($3, b.receipt_url),
                 confirmation_code = COALESCE(b.confirmation_code, $4),
-                meeting_url = COALESCE(b.meeting_url, m.default_meeting_url),
+                meeting_url = COALESCE(
+                  b.meeting_url,
+                  m.calendly_url,
+                  m.default_meeting_url
+                ),
                 updated_at = now()
            FROM mentorship.mentors m
           WHERE b.checkout_session_id = $1
@@ -972,7 +1093,11 @@ export async function dbConfirmFreeBooking(bookingId: string): Promise<Booking |
         `UPDATE mentorship.bookings b
             SET status = 'confirmed',
                 confirmation_code = COALESCE(b.confirmation_code, $2),
-                meeting_url = COALESCE(b.meeting_url, m.default_meeting_url),
+                meeting_url = COALESCE(
+                  b.meeting_url,
+                  m.calendly_url,
+                  m.default_meeting_url
+                ),
                 updated_at = now()
            FROM mentorship.mentors m
           WHERE b.id = $1
@@ -1118,7 +1243,8 @@ export async function dbConfirmBooking(
   await ensureMentorshipSchema();
 
   const mentor = await dbGetMentor(mentorUserId);
-  const link = meetingUrl?.trim() || mentor?.defaultMeetingUrl || null;
+  const link =
+    meetingUrl?.trim() || (mentor ? mentorScheduleUrl(mentor) : null) || null;
   const normalised = link ? normaliseMeetingUrl(link) : null;
 
   // A code is issued here too. A confirmed session is a confirmed session

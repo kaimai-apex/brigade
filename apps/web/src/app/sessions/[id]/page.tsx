@@ -122,12 +122,25 @@ export default async function SessionReceiptPage({
         <section className="mk-card mt-6 p-6">
           <dl className="space-y-4">
             <Row label="When">
-              <span className="text-[var(--mk-text)]">{when}</span>
-              {!isMentor && zonesDiffer && (
-                <span className="mt-0.5 block text-[13px] text-[var(--mk-subtle)]">
-                  {mentorLocalTime} for {otherName} ·{" "}
-                  {booking.mentorTimezone.replace(/_/g, " ")}
-                </span>
+              {booking.meetingUrl?.includes("calendly.com") ? (
+                <>
+                  <span className="text-[var(--mk-text)]">
+                    Pick a time on Calendly
+                  </span>
+                  <span className="mt-0.5 block text-[13px] text-[var(--mk-subtle)]">
+                    Brigade holds a placeholder time until you schedule: {when}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[var(--mk-text)]">{when}</span>
+                  {!isMentor && zonesDiffer && (
+                    <span className="mt-0.5 block text-[13px] text-[var(--mk-subtle)]">
+                      {mentorLocalTime} for {otherName} ·{" "}
+                      {booking.mentorTimezone.replace(/_/g, " ")}
+                    </span>
+                  )}
+                </>
               )}
             </Row>
 
@@ -172,7 +185,13 @@ export default async function SessionReceiptPage({
             </Row>
 
             {confirmed && (
-              <Row label="Where">
+              <Row
+                label={
+                  booking.meetingUrl?.includes("calendly.com")
+                    ? "Schedule"
+                    : "Where"
+                }
+              >
                 {booking.meetingUrl ? (
                   <>
                     <a
@@ -186,6 +205,13 @@ export default async function SessionReceiptPage({
                     <span className="mt-1 block">
                       <CopyLinkButton url={booking.meetingUrl} />
                     </span>
+                    {booking.meetingUrl.includes("calendly.com") && (
+                      <span className="mt-1 block text-[13px] text-[var(--mk-subtle)]">
+                        {isMentor
+                          ? "Your mentee uses this link to book a time with you."
+                          : "Open Calendly to choose a time for the session."}
+                      </span>
+                    )}
                   </>
                 ) : (
                   <span className="text-[var(--mk-muted)]">

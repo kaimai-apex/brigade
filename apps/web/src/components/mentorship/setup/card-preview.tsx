@@ -27,6 +27,10 @@ export function MentorCardPreview({ state }: { state: SetupState }) {
   const headline = draft.headline ?? mentor?.headline ?? null;
   const bio = draft.bio ?? mentor?.bio ?? null;
   const expertise = draft.expertise ?? mentor?.expertise ?? [];
+  const firstName = draft.firstName ?? profile.firstName;
+  const lastName = draft.lastName ?? profile.lastName;
+  const city = draft.city ?? profile.city;
+  const country = draft.country ?? profile.country;
 
   const active = sessionTypes.filter((type) => type.active);
   const cheapest = active.length ? Math.min(...active.map((type) => type.priceCents)) : null;
@@ -34,13 +38,13 @@ export function MentorCardPreview({ state }: { state: SetupState }) {
 
   const listing: MentorListing = {
     userId: mentor?.userId ?? "preview",
-    firstName: profile.firstName,
-    lastName: profile.lastName,
+    firstName,
+    lastName,
     headline,
     role: profile.role,
-    city: profile.city,
+    city,
     state: profile.state,
-    country: profile.country,
+    country,
     avatarUrl: profile.avatarUrl,
     timezone: mentor?.timezone ?? "UTC",
     currency,
@@ -70,7 +74,7 @@ export function MentorCardPreview({ state }: { state: SetupState }) {
 
         {active.length === 0 && (
           <p className="mt-3 max-w-[320px] text-[13px] text-[var(--mk-subtle)]">
-            Add a session and the price appears on the card.
+            A default session price is added when you publish.
           </p>
         )}
         {!profile.avatarUrl && (
@@ -96,8 +100,7 @@ export function MentorCardPreview({ state }: { state: SetupState }) {
 
         <div className="mt-3 rounded-2xl border border-[var(--mk-line)] p-4">
           <p className="text-[15px] font-semibold text-[var(--mk-text)]">
-            {[profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
-              "Your name"}
+            {[firstName, lastName].filter(Boolean).join(" ") || "Your name"}
           </p>
           <p className="mt-1 text-[14px] text-[var(--mk-muted)]">
             {headline?.trim() || (

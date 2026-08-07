@@ -15,6 +15,33 @@ import { getPool } from "@connectpro/common";
 
 let ready: Promise<void> | null = null;
 
+/** Additive columns that must land even when the base table already exists. */
+async function ensureMentorColumns(pool: ReturnType<typeof getPool>) {
+  for (const column of [
+    "default_meeting_url TEXT",
+    "expertise TEXT[] NOT NULL DEFAULT '{}'",
+    "onboarding_step SMALLINT NOT NULL DEFAULT 0",
+    "payouts_onboarded_at TIMESTAMPTZ",
+    "industries TEXT[] NOT NULL DEFAULT '{}'",
+    "help_offered TEXT[] NOT NULL DEFAULT '{}'",
+    "languages TEXT[] NOT NULL DEFAULT '{}'",
+    "mentee_types TEXT[] NOT NULL DEFAULT '{}'",
+    // Migration 018 — Calendly booking link for simplified mentorship.
+    "calendly_url TEXT",
+  ]) {
+    await pool.query(`ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS ${column}`);
+  }
+  for (const [name, column] of [
+    ["idx_mentors_industries", "industries"],
+    ["idx_mentors_help_offered", "help_offered"],
+    ["idx_mentors_expertise", "expertise"],
+  ] as const) {
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS ${name} ON mentorship.mentors USING GIN (${column})`,
+    );
+  }
+}
+
 export function ensureMentorshipSchema() {
   if (ready) return ready;
 
@@ -22,7 +49,8 @@ export function ensureMentorshipSchema() {
     const pool = getPool();
 
     // Production often uses a limited role that can DML but not CREATE SCHEMA.
-    // If the marketplace tables are already present, skip every DDL statement.
+    // If the marketplace tables are already present, still apply additive
+    // ALTERs (new columns) so a deploy can land ahead of a hand-run migration.
     const present = await pool.query(
       `SELECT 1
          FROM information_schema.tables
@@ -31,6 +59,7 @@ export function ensureMentorshipSchema() {
         LIMIT 1`,
     );
     if (present.rows.length > 0) {
+      await ensureMentorColumns(pool);
       return;
     }
 
@@ -59,40 +88,7 @@ export function ensureMentorshipSchema() {
     await pool.query(
       "CREATE INDEX IF NOT EXISTS idx_mentors_status ON mentorship.mentors (status)",
     );
-    // Added after the table shipped, so it needs its own ALTER for databases
-    // created before migration 014.
-    await pool.query(
-      "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS default_meeting_url TEXT",
-    );
-    // Migration 016 — the mentor's own card, and payout onboarding state.
-    await pool.query(
-      "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS expertise TEXT[] NOT NULL DEFAULT '{}'",
-    );
-    await pool.query(
-      "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS onboarding_step SMALLINT NOT NULL DEFAULT 0",
-    );
-    await pool.query(
-      "ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS payouts_onboarded_at TIMESTAMPTZ",
-    );
-    // Migration 017 — the mentor half of every matching pair. `expertise`
-    // already covers skills, so it is not repeated here.
-    for (const column of [
-      "industries TEXT[] NOT NULL DEFAULT '{}'",
-      "help_offered TEXT[] NOT NULL DEFAULT '{}'",
-      "languages TEXT[] NOT NULL DEFAULT '{}'",
-      "mentee_types TEXT[] NOT NULL DEFAULT '{}'",
-    ]) {
-      await pool.query(`ALTER TABLE mentorship.mentors ADD COLUMN IF NOT EXISTS ${column}`);
-    }
-    for (const [name, column] of [
-      ["idx_mentors_industries", "industries"],
-      ["idx_mentors_help_offered", "help_offered"],
-      ["idx_mentors_expertise", "expertise"],
-    ] as const) {
-      await pool.query(
-        `CREATE INDEX IF NOT EXISTS ${name} ON mentorship.mentors USING GIN (${column})`,
-      );
-    }
+    await ensureMentorColumns(pool);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mentorship.session_types (

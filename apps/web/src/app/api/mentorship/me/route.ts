@@ -6,19 +6,91 @@ import {
   dbListSessionTypes,
   dbListAvailabilityRules,
   dbListExceptions,
+  dbEnsureDefaultSessionType,
   normaliseMeetingUrl,
 } from "@/lib/server/mentorship-db";
 import { paymentsConfigured, paymentsFullyConfigured } from "@/lib/server/payments";
-import { evaluateReadiness, SETUP_STEPS } from "@/lib/mentorship/readiness";
+import { evaluateReadiness } from "@/lib/mentorship/readiness";
 import { getPool } from "@connectpro/common";
-import {
-  COMMON_LANGUAGES,
-  HELP_TYPES,
-  INDUSTRIES,
-  MENTEE_TYPES,
-  keepKnown,
-  keepTags,
-} from "@/lib/onboarding/taxonomy";
+
+function readinessFrom(
+  mentor: {
+    headline: string | null;
+    bio: string | null;
+    expertise: string[];
+    helpOffered: string[];
+    calendlyUrl: string | null;
+    defaultMeetingUrl: string | null;
+  } | null,
+  profile: {
+    firstName: string | null;
+    lastName: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+  },
+  overrides?: {
+    headline?: string | null;
+    bio?: string | null;
+    expertise?: string[];
+    helpOffered?: string[];
+    calendlyUrl?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
+  },
+) {
+  const firstName = overrides?.firstName ?? profile.firstName;
+  const lastName = overrides?.lastName ?? profile.lastName;
+  const city = overrides?.city ?? profile.city;
+  const state = overrides?.state ?? profile.state;
+  const country = overrides?.country ?? profile.country;
+  const name = [firstName, lastName].filter(Boolean).join(" ").trim() || null;
+  const location = [city, state, country].filter(Boolean).join(", ").trim() || null;
+  const expertise = overrides?.expertise ?? mentor?.expertise ?? [];
+  const helpOffered = overrides?.helpOffered ?? mentor?.helpOffered ?? [];
+  const mentorshipOffered =
+    helpOffered[0]?.trim() ||
+    expertise.join(", ").trim() ||
+    null;
+  const calendlyUrl =
+    overrides?.calendlyUrl ?? mentor?.calendlyUrl ?? mentor?.defaultMeetingUrl ?? null;
+
+  return evaluateReadiness({
+    name,
+    headline: overrides?.headline ?? mentor?.headline ?? null,
+    location,
+    bio: overrides?.bio ?? mentor?.bio ?? null,
+    mentorshipOffered,
+    calendlyUrl,
+  });
+}
+
+async function loadProfile(userId: string) {
+  const profileRes = await getPool().query(
+    `SELECT first_name, last_name, avatar_url, role, city, state, country,
+            current_employer, years_experience
+       FROM users.profiles WHERE user_id = $1`,
+    [userId],
+  );
+  const p = profileRes.rows[0] ?? {};
+  return {
+    firstName: (p.first_name as string) ?? null,
+    lastName: (p.last_name as string) ?? null,
+    avatarUrl: (p.avatar_url as string) ?? null,
+    role: (p.role as string) ?? null,
+    city: (p.city as string) ?? null,
+    state: (p.state as string) ?? null,
+    country: (p.country as string) ?? null,
+    currentEmployer: (p.current_employer as string) ?? null,
+    yearsExperience:
+      p.years_experience === null || p.years_experience === undefined
+        ? null
+        : Number(p.years_experience),
+  };
+}
 
 /** The caller's own mentor setup, or null if they have not started one. */
 export async function GET() {
@@ -27,63 +99,30 @@ export async function GET() {
 
   try {
     const mentor = await dbGetMentor(session.userId);
+    const profile = await loadProfile(session.userId);
+
     if (!mentor) {
       return NextResponse.json({
         mentor: null,
+        profile,
         paymentsConfigured: paymentsConfigured(),
         takingPayments: paymentsFullyConfigured(),
       });
     }
+
     const [sessionTypes, availability, exceptions] = await Promise.all([
       dbListSessionTypes(session.userId, { activeOnly: false }),
       dbListAvailabilityRules(session.userId),
       dbListExceptions(session.userId),
     ]);
 
-    const active = sessionTypes.filter((type) => type.active);
-    const readiness = evaluateReadiness({
-      headline: mentor.headline,
-      bio: mentor.bio,
-      expertise: mentor.expertise,
-      activeSessionCount: active.length,
-      hasPaidSession: active.some((type) => type.priceCents > 0),
-      weeklyWindowCount: availability.length,
-      defaultMeetingUrl: mentor.defaultMeetingUrl,
-      payoutsEnabled: mentor.payoutsEnabled,
-      paymentsConfigured: paymentsConfigured(),
-    });
-
-    // The card preview in the setup flow renders the real ExploreCard, which
-    // needs the profile half of a listing: name, photo, role, place. Returned
-    // here so the flow does not have to make a second round trip on every keystroke.
-    const profileRes = await getPool().query(
-      `SELECT first_name, last_name, avatar_url, role, city, state, country,
-              current_employer, years_experience
-         FROM users.profiles WHERE user_id = $1`,
-      [session.userId],
-    );
-    const p = profileRes.rows[0] ?? {};
-
     return NextResponse.json({
       mentor,
       sessionTypes,
       availability,
       exceptions,
-      readiness,
-      profile: {
-        firstName: p.first_name ?? null,
-        lastName: p.last_name ?? null,
-        avatarUrl: p.avatar_url ?? null,
-        role: p.role ?? null,
-        city: p.city ?? null,
-        state: p.state ?? null,
-        country: p.country ?? null,
-        currentEmployer: p.current_employer ?? null,
-        yearsExperience:
-          p.years_experience === null || p.years_experience === undefined
-            ? null
-            : Number(p.years_experience),
-      },
+      readiness: readinessFrom(mentor, profile),
+      profile,
       paymentsConfigured: paymentsConfigured(),
       takingPayments: paymentsFullyConfigured(),
     });
@@ -100,17 +139,20 @@ export async function PUT(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
-  // Validated here rather than at booking time — a broken link should be
-  // rejected while the mentor is looking at the field, not discovered by a
-  // mentee trying to join a call.
-  let defaultMeetingUrl: string | null | undefined;
-  if (typeof body.defaultMeetingUrl === "string") {
-    const raw = body.defaultMeetingUrl.trim();
+  let calendlyUrl: string | null | undefined;
+  const calendlyRaw =
+    typeof body.calendlyUrl === "string"
+      ? body.calendlyUrl
+      : typeof body.defaultMeetingUrl === "string"
+        ? body.defaultMeetingUrl
+        : undefined;
+  if (typeof calendlyRaw === "string") {
+    const raw = calendlyRaw.trim();
     if (raw === "") {
-      defaultMeetingUrl = null;
+      calendlyUrl = null;
     } else {
       try {
-        defaultMeetingUrl = normaliseMeetingUrl(raw);
+        calendlyUrl = normaliseMeetingUrl(raw);
       } catch (error) {
         return NextResponse.json(
           { message: error instanceof Error ? error.message : "Invalid link" },
@@ -125,31 +167,90 @@ export async function PUT(request: Request) {
       ? body.status
       : undefined;
 
-  /**
-   * Going live is the one transition that has to be earned.
-   *
-   * Checked here rather than only in the UI, because the UI is a suggestion:
-   * this endpoint is reachable directly, and a mentor listed with no sessions
-   * or no hours is a page that wastes a visitor's time. The same function
-   * drives the checklist, so the button and the gate cannot disagree.
-   */
-  if (status === "active") {
-    const [existing, sessionTypes, rules] = await Promise.all([
-      dbGetMentor(session.userId),
-      dbListSessionTypes(session.userId),
-      dbListAvailabilityRules(session.userId),
-    ]);
+  const firstName =
+    typeof body.firstName === "string" ? body.firstName.trim().slice(0, 80) : undefined;
+  const lastName =
+    typeof body.lastName === "string" ? body.lastName.trim().slice(0, 80) : undefined;
+  const city = typeof body.city === "string" ? body.city.trim().slice(0, 80) : undefined;
+  const state = typeof body.state === "string" ? body.state.trim().slice(0, 80) : undefined;
+  const country =
+    typeof body.country === "string" ? body.country.trim().slice(0, 80) : undefined;
 
-    const readiness = evaluateReadiness({
-      headline: typeof body.headline === "string" ? body.headline : (existing?.headline ?? null),
-      bio: typeof body.bio === "string" ? body.bio : (existing?.bio ?? null),
-      expertise: existing?.expertise ?? [],
-      activeSessionCount: sessionTypes.length,
-      hasPaidSession: sessionTypes.some((type) => type.priceCents > 0),
-      weeklyWindowCount: rules.length,
-      defaultMeetingUrl: defaultMeetingUrl ?? existing?.defaultMeetingUrl ?? null,
-      payoutsEnabled: existing?.payoutsEnabled ?? false,
-      paymentsConfigured: paymentsConfigured(),
+  const mentorshipOffered =
+    typeof body.mentorshipOffered === "string"
+      ? body.mentorshipOffered.trim().slice(0, 2000)
+      : undefined;
+
+  // Profile fields (name / place) live on users.profiles — update when provided.
+  if (
+    firstName !== undefined ||
+    lastName !== undefined ||
+    city !== undefined ||
+    state !== undefined ||
+    country !== undefined
+  ) {
+    await getPool().query(
+      `UPDATE users.profiles SET
+         first_name = COALESCE($2, first_name),
+         last_name  = COALESCE($3, last_name),
+         city       = COALESCE($4, city),
+         state      = COALESCE($5, state),
+         country    = COALESCE($6, country),
+         updated_at = now()
+       WHERE user_id = $1`,
+      [
+        session.userId,
+        firstName === undefined ? null : firstName || null,
+        lastName === undefined ? null : lastName || null,
+        city === undefined ? null : city || null,
+        state === undefined ? null : state || null,
+        country === undefined ? null : country || null,
+      ],
+    );
+  }
+
+  const profile = await loadProfile(session.userId);
+  const existing = await dbGetMentor(session.userId);
+
+  const expertise =
+    mentorshipOffered !== undefined
+      ? mentorshipOffered
+        ? mentorshipOffered
+            .split(/[\n,]+/)
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+            .slice(0, 12)
+        : []
+      : Array.isArray(body.expertise)
+        ? Array.from(
+            new Set(
+              body.expertise
+                .filter((tag): tag is string => typeof tag === "string")
+                .map((tag) => tag.trim())
+                .filter(Boolean),
+            ),
+          ).slice(0, 12)
+        : undefined;
+
+  const helpOffered =
+    mentorshipOffered !== undefined
+      ? mentorshipOffered
+        ? [mentorshipOffered]
+        : []
+      : undefined;
+
+  if (status === "active") {
+    const readiness = readinessFrom(existing, profile, {
+      headline: typeof body.headline === "string" ? body.headline : undefined,
+      bio: typeof body.bio === "string" ? body.bio : undefined,
+      expertise,
+      helpOffered,
+      calendlyUrl,
+      firstName: firstName ?? undefined,
+      lastName: lastName ?? undefined,
+      city: city ?? undefined,
+      state: state ?? undefined,
+      country: country ?? undefined,
     });
 
     if (!readiness.canPublish) {
@@ -166,46 +267,38 @@ export async function PUT(request: Request) {
   }
 
   try {
+    // Mentor row must exist before we can attach a default session type.
+    if (status === "active" && !existing) {
+      await dbUpsertMentor(session.userId, {
+        status: "draft",
+        timezone:
+          typeof body.timezone === "string"
+            ? body.timezone
+            : "UTC",
+      });
+    }
+
+    if (status === "active") {
+      await dbEnsureDefaultSessionType(session.userId);
+    }
+
     const mentor = await dbUpsertMentor(session.userId, {
-      defaultMeetingUrl,
+      calendlyUrl,
+      defaultMeetingUrl: calendlyUrl,
       status,
       headline: typeof body.headline === "string" ? body.headline : undefined,
       bio: typeof body.bio === "string" ? body.bio : undefined,
       timezone: typeof body.timezone === "string" ? body.timezone : undefined,
-      expertise: Array.isArray(body.expertise)
-        ? // Trimmed, de-duplicated and capped: these become search facets, and
-          // an unbounded list of near-identical tags makes discovery worse.
-          Array.from(
-            new Set(
-              body.expertise
-                .filter((tag): tag is string => typeof tag === "string")
-                .map((tag) => tag.trim())
-                .filter(Boolean),
-            ),
-          ).slice(0, 12)
-        : undefined,
-      // The mentor half of the matching pairs. Filtered against the same lists
-      // a member picks from, so the two sides stay comparable.
-      menteeTypes: body.menteeTypes === undefined ? undefined : keepKnown(body.menteeTypes, MENTEE_TYPES),
-      helpOffered: body.helpOffered === undefined ? undefined : keepKnown(body.helpOffered, HELP_TYPES),
-      industries: body.industries === undefined ? undefined : keepKnown(body.industries, INDUSTRIES),
-      languages:
-        body.languages === undefined
-          ? undefined
-          : keepTags(body.languages, 6).filter(
-              (language) =>
-                COMMON_LANGUAGES.includes(language as (typeof COMMON_LANGUAGES)[number]) ||
-                language.length <= 30,
-            ),
+      expertise,
+      helpOffered,
       onboardingStep:
         typeof body.onboardingStep === "number" && Number.isInteger(body.onboardingStep)
-          ? Math.max(0, Math.min(body.onboardingStep, SETUP_STEPS.length))
-          : undefined,
-      minNoticeHours:
-        typeof body.minNoticeHours === "number" ? body.minNoticeHours : undefined,
-      bookingHorizonDays:
-        typeof body.bookingHorizonDays === "number" ? body.bookingHorizonDays : undefined,
+          ? Math.max(0, Math.min(body.onboardingStep, 1))
+          : status === "active"
+            ? 1
+            : undefined,
     });
+
     return NextResponse.json(mentor);
   } catch (error) {
     return NextResponse.json(

@@ -7,25 +7,26 @@
  * 400, or a checklist that lets someone publish a page nobody can book.
  *
  * No I/O — the caller reads the rows, this decides what they mean.
+ *
+ * Simplified publish path: name, title, location, description, what they offer,
+ * and a Calendly link. Native hours / Stripe Connect are no longer required —
+ * payment is platform-collected and scheduling happens on Calendly.
  */
 
 export interface ReadinessInput {
+  /** Profile display name (first + last). */
+  name: string | null;
   headline: string | null;
+  /** City / place string from the profile. */
+  location: string | null;
   bio: string | null;
-  expertise: string[];
-  /** Only the sellable ones. An inactive session type is not an offer. */
-  activeSessionCount: number;
-  /** True when at least one active session costs money. */
-  hasPaidSession: boolean;
-  weeklyWindowCount: number;
-  defaultMeetingUrl: string | null;
-  payoutsEnabled: boolean;
-  /** False on a deployment with no Stripe keys at all. */
-  paymentsConfigured: boolean;
+  /** What they want to share — free text or expertise tags. */
+  mentorshipOffered: string | null;
+  calendlyUrl: string | null;
 }
 
 export interface ChecklistItem {
-  id: "profile" | "sessions" | "hours" | "meeting" | "payouts" | "tags" | "audience";
+  id: "name" | "title" | "location" | "description" | "offered" | "calendly";
   label: string;
   /** Blocks publishing when false. Advisory items are never blocking. */
   required: boolean;
@@ -44,73 +45,48 @@ export interface Readiness {
 }
 
 export function evaluateReadiness(input: ReadinessInput): Readiness {
-  const hasProfile = Boolean(input.headline?.trim()) && Boolean(input.bio?.trim());
-
-  /**
-   * Payouts are only required once there is something to be paid FOR.
-   *
-   * A mentor offering a free intro call has no money to route, so demanding
-   * Stripe onboarding would block them for no reason. And on a deployment with
-   * no Stripe keys, requiring it would make publishing impossible for everyone
-   * — which is how the marketplace ends up empty.
-   */
-  const payoutsRequired = input.hasPaidSession && input.paymentsConfigured;
-
   const items: ChecklistItem[] = [
     {
-      id: "profile",
-      label: "Introduce yourself",
+      id: "name",
+      label: "Your name",
       required: true,
-      done: hasProfile,
-      hint: "A headline and a few lines on what people get out of a session with you.",
+      done: Boolean(input.name?.trim()),
+      hint: "How you appear on your mentor card.",
     },
     {
-      id: "sessions",
-      label: "Set your prices",
+      id: "title",
+      label: "Title",
       required: true,
-      done: input.activeSessionCount > 0,
-      hint: "Add at least one session — what it covers, how long it runs, what it costs.",
+      done: Boolean(input.headline?.trim()),
+      hint: "One line — your role or what you are known for.",
     },
     {
-      id: "hours",
-      label: "Choose your hours",
+      id: "location",
+      label: "Where you are based",
       required: true,
-      done: input.weeklyWindowCount > 0,
-      hint: "Weekly windows when you are free. Nobody can book you without them.",
+      done: Boolean(input.location?.trim()),
+      hint: "City or region, so mentees know your context.",
     },
     {
-      id: "payouts",
-      label: "Get paid",
-      required: payoutsRequired,
-      done: input.payoutsEnabled,
-      hint: input.paymentsConfigured
-        ? "Connect a Stripe account so the money from a booking reaches your bank."
-        : "Payments are not switched on for this deployment yet.",
+      id: "description",
+      label: "Description",
+      required: true,
+      done: Boolean(input.bio?.trim()),
+      hint: "A short resume / about — who you are and your background.",
     },
     {
-      id: "tags",
-      label: "Say what you teach",
-      /**
-       * Advisory, not blocking.
-       *
-       * Tags are the main way people find a mentor — the directory filters and
-       * facets resolve to them — so leaving them empty is a real handicap. But
-       * a mentor with a good headline and an open calendar is still worth
-       * listing, and discovery falls back to their profile's expertise areas,
-       * so refusing to publish over this would keep useful people off the site.
-       */
-      required: false,
-      done: input.expertise.length > 0,
-      hint: "The subjects you want to be found for. Without them you rely on your profile's.",
+      id: "offered",
+      label: "Mentorship offered",
+      required: true,
+      done: Boolean(input.mentorshipOffered?.trim()),
+      hint: "What you want to share in sessions.",
     },
     {
-      id: "meeting",
-      label: "Add your meeting link",
-      // Advisory: a mentor can add the link per booking instead, and blocking
-      // publication on it would keep an otherwise-ready mentor off the site.
-      required: false,
-      done: Boolean(input.defaultMeetingUrl?.trim()),
-      hint: "Your Calendly, Meet, Zoom or Whereby room. Sent to the other person once they pay.",
+      id: "calendly",
+      label: "Calendly booking link",
+      required: true,
+      done: Boolean(input.calendlyUrl?.trim()),
+      hint: "Mentees pay on Brigade, then pick a time on your Calendly.",
     },
   ];
 
@@ -125,20 +101,11 @@ export function evaluateReadiness(input: ReadinessInput): Readiness {
   };
 }
 
-/** The setup flow's steps, in order. Index matches `mentors.onboarding_step`. */
-export const SETUP_STEPS = [
-  { slug: "profile", label: "Your profile" },
-  { slug: "audience", label: "Who you help" },
-  { slug: "sessions", label: "Sessions & pricing" },
-  { slug: "hours", label: "Availability" },
-  { slug: "meeting", label: "Meeting link" },
-  { slug: "payouts", label: "Get paid" },
-  { slug: "review", label: "Review & publish" },
-] as const;
+/** Legacy step slugs kept so old dashboard links still resolve to setup. */
+export const SETUP_STEPS = [{ slug: "profile", label: "Your profile" }] as const;
 
 export type SetupSlug = (typeof SETUP_STEPS)[number]["slug"];
 
-export function stepIndex(slug: string): number {
-  const index = SETUP_STEPS.findIndex((step) => step.slug === slug);
-  return index === -1 ? 0 : index;
+export function stepIndex(_slug: string): number {
+  return 0;
 }

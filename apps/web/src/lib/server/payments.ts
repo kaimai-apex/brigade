@@ -356,11 +356,15 @@ export async function createPlatformCheckoutSession(input: {
   cancelUrl: string;
   /** Distinguishes this Checkout from mentorship bookings in the webhook. */
   kind: string;
+  /** Optional extras — e.g. mentorship booking id for webhook confirmation. */
+  metadata?: Record<string, string>;
+  receiptEmail?: string;
+  expiresAt?: number;
 }): Promise<CheckoutSession> {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key) throw new PaymentsNotConfiguredError();
 
-  const session = await stripeFormPost<{ id: string; url: string }>(key, "/checkout/sessions", {
+  const body: Record<string, string | number | boolean | undefined> = {
     mode: "payment",
     success_url: input.successUrl,
     cancel_url: input.cancelUrl,
@@ -371,7 +375,22 @@ export async function createPlatformCheckoutSession(input: {
     "metadata[brigade_kind]": input.kind,
     // Let Stripe collect the buyer's email on Checkout.
     customer_creation: "if_required",
-  });
+    expires_at: input.expiresAt,
+  };
+
+  if (input.receiptEmail) {
+    body.customer_email = input.receiptEmail;
+  }
+
+  for (const [keyName, value] of Object.entries(input.metadata ?? {})) {
+    body[`metadata[${keyName}]`] = value;
+  }
+
+  const session = await stripeFormPost<{ id: string; url: string }>(
+    key,
+    "/checkout/sessions",
+    body,
+  );
 
   return { url: session.url, sessionId: session.id };
 }

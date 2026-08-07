@@ -137,7 +137,7 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
                 ? "Be the first — set up your mentoring page and list that skill."
                 : filtering
                   ? "Try another skill, or clear the filters and browse everyone."
-                  : "Publish your sessions and start taking bookings. Setting up takes about ten minutes."}
+                  : "Publish your mentor card with a Calendly link. Setting up takes a couple of minutes."}
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               {filtering && (
@@ -170,9 +170,9 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
                   Teach what you know
                 </h2>
                 <p className="mt-2 text-[15px] text-[var(--mk-muted)]">
-                  If you cook privately, someone is trying to work out how you did it. You
-                  set the price and the hours; Brigade handles booking, payment and
-                  reminders, and keeps 20%. Setting up takes about ten minutes.
+                  If you cook privately, someone is trying to work out how you did it.
+                  Add your Calendly link; Brigade handles payment and reminders, and
+                  keeps 20%. Setting up takes a couple of minutes.
                 </p>
               </div>
               <Link href={setupHref} className="mk-btn mk-btn-dark">

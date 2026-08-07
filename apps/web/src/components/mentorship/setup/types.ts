@@ -19,10 +19,10 @@ export interface SetupMentor {
   bookingHorizonDays: number;
   payoutsEnabled: boolean;
   defaultMeetingUrl: string | null;
+  calendlyUrl: string | null;
   expertise: string[];
   onboardingStep: number;
   payoutAccountId: string | null;
-  /** The mentor half of the matching pairs — see lib/onboarding/taxonomy.ts. */
   menteeTypes: string[];
   helpOffered: string[];
   industries: string[];
@@ -52,15 +52,18 @@ export interface SetupProfile {
 
 /**
  * Unsaved edits, so the preview can move while someone is still typing.
- *
- * Kept separate from the saved mentor rather than merged into it, so there is
- * never a moment where the app cannot tell what is actually stored.
  */
 export interface SetupDraft {
   headline?: string;
   bio?: string;
   expertise?: string[];
   defaultMeetingUrl?: string;
+  calendlyUrl?: string;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  country?: string;
+  mentorshipOffered?: string;
 }
 
 export interface SetupState {
@@ -73,13 +76,10 @@ export interface SetupState {
   draft: SetupDraft;
 }
 
-/** Every step gets the same props, so the orchestrator stays uniform. */
 export interface StepProps {
   state: SetupState;
-  /** Patch the mentor row and refresh. Resolves false when the save failed. */
   save: (patch: Record<string, unknown>) => Promise<boolean>;
   reload: () => Promise<void>;
-  /** Report unsaved edits so the preview keeps up with the form. */
   setDraft: (patch: SetupDraft) => void;
   saving: boolean;
   onNext: () => void;
