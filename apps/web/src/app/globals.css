@@ -1081,22 +1081,6 @@
     border-bottom: 1px solid var(--mk-line);
     background: var(--mk-surface);
   }
-  .mk-tab {
-    margin-bottom: -1px;
-    border-bottom: 2px solid transparent;
-    padding-bottom: 0.75rem;
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--mk-muted);
-    transition: color 150ms ease, border-color 150ms ease;
-  }
-  .mk-tab:hover {
-    color: var(--mk-text);
-  }
-  .mk-tab[aria-current='true'] {
-    border-color: var(--mk-text);
-    color: var(--mk-text);
-  }
 }
 
 @layer utilities {

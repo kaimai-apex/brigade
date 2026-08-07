@@ -62,8 +62,11 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
   // Sending someone who already has a mentor page back through setup, or a
   // logged-out visitor to a page that will bounce them, both waste the click.
   const setupHref = session ? "/mentorship/setup" : "/login?next=/mentorship/setup";
+  // Sessions live in primary nav (AppNav / mobile tabs) — don't mirror them
+  // here as a second "My sessions" tab. Empty-state CTA still points mentors
+  // at /sessions when the directory is empty and they've already set up.
   const emptyCtaHref = ownMentor ? "/sessions" : setupHref;
-  const emptyCtaLabel = ownMentor ? "Manage your sessions" : "Become a mentor";
+  const emptyCtaLabel = ownMentor ? "View sessions" : "Become a mentor";
 
   return (
     <MarketplaceShell>
@@ -84,19 +87,7 @@ export default async function MentorsPage({ searchParams }: { searchParams: Sear
           session in minutes — leave with a plan, not just advice.
         </p>
 
-        <div className="mt-8 flex gap-8 border-b border-[var(--mk-line)]">
-          <span className="mk-tab" aria-current="true">
-            Mentors
-          </span>
-          <Link
-            href={session ? "/sessions" : "/login?next=/sessions"}
-            className="mk-tab"
-          >
-            My sessions
-          </Link>
-        </div>
-
-        <div className="mt-6">
+        <div className="mt-8">
           <MentorSearch
             initialQuery={q ?? ""}
             filters={{ role, city, expertise, sort }}
