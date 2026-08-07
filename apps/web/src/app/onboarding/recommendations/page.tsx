@@ -46,24 +46,40 @@ export default async function RecommendationsPage() {
     experienceLevel: (profile.experienceLevel as string) ?? null,
   };
 
-  const signals = await dbListMentorSignals();
-  // A mentor cannot be recommended to themselves.
-  const { matches, confident, reason } = rankMentors(
-    mentee,
-    signals.filter((signal) => signal.userId !== session.userId),
-  );
+  // Mentor ranking must not 500 the finish screen — onboarding is already
+  // marked complete above. Schema/permission blips fall through to browse.
+  let matches: MatchResult[] = [];
+  let confident = false;
+  let reason: "confident" | "few-matches" | "no-answers" | "no-mentors" = "no-mentors";
+  let ranked: Awaited<ReturnType<typeof dbListMentorsByIds>> = [];
+  let browse: Awaited<ReturnType<typeof dbListMentors>>["data"] = [];
 
-  const ranked = await dbListMentorsByIds(matches.map((match) => match.mentorUserId));
+  try {
+    const signals = await dbListMentorSignals();
+    // A mentor cannot be recommended to themselves.
+    ({ matches, confident, reason } = rankMentors(
+      mentee,
+      signals.filter((signal) => signal.userId !== session.userId),
+    ));
+
+    ranked = await dbListMentorsByIds(matches.map((match) => match.mentorUserId));
+
+    // The fallback is the real directory, not an empty state.
+    browse = confident
+      ? []
+      : (await dbListMentors({ sort: "newest", limit: 12 })).data.filter(
+          (listing) => listing.userId !== session.userId,
+        );
+  } catch (error) {
+    console.error(
+      "[onboarding/recommendations] mentor match failed",
+      error instanceof Error ? error.message : error,
+    );
+  }
+
   const reasonById = new Map<string, MatchResult>(
     matches.map((match) => [match.mentorUserId, match]),
   );
-
-  // The fallback is the real directory, not an empty state.
-  const browse = confident
-    ? []
-    : (await dbListMentors({ sort: "newest", limit: 12 })).data.filter(
-        (listing) => listing.userId !== session.userId,
-      );
 
   const firstName = (profile.preferredName as string) || (profile.firstName as string) || "there";
 
