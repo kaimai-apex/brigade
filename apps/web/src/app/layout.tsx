@@ -31,6 +31,10 @@ export const metadata: Metadata = {
   title: "Brigade — Private Chef Mentorship",
   description:
     "Mentorship for chefs moving into private service. Learn from private chefs who have already done it.",
+  icons: {
+    icon: [{ url: "/brigade-logo-512.png", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/brigade-logo-512.png", sizes: "512x512", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
