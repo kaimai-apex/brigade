@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BrandLink } from "@/components/brand/brand-mark";
 import { DemoGateForm } from "@/components/demo/demo-gate-form";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { isDemoAccessEnabled } from "@/lib/auth/demo-access";
@@ -19,12 +20,7 @@ export default function DemoPage() {
   return (
     <div className="min-h-dvh bg-white text-ink">
       <header className="flex h-12 items-center border-b border-neutral-100 px-4">
-        <Link
-          href="/"
-          className="font-display text-xl font-black tracking-tight text-ink"
-        >
-          Brigade
-        </Link>
+        <BrandLink markSize={28} />
       </header>
       <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-md items-center px-4 py-8">
         <Card className="w-full">

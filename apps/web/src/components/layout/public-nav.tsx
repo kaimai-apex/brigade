@@ -8,16 +8,13 @@ type PublicNavProps = {
 };
 
 /**
- * Marketplace header — white bar, mark + wordmark, clear next actions.
+ * Marketplace header — B mark home link, clear next actions.
  */
 export function PublicNav({ showAuth = true }: PublicNavProps) {
   return (
     <header className="mk-header w-full">
       <div className="mx-auto flex h-full max-w-[1320px] items-center gap-4 px-5 md:px-8">
-        <BrandLink
-          markSize={26}
-          className="text-[22px] font-bold tracking-[-0.02em] text-[var(--mk-text)]"
-        />
+        <BrandLink markSize={32} />
 
         {showAuth && (
           <div className="ml-auto flex items-center gap-2 md:gap-3">

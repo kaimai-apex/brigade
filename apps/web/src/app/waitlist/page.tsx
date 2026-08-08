@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BrandLink } from "@/components/brand/brand-mark";
 import { WaitlistForm } from "@/components/waitlist/waitlist-form";
 
 const WAITLIST_POINTS = [
@@ -26,12 +26,7 @@ export default function WaitlistPage() {
         >
           ← Back
         </button>
-        <Link
-          href="/"
-          className="font-display text-xl font-black tracking-tight text-ink"
-        >
-          Brigade
-        </Link>
+        <BrandLink markSize={28} mark="ink" />
       </header>
 
       <main className="flex flex-1 items-center justify-center px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-16">

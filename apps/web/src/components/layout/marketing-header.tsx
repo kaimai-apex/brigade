@@ -46,11 +46,7 @@ export function MarketingHeader() {
         className={cn('brigade-glass-nav', scrolled && 'brigade-glass-nav-scrolled')}
       >
         <div className="brigade-glass-nav-inner">
-          <BrandLink
-            priority
-            markSize={26}
-            className="text-[22px] tracking-[-0.02em]"
-          />
+          <BrandLink priority markSize={32} />
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             <Link

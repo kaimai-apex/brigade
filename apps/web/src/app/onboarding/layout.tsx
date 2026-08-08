@@ -18,11 +18,7 @@ export default function OnboardingLayout({
   return (
     <div className="min-h-dvh bg-white text-ink">
       <header className="flex h-14 items-center justify-between border-b border-neutral-100 px-4">
-        {/* -mx-2 px-2: keep a 44px thumb target without shifting the mark. */}
-        <BrandLink
-          markSize={24}
-          className="-mx-2 px-2 text-xl text-ink"
-        />
+        <BrandLink markSize={28} />
         <SoundToggle />
       </header>
       <Suspense fallback={null}>

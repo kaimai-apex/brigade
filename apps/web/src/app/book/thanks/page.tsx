@@ -5,7 +5,7 @@ export default function BookThanksPage() {
   return (
     <div className="min-h-dvh bg-[var(--brand-paper-warm)] text-[var(--brand-ink)]">
       <header className="flex h-14 items-center border-b border-black/8 px-5">
-        <BrandLink markSize={24} className="text-xl" />
+        <BrandLink markSize={28} />
       </header>
       <main className="mx-auto max-w-lg px-5 py-20 text-center">
         <h1 className="text-[36px] font-semibold leading-tight">You&apos;re booked in</h1>

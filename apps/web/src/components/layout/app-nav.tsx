@@ -133,11 +133,7 @@ export function AppNav({ user }: AppNavProps) {
       )}
     >
       <div className="mx-auto flex h-12 max-w-[1128px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
-        <BrandLink
-          href="/mentors"
-          markSize={24}
-          className="text-xl text-ink"
-        />
+        <BrandLink href="/mentors" markSize={28} />
 
         <div className="hidden min-w-0 flex-1 sm:block sm:max-w-[220px]">
           <div className="relative">

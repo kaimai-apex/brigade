@@ -22,7 +22,7 @@ type BrandMarkProps = {
   priority?: boolean;
 };
 
-/** Stylized B mark. Pair with Fraunces “Brigade” text — this asset is icon-only. */
+/** Stylized B mark — icon-only asset. */
 export function BrandMark({
   variant = 'forest',
   size = 28,
@@ -47,20 +47,17 @@ type BrandLinkProps = {
   mark?: BrandMarkVariant;
   markSize?: number;
   className?: string;
-  /** Extra classes for the Fraunces wordmark span. */
-  wordmarkClassName?: string;
   priority?: boolean;
 };
 
 /**
- * Home link: B mark + Fraunces “Brigade”. Use in headers / auth chrome.
+ * Home link: B mark only. Accessible name via aria-label.
  */
 export function BrandLink({
   href = '/',
   mark = 'forest',
-  markSize = 28,
+  markSize = 32,
   className,
-  wordmarkClassName,
   priority = false,
 }: BrandLinkProps) {
   return (
@@ -68,12 +65,11 @@ export function BrandLink({
       href={href}
       aria-label="Brigade home"
       className={cn(
-        'inline-flex min-h-11 shrink-0 items-center gap-2 font-display font-black tracking-tight text-[var(--brand-ink)]',
+        'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center',
         className,
       )}
     >
       <BrandMark variant={mark} size={markSize} priority={priority} />
-      <span className={cn('leading-none', wordmarkClassName)}>Brigade</span>
     </Link>
   );
 }

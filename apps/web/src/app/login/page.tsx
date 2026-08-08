@@ -8,7 +8,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh bg-[var(--brand-paper-warm)] text-ink">
       <header className="flex h-12 items-center border-b border-[var(--brand-hairline)] bg-white/80 px-4 backdrop-blur-sm">
-        <BrandLink markSize={24} className="text-xl" />
+        <BrandLink markSize={28} />
       </header>
       <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-md items-center px-4 py-8">
         <Card className="w-full border-[var(--brand-hairline)] shadow-none">
