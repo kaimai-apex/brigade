@@ -32,8 +32,33 @@ export const metadata: Metadata = {
   description:
     "Mentorship for chefs moving into private service. Learn from private chefs who have already done it.",
   icons: {
-    icon: [{ url: "/brigade-logo-512.png", sizes: "512x512", type: "image/png" }],
-    apple: [{ url: "/brigade-logo-512.png", sizes: "512x512", type: "image/png" }],
+    icon: [
+      {
+        url: "/brand/brigade-B-forest-transparent.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/brand/brigade-B-forest-transparent.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+  },
+  openGraph: {
+    title: "Brigade — Private Chef Mentorship",
+    description:
+      "Mentorship for chefs moving into private service. Learn from private chefs who have already done it.",
+    images: [
+      {
+        url: "/brand/brigade-B-forest-transparent.png",
+        width: 512,
+        height: 512,
+        alt: "Brigade",
+      },
+    ],
   },
 };
 

@@ -1,25 +1,23 @@
 'use client';
 
 import Link from 'next/link';
+import { BrandLink } from '@/components/brand/brand-mark';
 
 type PublicNavProps = {
   showAuth?: boolean;
 };
 
 /**
- * Marketplace header — white bar, wordmark, clear next actions.
+ * Marketplace header — white bar, mark + wordmark, clear next actions.
  */
 export function PublicNav({ showAuth = true }: PublicNavProps) {
   return (
     <header className="mk-header w-full">
       <div className="mx-auto flex h-full max-w-[1320px] items-center gap-4 px-5 md:px-8">
-        <Link
-          href="/"
-          aria-label="Brigade home"
+        <BrandLink
+          markSize={26}
           className="text-[22px] font-bold tracking-[-0.02em] text-[var(--mk-text)]"
-        >
-          Brigade
-        </Link>
+        />
 
         {showAuth && (
           <div className="ml-auto flex items-center gap-2 md:gap-3">

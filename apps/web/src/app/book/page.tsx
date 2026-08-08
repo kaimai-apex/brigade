@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { BrandLink } from "@/components/brand/brand-mark";
 import { BOOK_A_CALL } from "@/lib/book-a-call";
 import { formatMoney } from "@/lib/mentorship/pricing";
 
@@ -34,9 +34,7 @@ function BookCallInner() {
   return (
     <div className="min-h-dvh bg-[var(--brand-paper-warm)] text-[var(--brand-ink)]">
       <header className="flex h-14 items-center border-b border-black/8 px-5">
-        <Link href="/" className="font-display text-xl font-black tracking-tight">
-          Brigade
-        </Link>
+        <BrandLink markSize={24} className="text-xl" />
       </header>
 
       <main className="mx-auto max-w-lg px-5 py-16 text-center">

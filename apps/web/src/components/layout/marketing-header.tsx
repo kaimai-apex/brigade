@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/auth-provider';
+import { BrandLink } from '@/components/brand/brand-mark';
 import { AccountMenuItems } from '@/components/layout/app-nav';
 import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
 import { useAppUser } from '@/components/layout/app-shell';
@@ -45,13 +46,11 @@ export function MarketingHeader() {
         className={cn('brigade-glass-nav', scrolled && 'brigade-glass-nav-scrolled')}
       >
         <div className="brigade-glass-nav-inner">
-          <Link
-            href="/"
-            aria-label="Brigade home"
-            className="font-display text-[22px] font-black tracking-[-0.02em] text-[var(--brand-ink)]"
-          >
-            Brigade
-          </Link>
+          <BrandLink
+            priority
+            markSize={26}
+            className="text-[22px] tracking-[-0.02em]"
+          />
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             <Link

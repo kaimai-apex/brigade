@@ -14,6 +14,7 @@ import {
   User,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
+import { BrandLink } from '@/components/brand/brand-mark';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -132,12 +133,11 @@ export function AppNav({ user }: AppNavProps) {
       )}
     >
       <div className="mx-auto flex h-12 max-w-[1128px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
-        <Link
+        <BrandLink
           href="/mentors"
-          className="flex min-h-11 shrink-0 items-center font-display text-xl font-black tracking-tight text-ink"
-        >
-          Brigade
-        </Link>
+          markSize={24}
+          className="text-xl text-ink"
+        />
 
         <div className="hidden min-w-0 flex-1 sm:block sm:max-w-[220px]">
           <div className="relative">

@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { WelcomeBanner } from "@/components/auth/welcome-banner";
+import { BrandLink } from "@/components/brand/brand-mark";
 import { SoundToggle } from "@/components/onboarding/sound-toggle";
 
 /**
@@ -18,15 +18,11 @@ export default function OnboardingLayout({
   return (
     <div className="min-h-dvh bg-white text-ink">
       <header className="flex h-14 items-center justify-between border-b border-neutral-100 px-4">
-        <Link
-          href="/"
-          // -mx-2 px-2: the wordmark is 28px tall, and the only way out of the
-          // corridor should not be the one control on the screen too small to
-          // hit with a thumb. Padding gives it a 44px target without moving it.
-          className="font-display -mx-2 flex min-h-11 items-center px-2 text-xl font-black tracking-tight text-ink"
-        >
-          Brigade
-        </Link>
+        {/* -mx-2 px-2: keep a 44px thumb target without shifting the mark. */}
+        <BrandLink
+          markSize={24}
+          className="-mx-2 px-2 text-xl text-ink"
+        />
         <SoundToggle />
       </header>
       <Suspense fallback={null}>
