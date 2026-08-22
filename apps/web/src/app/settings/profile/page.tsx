@@ -9,7 +9,7 @@ import { AppPage } from '@/components/layout/app-shell';
 import { BannerPicker } from '@/components/profile/banner-picker';
 import { FileUpload } from '@/components/profile/file-upload';
 import { api } from '@/lib/api/client';
-import { getBannerById, resolveBannerUrl } from '@/lib/banners';
+import { getBannerById, isCustomCoverUrl, resolveBannerUrl } from '@/lib/banners';
 import { PROFESSIONAL_ROLES } from '@/lib/types/database';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,7 +22,8 @@ export default function EditProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [bannerId, setBannerId] = useState('kitchen-line');
+  const [presetBannerId, setPresetBannerId] = useState('kitchen-line');
+  const [customCoverUrl, setCustomCoverUrl] = useState('');
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -56,7 +57,13 @@ export default function EditProfilePage() {
           avatarUrl: String(p.avatarUrl ?? p.profileImageUrl ?? p.profile_image_url ?? ''),
         });
         const cover = (p.coverUrl ?? p.cover_url) as string | undefined;
-        setBannerId(getBannerById(cover).id);
+        if (isCustomCoverUrl(cover)) {
+          setCustomCoverUrl(cover!.trim());
+          setPresetBannerId('');
+        } else {
+          setPresetBannerId(getBannerById(cover).id);
+          setCustomCoverUrl('');
+        }
         setVisibleInDirectory(
           (p.visibleInDirectory ?? p.visible_in_directory ?? true) !== false,
         );
@@ -84,7 +91,7 @@ export default function EditProfilePage() {
         currentPosition: form.currentPosition,
         location: [form.city, form.state, form.country].filter(Boolean).join(', '),
         avatarUrl: avatarFromForm || undefined,
-        coverUrl: bannerId,
+        coverUrl: customCoverUrl || presetBannerId,
         visibleInDirectory,
       });
       toast.success('Profile updated');
@@ -110,7 +117,7 @@ export default function EditProfilePage() {
     );
   }
 
-  const previewBanner = resolveBannerUrl(bannerId, session.userId);
+  const previewBanner = resolveBannerUrl(customCoverUrl || presetBannerId, session.userId);
 
   return (
     <AppPage showAuth={false} mainClassName="pb-24 py-4">
@@ -130,7 +137,30 @@ export default function EditProfilePage() {
             />
             <div className="space-y-4 p-5">
               <p className="text-sm font-semibold">Cover banner</p>
-              <BannerPicker value={bannerId} onChange={setBannerId} />
+              <BannerPicker
+                value={customCoverUrl ? '' : presetBannerId}
+                onChange={(id) => {
+                  setPresetBannerId(id);
+                  setCustomCoverUrl('');
+                }}
+              />
+              <div className="border-t border-neutral-100 pt-4">
+                <p className="mb-3 text-sm text-ink/70">Or upload your own</p>
+                <FileUpload
+                  bucket="covers"
+                  userId={session.userId}
+                  accept="image/jpeg,image/png,image/webp"
+                  label="Custom banner"
+                  fieldName="cover_url"
+                  defaultUrl={customCoverUrl || null}
+                  onChange={(url) => {
+                    if (url) {
+                      setCustomCoverUrl(url);
+                      setPresetBannerId('');
+                    }
+                  }}
+                />
+              </div>
             </div>
           </Card>
 

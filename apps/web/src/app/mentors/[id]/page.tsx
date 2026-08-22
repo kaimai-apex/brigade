@@ -12,6 +12,7 @@ import {
 } from "@/lib/server/mentorship-db";
 import { paymentsFullyConfigured } from "@/lib/server/payments";
 import { resolveAvatarUrl } from "@/lib/avatars";
+import { resolveBannerUrl } from "@/lib/banners";
 import { BookingPanel } from "@/components/mentorship/booking-panel";
 import { MentorRail } from "@/components/mentorship/mentor-rail";
 import { isUuid } from "@/lib/utils";
@@ -77,7 +78,10 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
   const usesCalendly = mentorUsesCalendly(mentor);
 
   const titleLine = [profile.role, profile.current_employer].filter(Boolean);
-  const cover = typeof profile.cover_url === "string" ? profile.cover_url : null;
+  const cover = resolveBannerUrl(
+    typeof profile.cover_url === "string" ? profile.cover_url : null,
+    id,
+  );
 
   return (
     <MarketplaceShell>
@@ -96,10 +100,8 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
 
         <header className="mt-6">
           <div className="relative h-[180px] overflow-hidden rounded-2xl bg-[var(--mk-avatar-bg)] md:h-[230px]">
-            {cover ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={cover} alt="" className="h-full w-full object-cover" />
-            ) : null}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cover} alt="" className="h-full w-full object-cover" />
           </div>
 
           <div className="relative -mt-14 flex flex-wrap items-end gap-6 px-1 md:-mt-16 md:px-8">
@@ -150,13 +152,9 @@ export default async function MentorPage({ params }: { params: Promise<{ id: str
             {expertiseAreas.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {expertiseAreas.map((tag) => (
-                  <Link
-                    key={tag}
-                    href={`/mentors?expertise=${encodeURIComponent(tag)}`}
-                    className="mk-chip"
-                  >
+                  <span key={tag} className="mk-chip">
                     {tag}
-                  </Link>
+                  </span>
                 ))}
               </div>
             )}

@@ -17,12 +17,12 @@ export function HomeHero() {
 
       <div className="relative z-10 w-full max-w-[900px] px-5 text-center">
         <h1 className="mk-serif-display text-balance text-[var(--brand-ink)]">
-          The fastest way to get unstuck in hospitality
+          Build Your Next Chapter in Private Cheffing
         </h1>
 
         <p className="mx-auto mt-5 max-w-[36ch] text-[17px] leading-relaxed text-[var(--brand-ink-muted)] md:mt-6 md:max-w-[640px] md:text-[19px]">
-          Meet a private chef who already made the move you want to make. Book a
-          1:1 session and leave with a plan.
+          Learn from chefs who&apos;ve made the transition through free resources,
+          practical guides, and 1:1 mentorship tailored to you.
         </p>
 
         <div className="mx-auto mt-8 flex justify-center sm:mt-10">
@@ -30,7 +30,7 @@ export function HomeHero() {
             href="/mentors"
             className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--mk-ink)] px-6 text-[15px] font-semibold text-[var(--brand-white)] transition hover:scale-[1.02]"
           >
-            Browse mentors
+            Explore Brigade
             <ArrowRight className="size-4" aria-hidden />
           </Link>
         </div>

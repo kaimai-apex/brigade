@@ -73,6 +73,21 @@ function isSafeUploadUrl(url: string): boolean {
   );
 }
 
+export function isPresetBannerId(value: string): boolean {
+  return PROFILE_BANNERS.some((b) => b.id === value || b.src === value);
+}
+
+/** Preset banner id/path, or same-origin user upload. */
+export function isSafeCoverUrl(url: string): boolean {
+  if (isPresetBannerId(url)) return true;
+  if (url.startsWith("/banners/") && !url.includes("..") && !url.includes("//")) return true;
+  return isSafeUploadUrl(url);
+}
+
+export function isCustomCoverUrl(url?: string | null): boolean {
+  return Boolean(url?.trim() && isSafeUploadUrl(url.trim()));
+}
+
 export function resolveBannerUrl(coverUrl?: string | null, seed?: string | null): string {
   if (coverUrl?.trim()) {
     const trimmed = coverUrl.trim();

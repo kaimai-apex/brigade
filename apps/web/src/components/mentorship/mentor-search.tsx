@@ -5,24 +5,15 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, SlidersHorizontal } from "lucide-react";
 
-type Filters = {
-  q?: string;
-  role?: string;
-  city?: string;
-  expertise?: string;
-  sort?: string;
-};
-
 /**
- * Explore toolbar: search by name/kitchen + sort. No fake AI pill, no toggle
- * that filters nothing.
+ * Explore toolbar: search by name/kitchen + sort.
  */
 export function MentorSearch({
   initialQuery,
-  filters = {},
+  sort = "price",
 }: {
   initialQuery: string;
-  filters?: Omit<Filters, "q">;
+  sort?: string;
 }) {
   const router = useRouter();
   const [value, setValue] = useState(initialQuery);
@@ -37,23 +28,17 @@ export function MentorSearch({
       const params = new URLSearchParams();
       const trimmed = value.trim();
       if (trimmed) params.set("q", trimmed);
-      if (filters.role) params.set("role", filters.role);
-      if (filters.city) params.set("city", filters.city);
-      if (filters.expertise) params.set("expertise", filters.expertise);
-      if (filters.sort && filters.sort !== "price") params.set("sort", filters.sort);
+      if (sort && sort !== "price") params.set("sort", sort);
       const qs = params.toString();
       router.push(qs ? `/mentors?${qs}` : "/mentors");
     }, 280);
     return () => clearTimeout(timer);
-  }, [value, initialQuery, filters.role, filters.city, filters.expertise, filters.sort, router]);
+  }, [value, initialQuery, sort, router]);
 
-  const sortHref = (sort: string) => {
+  const sortHref = (nextSort: string) => {
     const params = new URLSearchParams();
     if (value.trim()) params.set("q", value.trim());
-    if (filters.role) params.set("role", filters.role);
-    if (filters.city) params.set("city", filters.city);
-    if (filters.expertise) params.set("expertise", filters.expertise);
-    if (sort !== "price") params.set("sort", sort);
+    if (nextSort !== "price") params.set("sort", nextSort);
     const qs = params.toString();
     return qs ? `/mentors?${qs}` : "/mentors";
   };
@@ -76,13 +61,9 @@ export function MentorSearch({
         <summary className="flex h-14 cursor-pointer list-none items-center gap-2.5 rounded-2xl border border-[var(--mk-line)] bg-[var(--mk-surface)] px-5 text-[15px] font-medium text-[var(--mk-text)] hover:bg-[var(--mk-wash)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mk-ink)]/20 [&::-webkit-details-marker]:hidden">
           <SlidersHorizontal className="size-5" aria-hidden />
           Sort
-          {(filters.sort ?? "price") !== "price" && (
+          {sort !== "price" && (
             <span className="rounded-full bg-[var(--mk-wash-strong)] px-2 py-0.5 text-[12px] font-semibold text-[var(--mk-text)]">
-              {(filters.sort ?? "price") === "newest"
-                ? "Newest"
-                : (filters.sort ?? "price") === "name"
-                  ? "Name"
-                  : "Price"}
+              {sort === "newest" ? "Newest" : sort === "name" ? "Name" : "Price"}
             </span>
           )}
         </summary>
@@ -97,12 +78,12 @@ export function MentorSearch({
                 ["newest", "Newest"],
                 ["name", "Name"],
               ] as const
-            ).map(([sort, label]) => (
+            ).map(([nextSort, label]) => (
               <Link
-                key={sort}
-                href={sortHref(sort)}
+                key={nextSort}
+                href={sortHref(nextSort)}
                 className={`rounded-lg px-3 py-2 text-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mk-ink)]/20 ${
-                  (filters.sort ?? "price") === sort
+                  sort === nextSort
                     ? "bg-[var(--mk-wash-strong)] font-semibold text-[var(--mk-text)]"
                     : "text-[var(--mk-muted)] hover:bg-[var(--mk-wash)]"
                 }`}

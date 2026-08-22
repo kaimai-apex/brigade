@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getConnectProSession } from "@/lib/connectpro/server";
 import { dbGetProfile, dbUpdateProfile } from "@/lib/server/profile-db";
 import { isSafeAvatarUrl } from "@/lib/avatars";
+import { isSafeCoverUrl } from "@/lib/banners";
 
 /** Fields a member may edit from settings — not onboarding completion gates. */
 const PROFILE_PUT_ALLOWLIST = new Set([
@@ -94,9 +95,14 @@ export async function PUT(
   const patch: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (!PROFILE_PUT_ALLOWLIST.has(key) || value === undefined) continue;
-    if (key === "avatarUrl" || key === "coverUrl") {
+    if (key === "avatarUrl") {
       if (typeof value === "string" && value && !isSafeUploadUrl(value, "image")) {
         return NextResponse.json({ message: "Invalid image URL" }, { status: 400 });
+      }
+    }
+    if (key === "coverUrl") {
+      if (typeof value === "string" && value && !isSafeCoverUrl(value)) {
+        return NextResponse.json({ message: "Invalid cover URL" }, { status: 400 });
       }
     }
     if (key === "resumeUrl") {

@@ -28,9 +28,9 @@ const CARDS: ValueCard[] = [
   },
   {
     className: 'bg-gold text-ink',
-    title: ['Learn the', 'Craft'],
+    title: ['Free', 'Resources'],
     art: '/hero/hero-manager.png',
-    blurb: 'Menus, costing, clients, yacht work.',
+    blurb: 'We help you with free guides, tips, and playbooks.',
     dot: 'var(--brand-gold)',
   },
   {
