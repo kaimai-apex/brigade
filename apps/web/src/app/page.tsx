@@ -1,6 +1,7 @@
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { HomeHero } from "@/components/home/hero";
 import { FinalCta } from "@/components/home/final-cta";
+import { JournalStrip } from "@/components/journal/journal-strip";
 import { MentorRail } from "@/components/mentorship/mentor-rail";
 import {
   dbListMentors,
@@ -72,6 +73,8 @@ export default async function HomePage() {
           ))}
         </div>
       )}
+
+      <JournalStrip />
 
       <FinalCta />
     </div>
