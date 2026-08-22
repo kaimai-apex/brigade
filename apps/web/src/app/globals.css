@@ -1291,3 +1291,80 @@
     transform: none;
   }
 }
+
+/* ================================================================
+   Journal article prose — warm Brigade typography matching Figma.
+   ~680px measure, 18px body, pull quotes with forest bar.
+   ================================================================ */
+.journal-prose {
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.667;
+  color: var(--brand-ink);
+}
+
+.journal-prose p {
+  margin-bottom: 1.5rem;
+  font-variation-settings: 'wdth' 100;
+}
+
+.journal-prose h2 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.286;
+  letter-spacing: -0.015em;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+  font-variation-settings: 'SOFT' 0, 'WONK' 1;
+}
+
+.journal-prose blockquote {
+  position: relative;
+  padding-left: 36px;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  margin: 2rem 0;
+}
+
+.journal-prose blockquote::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--brand-forest);
+}
+
+.journal-prose blockquote p {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.286;
+  letter-spacing: -0.015em;
+  color: var(--brand-gold-ink);
+  margin: 0;
+  font-variation-settings: 'SOFT' 0, 'WONK' 1;
+}
+
+.journal-prose strong {
+  font-weight: 700;
+}
+
+.journal-prose em {
+  font-style: italic;
+}
+
+.journal-prose a {
+  color: var(--brand-forest);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.journal-prose a:hover {
+  color: var(--brand-ink);
+}
+

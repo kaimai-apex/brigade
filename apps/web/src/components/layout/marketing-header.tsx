@@ -56,6 +56,12 @@ export function MarketingHeader() {
               Find a mentor
             </Link>
             <Link
+              href="/journal"
+              className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] md:inline-flex"
+            >
+              Journal
+            </Link>
+            <Link
               href={signedIn ? '/mentorship' : '/login?next=/mentorship/setup'}
               className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] lg:inline-flex"
             >
