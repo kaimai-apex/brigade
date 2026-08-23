@@ -1320,6 +1320,9 @@ export interface MentorListing {
 
 export type MentorSort = "price" | "name" | "newest";
 
+/** Hard cap for list queries. High enough for the homepage to show everyone. */
+const MENTOR_LIST_MAX = 200;
+
 export interface MentorFacet {
   value: string;
   count: number;
@@ -1367,7 +1370,7 @@ async function queryMentorRows(params: MentorListParams): Promise<MentorListing[
 
   const { where, values, priceJoin } = mentorListFilters(params);
   const whereSql = where.join(" AND ");
-  const limit = Math.min(Math.max(params.limit ?? 24, 1), 48);
+  const limit = Math.min(Math.max(params.limit ?? 24, 1), MENTOR_LIST_MAX);
   const offset = Math.max(params.offset ?? 0, 0);
   const orderBy = mentorListOrder(params.sort);
 
@@ -1396,7 +1399,7 @@ export async function dbListMentors(
 
   const { where, values, priceJoin } = mentorListFilters(params);
   const whereSql = where.join(" AND ");
-  const limit = Math.min(Math.max(params.limit ?? 24, 1), 48);
+  const limit = Math.min(Math.max(params.limit ?? 24, 1), MENTOR_LIST_MAX);
   const offset = Math.max(params.offset ?? 0, 0);
   const orderBy = mentorListOrder(params.sort);
 

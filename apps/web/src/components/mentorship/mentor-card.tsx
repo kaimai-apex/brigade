@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { resolveAvatarUrl } from "@/lib/avatars";
 import { formatMoney } from "@/lib/mentorship/pricing";
+import { cn } from "@/lib/utils";
 import type { MentorListing } from "@/lib/server/mentorship-db";
 
 const NEW_MENTOR_DAYS = 30;
@@ -67,14 +68,23 @@ function sessionCountLabel(n: number) {
   return n === 1 ? "1 session" : `${n} sessions`;
 }
 
-/** Compact card for horizontal "Popular in …" rails — ADPList RailCard. */
-export function RailCard({ mentor }: { mentor: MentorListing }) {
+/** Compact card for rails and the homepage member grid. */
+export function RailCard({
+  mentor,
+  className,
+}: {
+  mentor: MentorListing;
+  className?: string;
+}) {
   const name = displayName(mentor);
   const flag = flagFor(mentor);
   const country = countryLabel(mentor);
 
   return (
-    <Link href={`/mentors/${mentor.userId}`} className="group w-[208px] shrink-0 snap-start">
+    <Link
+      href={`/mentors/${mentor.userId}`}
+      className={cn("group w-[208px] shrink-0 snap-start", className)}
+    >
       <div className="relative overflow-hidden rounded-2xl bg-[var(--mk-avatar-bg)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
