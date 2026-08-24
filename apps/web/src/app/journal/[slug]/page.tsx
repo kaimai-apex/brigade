@@ -7,6 +7,7 @@ import {
   articlePath,
   formatJournalDate,
   getArticle,
+  JOURNAL_AUTHOR_HREF,
   listArticles,
   relatedArticles,
 } from "@/lib/journal/articles";
@@ -50,12 +51,22 @@ export default async function JournalPostPage({ params }: { params: Params }) {
           {article.dek}
         </p>
         <div className="mt-6 flex items-center gap-3 border-b border-[var(--brand-hairline)] pb-6">
-          <span className="inline-flex size-10 items-center justify-center rounded-full bg-[var(--brand-forest)] text-[12px] font-semibold text-[var(--brand-paper-warm)]">
+          <Link
+            href={JOURNAL_AUTHOR_HREF}
+            className="inline-flex size-10 items-center justify-center rounded-full bg-[var(--brand-forest)] text-[12px] font-semibold text-[var(--brand-paper-warm)] transition hover:opacity-90"
+            aria-label={`${article.author} in the directory`}
+          >
             JC
-          </span>
+          </Link>
           <p className="text-[14px] text-[var(--brand-ink-subtle)]">
-            {article.author} · {formatJournalDate(article.date)} ·{" "}
-            {article.minutes} min read
+            <Link
+              href={JOURNAL_AUTHOR_HREF}
+              className="font-medium text-[var(--brand-ink)] underline decoration-[var(--brand-ink)]/20 underline-offset-4 transition hover:text-[var(--brand-forest)] hover:decoration-[var(--brand-forest)]"
+            >
+              {article.author}
+            </Link>
+            {" · "}
+            {formatJournalDate(article.date)} · {article.minutes} min read
           </p>
         </div>
 

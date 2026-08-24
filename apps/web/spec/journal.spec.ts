@@ -8,6 +8,7 @@ import {
   articlePath,
   featuredArticle,
   getArticle,
+  JOURNAL_AUTHOR_HREF,
   listArticles,
   relatedArticles,
 } from "../src/lib/journal/articles.ts";
@@ -19,6 +20,10 @@ assert.equal(featuredArticle().order, 1);
 assert.ok(getArticle("soft-skills"));
 assert.equal(getArticle("not-a-real-slug"), undefined);
 assert.equal(articlePath("how-to-network"), "/journal/how-to-network");
+assert.match(
+  JOURNAL_AUTHOR_HREF,
+  /^\/mentors\/[0-9a-f-]{36}$/,
+);
 
 const house = featuredArticle();
 assert.ok(house.body.some((b) => b.type === "h2"));

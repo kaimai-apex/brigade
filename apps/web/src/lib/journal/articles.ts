@@ -63,3 +63,7 @@ export function formatJournalDate(iso: string): string {
 export function articlePath(slug: string): string {
   return `/journal/${slug}`;
 }
+
+/** Public mentor page for the journal byline — Jordan Chan in the directory. */
+export const JOURNAL_AUTHOR_HREF =
+  "/mentors/a6562fff-4b01-481b-a1c5-d371e07bd2cd";
