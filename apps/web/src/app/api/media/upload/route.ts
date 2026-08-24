@@ -3,17 +3,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { getConnectProSession } from '@/lib/connectpro/server';
+import { AvatarImageError, processAvatarImage, processCoverImage } from '@/lib/server/avatar-image';
 
-const ALLOWED_EXT = new Set([
-  'jpg',
-  'jpeg',
-  'png',
-  'webp',
-  'gif',
-  'pdf',
-  'doc',
-  'docx',
-]);
+const ALLOWED_EXT = new Set(['pdf', 'doc', 'docx']);
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 function claimedExt(filename: string): string | null {
@@ -63,6 +55,21 @@ function sniffedExt(buf: Buffer): string | null {
   return null;
 }
 
+async function writePublicUpload(
+  userId: string,
+  filename: string,
+  data: Buffer,
+): Promise<{ url: string } | { error: string }> {
+  const uploadsRoot = path.resolve(process.cwd(), 'public', 'uploads');
+  const dir = path.resolve(uploadsRoot, userId);
+  if (!dir.startsWith(uploadsRoot + path.sep)) {
+    return { error: 'Invalid path' };
+  }
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, filename), data);
+  return { url: `/uploads/${userId}/${filename}` };
+}
+
 export async function POST(request: Request) {
   const session = await getConnectProSession();
   if (!session) {
@@ -83,15 +90,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'File too large (max 10MB)' }, { status: 400 });
   }
 
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const kind = String(formData.get('kind') ?? '');
+
+  if (kind === 'avatar' || kind === 'cover') {
+    try {
+      const jpeg =
+        kind === 'avatar'
+          ? await processAvatarImage(buffer)
+          : await processCoverImage(buffer);
+      const saved = await writePublicUpload(session.userId, `${randomUUID()}.jpg`, jpeg);
+      if ('error' in saved) {
+        return NextResponse.json({ message: saved.error }, { status: 400 });
+      }
+      return NextResponse.json({ url: saved.url });
+    } catch (err) {
+      const message =
+        err instanceof AvatarImageError
+          ? err.message
+          : 'Could not save photo.';
+      return NextResponse.json({ message }, { status: 400 });
+    }
+  }
+
+  if (kind !== 'resume') {
+    return NextResponse.json({ message: 'Unsupported upload' }, { status: 400 });
+  }
+
   const claimed = claimedExt(file.name);
-  if (!claimed) {
+  if (!claimed || !['pdf', 'doc', 'docx'].includes(claimed)) {
     return NextResponse.json(
-      { message: 'Unsupported file type. Allowed: jpg, png, webp, gif, pdf, doc, docx' },
+      { message: 'Unsupported file type. Allowed: pdf, doc, docx' },
       { status: 400 },
     );
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
   const sniffed = sniffedExt(buffer);
   if (!sniffed) {
     return NextResponse.json(
@@ -108,17 +141,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'File contents do not match extension' }, { status: 400 });
   }
 
-  const ext = sniffed;
-  const filename = `${randomUUID()}.${ext}`;
-  const uploadsRoot = path.resolve(process.cwd(), 'public', 'uploads');
-  const dir = path.resolve(uploadsRoot, session.userId);
-  if (!dir.startsWith(uploadsRoot + path.sep)) {
-    return NextResponse.json({ message: 'Invalid path' }, { status: 400 });
+  const saved = await writePublicUpload(
+    session.userId,
+    `${randomUUID()}.${sniffed}`,
+    buffer,
+  );
+  if ('error' in saved) {
+    return NextResponse.json({ message: saved.error }, { status: 400 });
   }
-
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, filename), buffer);
-
-  const publicUrl = `/uploads/${session.userId}/${filename}`;
-  return NextResponse.json({ url: publicUrl });
+  return NextResponse.json({ url: saved.url });
 }

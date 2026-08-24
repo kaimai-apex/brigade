@@ -69,7 +69,7 @@ function isSafeUploadUrl(url: string): boolean {
     url.startsWith("/uploads/") &&
     !url.includes("..") &&
     !url.includes("//") &&
-    /^\/uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|jpeg|png|webp|gif)$/i.test(url)
+    /^\/uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg$/i.test(url)
   );
 }
 

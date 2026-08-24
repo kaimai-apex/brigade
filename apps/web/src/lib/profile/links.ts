@@ -1,29 +1,39 @@
+function asHttpUrl(raw: string): string {
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
 export function normalizeInstagramUrl(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
 
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-
-  if (trimmed.startsWith("@")) {
-    return `https://instagram.com/${trimmed.slice(1)}`;
+  let candidate: string;
+  if (/^https?:\/\//i.test(trimmed)) {
+    candidate = trimmed;
+  } else if (trimmed.startsWith("@")) {
+    candidate = `https://instagram.com/${trimmed.slice(1)}`;
+  } else if (/instagram\.com/i.test(trimmed)) {
+    candidate = `https://${trimmed.replace(/^\/\//, "")}`;
+  } else if (/^[a-z0-9._]+$/i.test(trimmed)) {
+    candidate = `https://instagram.com/${trimmed.replace(/^@/, "")}`;
+  } else {
+    candidate = `https://${trimmed}`;
   }
-
-  if (/instagram\.com/i.test(trimmed)) {
-    return trimmed.startsWith("http") ? trimmed : `https://${trimmed.replace(/^\/\//, "")}`;
-  }
-
-  if (/^[a-z0-9._]+$/i.test(trimmed)) {
-    return `https://instagram.com/${trimmed.replace(/^@/, "")}`;
-  }
-
-  return `https://${trimmed}`;
+  return asHttpUrl(candidate);
 }
 
 export function normalizeWebsiteUrl(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `https://${trimmed.replace(/^\/\//, "")}`;
+  const withScheme = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed.replace(/^\/\//, "")}`;
+  return asHttpUrl(withScheme);
 }
 
 

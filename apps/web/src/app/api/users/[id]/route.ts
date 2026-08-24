@@ -3,6 +3,18 @@ import { getConnectProSession } from "@/lib/connectpro/server";
 import { dbGetProfile, dbUpdateProfile } from "@/lib/server/profile-db";
 import { isSafeAvatarUrl } from "@/lib/avatars";
 import { isSafeCoverUrl } from "@/lib/banners";
+import { PROFESSIONAL_ROLES } from "@/lib/types/database";
+
+const ROLE_SET = new Set<string>(PROFESSIONAL_ROLES);
+
+function isSafeHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 /** Fields a member may edit from settings — not onboarding completion gates. */
 const PROFILE_PUT_ALLOWLIST = new Set([
@@ -34,6 +46,7 @@ const PROFILE_PUT_ALLOWLIST = new Set([
   "timezone",
   "languages",
   "expertiseAreas",
+  "role",
 ]);
 
 function isSafeUploadUrl(url: string, kind: "image" | "doc"): boolean {
@@ -108,6 +121,16 @@ export async function PUT(
     if (key === "resumeUrl") {
       if (typeof value === "string" && value && !isSafeUploadUrl(value, "doc")) {
         return NextResponse.json({ message: "Invalid resume URL" }, { status: 400 });
+      }
+    }
+    if (key === "website" || key === "instagramUrl" || key === "linkedinUrl") {
+      if (typeof value === "string" && value && !isSafeHttpUrl(value)) {
+        return NextResponse.json({ message: "Invalid URL" }, { status: 400 });
+      }
+    }
+    if (key === "role") {
+      if (typeof value === "string" && value && !ROLE_SET.has(value)) {
+        return NextResponse.json({ message: "Invalid role" }, { status: 400 });
       }
     }
     patch[key] = value;

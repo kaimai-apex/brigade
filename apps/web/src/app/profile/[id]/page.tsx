@@ -12,6 +12,7 @@ import { cn, displayName, formatLocation, getInitials, isUuid } from "@/lib/util
 import { resolveAvatarUrl } from "@/lib/avatars";
 import { resolveBannerUrl } from "@/lib/banners";
 import { ServerAppPage } from "@/components/layout/server-app-page";
+import { ProfileAvatarEditor } from "@/components/profile/profile-avatar-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,23 +93,37 @@ export default async function ProfilePage({
                 on plain white below it, so nothing is read against the photo. */}
             <div className="-mt-14 md:-mt-16">
               <div className="relative inline-block">
-                <Avatar
-                  className={cn(
-                    "size-28 border-4 border-white shadow-sm md:size-32",
-                    profile.open_to_opportunities &&
-                      "ring-4 ring-forest ring-offset-2 ring-offset-white",
-                  )}
-                >
-                  <AvatarImage
+                {isOwner ? (
+                  <ProfileAvatarEditor
+                    userId={profile.id}
                     src={resolveAvatarUrl(profile.profile_image_url, profile.id)}
                     alt={displayName(profile.first_name, profile.last_name)}
-                    className="object-cover"
+                    initials={getInitials(profile.first_name, profile.last_name)}
+                    className={cn(
+                      "size-28 border-4 border-white shadow-sm md:size-32",
+                      profile.open_to_opportunities &&
+                        "ring-4 ring-forest ring-offset-2 ring-offset-white",
+                    )}
                   />
-                  <AvatarFallback className="bg-secondary text-3xl font-bold text-forest">
-                    {getInitials(profile.first_name, profile.last_name)}
-                  </AvatarFallback>
-                </Avatar>
-                {profile.open_to_opportunities && (
+                ) : (
+                  <Avatar
+                    className={cn(
+                      "size-28 border-4 border-white shadow-sm md:size-32",
+                      profile.open_to_opportunities &&
+                        "ring-4 ring-forest ring-offset-2 ring-offset-white",
+                    )}
+                  >
+                    <AvatarImage
+                      src={resolveAvatarUrl(profile.profile_image_url, profile.id)}
+                      alt={displayName(profile.first_name, profile.last_name)}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-secondary text-3xl font-bold text-forest">
+                      {getInitials(profile.first_name, profile.last_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                {profile.open_to_opportunities && !isOwner && (
                   <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-forest px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-paper shadow-sm">
                     Open to work
                   </span>

@@ -7,7 +7,7 @@ import { RoleDeck } from '@/components/landing/role-deck';
  */
 export function HomeHero() {
   return (
-    <section className="relative flex flex-col items-center overflow-hidden bg-[var(--brand-paper-warm)] pb-14 pt-[100px] md:pb-16 md:pt-[108px] lg:min-h-[88vh]">
+    <section className="relative flex flex-col items-center overflow-hidden bg-[var(--brand-paper-warm)] pb-10 pt-[100px] md:pb-12 md:pt-[108px] lg:min-h-[82vh]">
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <span className="art-blob blob-cobalt opacity-90" />
         <span className="art-blob blob-forest opacity-90" />
@@ -21,8 +21,14 @@ export function HomeHero() {
         </h1>
 
         <p className="mx-auto mt-5 max-w-[36ch] text-[17px] leading-relaxed text-[var(--brand-ink-muted)] md:mt-6 md:max-w-[640px] md:text-[19px]">
-          Learn from chefs who&apos;ve made the transition through free resources,
-          practical guides, and 1:1 mentorship tailored to you.
+          Learn from chefs who&apos;ve made the transition through free resources,{" "}
+          <Link
+            href="#free-resources"
+            className="underline decoration-[var(--brand-ink)]/25 underline-offset-4 hover:decoration-[var(--brand-ink)]"
+          >
+            practical guides
+          </Link>
+          , and 1:1 mentorship tailored to you.
         </p>
 
         <div className="mx-auto mt-8 flex justify-center sm:mt-10">

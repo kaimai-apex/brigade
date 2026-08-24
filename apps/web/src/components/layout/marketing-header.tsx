@@ -50,6 +50,12 @@ export function MarketingHeader() {
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             <Link
+              href="/journal"
+              className="rounded-lg px-2 py-2 text-[13px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] sm:px-3 sm:text-[14px]"
+            >
+              Journal
+            </Link>
+            <Link
               href="/mentors"
               className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] md:inline-flex"
             >

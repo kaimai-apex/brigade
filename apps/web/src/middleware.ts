@@ -138,6 +138,7 @@ function isPublicPage(pathname: string): boolean {
   if (PUBLIC_PAGES.has(pathname)) return true;
   // Exact segment match — do not treat /mentorship as /mentors*.
   if (pathname === "/mentors" || pathname.startsWith("/mentors/")) return true;
+  if (pathname === "/journal" || pathname.startsWith("/journal/")) return true;
   if (pathname.startsWith("/login/")) return true;
   return false;
 }

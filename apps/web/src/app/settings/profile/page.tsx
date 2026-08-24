@@ -9,6 +9,7 @@ import { AppPage } from '@/components/layout/app-shell';
 import { BannerPicker } from '@/components/profile/banner-picker';
 import { FileUpload } from '@/components/profile/file-upload';
 import { api } from '@/lib/api/client';
+import { AVATAR_UPLOAD_ACCEPT } from '@/lib/avatars';
 import { getBannerById, isCustomCoverUrl, resolveBannerUrl } from '@/lib/banners';
 import { PROFESSIONAL_ROLES } from '@/lib/types/database';
 import { Button } from '@/components/ui/button';
@@ -171,10 +172,11 @@ export default function EditProfilePage() {
             <FileUpload
               bucket="avatars"
               userId={session.userId}
-              accept="image/*"
+              accept={AVATAR_UPLOAD_ACCEPT}
               label="Profile photo"
               fieldName="profile_image_url"
               defaultUrl={form.avatarUrl || null}
+              onChange={(url) => setForm((f) => ({ ...f, avatarUrl: url }))}
             />
 
             <div className="grid gap-4 sm:grid-cols-2">

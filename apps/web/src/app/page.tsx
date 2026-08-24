@@ -1,5 +1,6 @@
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { HomeHero } from "@/components/home/hero";
+import { HomeJournal } from "@/components/home/home-journal";
 import { FinalCta } from "@/components/home/final-cta";
 import { HomeMemberDirectory } from "@/components/home/member-directory";
 import { dbListMentors } from "@/lib/server/mentorship-db";
@@ -32,6 +33,7 @@ export default async function HomePage() {
     <div className="adp-mk min-h-screen bg-white">
       <MarketingHeader />
       <HomeHero />
+      <HomeJournal />
       <HomeMemberDirectory members={members} />
       <FinalCta />
     </div>

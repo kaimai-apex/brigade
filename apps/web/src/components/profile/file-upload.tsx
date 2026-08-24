@@ -1,7 +1,9 @@
 "use client";
 
-import { resolveAvatarUrl } from "@/lib/avatars";
+import { Camera } from "lucide-react";
+import { AVATAR_OUTPUT_SIZE, avatarFileError, resolveAvatarUrl } from "@/lib/avatars";
 import { resolveBannerUrl } from "@/lib/banners";
+import { uploadMediaFile } from "@/lib/media-upload";
 import { cn, getInitials } from "@/lib/utils";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -44,27 +46,33 @@ export function FileUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (bucket === "avatars") {
+      const problem = avatarFileError(file);
+      if (problem) {
+        setError(problem);
+        e.target.value = "";
+        return;
+      }
+    }
+
     setUploading(true);
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/media/upload", { method: "POST", body: formData });
-      const data = (await res.json()) as { url?: string; message?: string };
-      if (!res.ok) {
-        setError(data.message ?? "Upload failed");
-        return;
-      }
-      updateUrl(data.url ?? "");
-    } catch {
-      setError("Upload failed");
+      const uploaded = await uploadMediaFile(
+        file,
+        bucket === "avatars" ? "avatar" : bucket === "covers" ? "cover" : "resume",
+      );
+      updateUrl(uploaded);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
       e.target.value = "";
     }
   }
 
+  const inputId = `${fieldName}-file`;
   const avatarPreviewSrc =
     bucket === "avatars" ? resolveAvatarUrl(url || null, userId) : url;
   const coverPreviewSrc =
@@ -72,37 +80,53 @@ export function FileUpload({
 
   return (
     <div className={cn("space-y-3", className)}>
-      <label className="block text-sm font-semibold text-ink/80">{label}</label>
+      <p className="block text-sm font-semibold text-ink/80">{label}</p>
 
       {bucket === "avatars" && (
         <div className="flex items-center gap-4">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-sage/40 text-xl font-bold text-forest">
-            {avatarPreviewSrc ? (
-              <Image
-                src={avatarPreviewSrc}
-                alt="Profile"
-                width={80}
-                height={80}
-                className="h-full w-full object-cover"
-                unoptimized
-              />
-            ) : (
-              getInitials()
+          <label
+            htmlFor={inputId}
+            className={cn(
+              "relative size-20 shrink-0 cursor-pointer",
+              uploading && "pointer-events-none opacity-70",
             )}
-          </div>
+          >
+            <div className="flex size-20 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-sage/40 text-xl font-bold text-forest">
+              {avatarPreviewSrc ? (
+                <Image
+                  src={avatarPreviewSrc}
+                  alt="Profile"
+                  width={80}
+                  height={80}
+                  className="h-full w-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                getInitials()
+              )}
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full border-2 border-white bg-forest text-paper shadow-sm">
+              <Camera className="size-3.5" aria-hidden />
+            </span>
+          </label>
           <div>
             <input type="hidden" name={fieldName} value={url} />
-            <label className="cursor-pointer">
+            <input
+              id={inputId}
+              type="file"
+              accept={accept}
+              className="sr-only"
+              disabled={uploading}
+              onChange={handleUpload}
+            />
+            <label htmlFor={inputId} className="cursor-pointer">
               <span className="inline-flex h-10 items-center rounded-full border border-ink/15 bg-white px-4 text-sm font-semibold">
                 {uploading ? "Uploading…" : url ? "Replace photo" : "Upload photo"}
               </span>
-              <input type="file" accept={accept} className="hidden" onChange={handleUpload} />
             </label>
-            {!url && (
-              <p className="mt-1.5 text-xs text-ink/55">
-                No photo yet — we&apos;ll use kitchen art until you upload one.
-              </p>
-            )}
+            <p className="mt-1.5 text-xs text-ink/55">
+              JPEG, PNG, or WebP. We&apos;ll square it to {AVATAR_OUTPUT_SIZE}×{AVATAR_OUTPUT_SIZE}.
+            </p>
           </div>
         </div>
       )}
