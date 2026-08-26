@@ -16,6 +16,7 @@ const PUBLIC_PAGES = new Set([
   "/demo",
   "/book",
   "/book/thanks",
+  "/roadmap",
 ]);
 
 /**

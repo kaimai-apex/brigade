@@ -95,12 +95,21 @@ export function HomeJournal() {
           ))}
         </ol>
 
-        <div className="mx-auto mt-10 max-w-[820px] text-center md:mt-12">
+        {/* The roadmap sits beside the journal because it is the same thing:
+            something of Jordan's you can read for free, no account needed. */}
+        <div className="mx-auto mt-10 flex max-w-[820px] flex-col items-center justify-center gap-4 sm:flex-row sm:gap-8 md:mt-12">
           <Link
             href="/journal"
             className="inline-flex items-center gap-2 text-[15px] font-semibold text-[var(--brand-ink)] transition hover:text-[var(--brand-forest)]"
           >
             Open the journal
+            <ArrowRight className="size-4" aria-hidden />
+          </Link>
+          <Link
+            href="/roadmap"
+            className="inline-flex items-center gap-2 text-[15px] font-semibold text-[var(--brand-ink)] transition hover:text-[var(--brand-forest)]"
+          >
+            See Jordan&apos;s roadmap
             <ArrowRight className="size-4" aria-hidden />
           </Link>
         </div>
