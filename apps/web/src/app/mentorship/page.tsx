@@ -135,8 +135,8 @@ export default function MentorshipDashboard() {
             {mentor.status === "active"
               ? "Live in the mentor directory."
               : mentor.status === "paused"
-                ? "Paused — not taking new bookings."
-                : "Draft — nobody can see this yet."}
+                ? "Paused. Not taking new bookings."
+                : "Draft. Nobody can see this yet."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

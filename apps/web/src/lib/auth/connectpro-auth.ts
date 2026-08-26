@@ -486,7 +486,7 @@ export async function connectProRequestLoginCode(dto: {
 
   if (user.rows.length === 0) {
     await recordRateLimitDecoy(email, ip);
-    throw new NotFoundError("No account with that email — Sign up instead.");
+    throw new NotFoundError("No account with that email. Sign up instead.");
   }
 
   if (user.rows[0].status !== "active") {
@@ -538,7 +538,7 @@ export async function connectProSignupPasswordless(dto: {
   );
   if (existing.rows.length > 0) {
     await recordRateLimitDecoy(email, ip);
-    throw new ConflictError("Account already exists — Log in.");
+    throw new ConflictError("Account already exists. Log in instead.");
   }
 
   const result = await pool.query(

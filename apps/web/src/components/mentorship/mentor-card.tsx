@@ -58,7 +58,7 @@ function isNewMentor(createdAt: string) {
 }
 
 function experienceLabel(years: number | null) {
-  if (years === null || years === undefined) return "—";
+  if (years === null || years === undefined) return "–";
   if (years <= 0) return "Under 1 year";
   if (years === 1) return "1 year";
   return `${years} years`;

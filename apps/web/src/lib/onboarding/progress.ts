@@ -194,10 +194,10 @@ export function milestoneMessage(phase: string): string {
   const messages: Record<string, string> = {
     Welcome: "Let's go",
     "About you": "That's the introductions done",
-    Background: "Good — we know where you're coming from",
+    Background: "Good. We know where you're coming from",
     Interests: "That's the part the matching actually runs on",
     Goals: "Now we know what you're aiming at",
-    Mentorship: "Last stretch — just your profile left",
+    Mentorship: "Last stretch. Just your profile left",
     "Your profile": "That's everything",
   };
   return messages[phase] ?? "Section complete";

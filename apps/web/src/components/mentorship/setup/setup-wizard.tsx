@@ -161,7 +161,7 @@ export function SetupWizard() {
               status: "draft",
               onboardingStep: 0,
             });
-            if (ok) toast.success("Draft started — fill in the form below");
+            if (ok) toast.success("Draft started. Fill in the form below.");
           }}
         >
           {saving ? "Setting up…" : "Start setting up"}
@@ -183,8 +183,8 @@ export function SetupWizard() {
             {live
               ? "Live in the directory"
               : state.mentor.status === "paused"
-                ? "Paused — not taking new bookings"
-                : "Draft — nobody can see this yet"}
+                ? "Paused. Not taking new bookings"
+                : "Draft. Nobody can see this yet"}
           </p>
         </div>
         {state.readiness && (
@@ -308,7 +308,7 @@ export function SetupWizard() {
               }}
               rows={5}
               maxLength={2000}
-              placeholder="Your resume / about — background, experience, how you work."
+              placeholder="Your resume and about. Background, experience, how you work."
               className="mt-1 w-full rounded-lg border border-[var(--mk-line)] p-3 text-base"
               required
             />
@@ -332,7 +332,7 @@ export function SetupWizard() {
               }}
               rows={4}
               maxLength={2000}
-              placeholder="What you want to share — costing, menu design, private service, etc."
+              placeholder="What you want to share. Costing, menu design, private service, etc."
               className="mt-1 w-full rounded-lg border border-[var(--mk-line)] p-3 text-base"
               required
             />

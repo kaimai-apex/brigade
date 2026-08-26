@@ -562,7 +562,7 @@ export async function dbCreateException(
   );
   if (Number(clash.rows[0]?.n ?? 0) > 0) {
     throw new Error(
-      "You have a booked session in that window — cancel it first, or choose different dates",
+      "You have a booked session in that window. Cancel it first, or choose different dates",
     );
   }
 
@@ -756,7 +756,7 @@ function mapBooking(row: Record<string, unknown>): Booking {
 
 export class TooManyPendingBookingsError extends Error {
   constructor() {
-    super("You already have too many unpaid bookings — finish or cancel one first");
+    super("You already have too many unpaid bookings. Finish or cancel one first");
     this.name = "TooManyPendingBookingsError";
   }
 }
@@ -1216,7 +1216,7 @@ export function normaliseMeetingUrl(raw: string): string {
   try {
     url = new URL(trimmed);
   } catch {
-    throw new Error("That does not look like a link — include https://");
+    throw new Error("That does not look like a link. Include https://");
   }
   // https only: a meeting link is pasted straight into a browser, and http:
   // would downgrade the call. javascript:/data: would be worse.

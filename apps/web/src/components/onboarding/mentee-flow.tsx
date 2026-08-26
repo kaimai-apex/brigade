@@ -115,9 +115,9 @@ export function MenteeFlow() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(patch),
         });
-        if (!res.ok) toast.error("That did not save — check your connection");
+        if (!res.ok) toast.error("That did not save. Check your connection");
       } catch {
-        toast.error("That did not save — check your connection");
+        toast.error("That did not save. Check your connection");
       }
     })();
 
@@ -456,7 +456,7 @@ function Welcome({ step, onAdvance }: { step: MenteeStep; onAdvance: () => void 
       </ul>
 
       <p className="text-meta mt-4 text-ink/65">
-        {estimate.replace(" left", "")} in total. Skip anything you would rather not answer —
+        {estimate.replace(" left", "")} in total. Skip anything you would rather not answer.
         you can change all of it later.
       </p>
 
@@ -707,7 +707,7 @@ function MultiChoice({
 
       <p className="text-meta mt-3 text-ink/65">
         {selected.length} of {max} chosen
-        {atCap ? " — that is the maximum" : ""}
+        {atCap ? ". That is the maximum" : ""}
       </p>
 
       <Button

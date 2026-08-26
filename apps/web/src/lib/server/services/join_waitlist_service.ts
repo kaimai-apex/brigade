@@ -118,7 +118,7 @@ export class JoinWaitlistService {
       kitState: kit.subscriberState ?? null,
       message: inserted
         ? "You're on the list. Check your email to confirm."
-        : "You're already on the waitlist — talk soon.",
+        : "You're already on the waitlist. Talk soon.",
     };
   }
 }

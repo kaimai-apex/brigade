@@ -80,7 +80,7 @@ function htmlBody(code: string) {
       <p style="margin:0 0 24px;font-size:15px;line-height:1.5">Here is your code to log in to Brigade.</p>
       <p style="margin:0 0 24px;font-size:38px;font-weight:700;letter-spacing:0.14em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${code}</p>
       <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:${c.muted}">It works once and expires in ${CODE_TTL_MINUTES} minutes.</p>
-      <p style="margin:0;font-size:13px;line-height:1.5;color:${c.faint}">If you did not ask to log in, you can ignore this — someone typed your address and got nowhere.</p>
+      <p style="margin:0;font-size:13px;line-height:1.5;color:${c.faint}">If you did not ask to log in, you can ignore this. Someone typed your address and got nowhere.</p>
     </div>
   </body>
 </html>`;
@@ -92,7 +92,7 @@ export async function sendLoginCode({ to, code }: LoginCodeEmail): Promise<void>
   if (!key) {
     if (process.env.NODE_ENV === "production") {
       throw new Error(
-        "RESEND_API_KEY is not set — login codes cannot be delivered, so nobody can log in",
+        "RESEND_API_KEY is not set. Login codes cannot be delivered, so nobody can log in",
       );
     }
     // Local development with no provider: the code goes to the server log and

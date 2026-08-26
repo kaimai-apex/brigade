@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       }
       if (error instanceof SlotUnavailableError) {
         return NextResponse.json(
-          { message: "Could not hold that booking — please try again." },
+          { message: "Could not hold that booking. Please try again." },
           { status: 409 },
         );
       }
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
           error instanceof Error ? error.message : error,
         );
         return NextResponse.json(
-          { message: "Could not start the payment. Nothing was charged — please try again." },
+          { message: "Could not start the payment. Nothing was charged. Please try again." },
           { status: 502 },
         );
       }
@@ -283,7 +283,7 @@ export async function POST(request: Request) {
         error instanceof Error ? error.message : error,
       );
       return NextResponse.json(
-        { message: "Could not start the payment. Nothing was charged — please try again." },
+        { message: "Could not start the payment. Nothing was charged. Please try again." },
         { status: 502 },
       );
     }

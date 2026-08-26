@@ -9,7 +9,7 @@ import {
 } from "@/lib/journal/articles";
 
 export const metadata: Metadata = {
-  title: "Journal — Brigade",
+  title: "Journal · Brigade",
   description:
     "Jordan on the lanes, the money, the list, and the part restaurants never put on the ticket.",
 };

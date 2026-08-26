@@ -109,7 +109,7 @@ export interface PaymentProvider {
 export class PaymentsNotConfiguredError extends Error {
   constructor() {
     super(
-      "Payments are not configured. Set STRIPE_SECRET_KEY to take bookings — " +
+      "Payments are not configured. Set STRIPE_SECRET_KEY to take bookings. " +
         "until then sessions can be listed but not paid for.",
     );
     this.name = "PaymentsNotConfiguredError";

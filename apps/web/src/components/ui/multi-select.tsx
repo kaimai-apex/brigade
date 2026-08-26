@@ -172,7 +172,7 @@ export function MultiSelect({
 
               {max !== undefined && (
                 <p className="border-t border-ink/10 px-3 py-2 text-[13px] text-ink/65">
-                  {values.length} of {max} chosen{atCap ? " — that is the maximum" : ""}
+                  {values.length} of {max} chosen{atCap ? ". That is the maximum" : ""}
                 </p>
               )}
             </Command>

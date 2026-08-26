@@ -10,7 +10,7 @@ export const PROFILE_BANNERS: ProfileBanner[] = [
   {
     id: "kitchen-line",
     label: "Kitchen line",
-    description: "The pass — pans, steam, service",
+    description: "The pass. Pans, steam, service",
     src: "/banners/banner-kitchen-line.png",
   },
   {

@@ -28,7 +28,7 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "Brigade — Private Chef Mentorship",
+  title: "Brigade · Private Chef Mentorship",
   description:
     "Mentorship for chefs moving into private service. Learn from private chefs who have already done it.",
   icons: {
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "Brigade — Private Chef Mentorship",
+    title: "Brigade · Private Chef Mentorship",
     description:
       "Mentorship for chefs moving into private service. Learn from private chefs who have already done it.",
     images: [

@@ -84,7 +84,7 @@ export function WaitlistForm({
       }, 280);
     } catch {
       setStatus("error");
-      setMessage("Network error — try again.");
+      setMessage("Network error. Try again.");
     }
   }
 

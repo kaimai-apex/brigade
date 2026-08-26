@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   if (!secret) {
     // Not an error the caller can fix, and not something to guess around: with
     // no secret there is no way to tell Stripe from anyone else.
-    console.error("[stripe/webhook] STRIPE_WEBHOOK_SECRET is not set — refusing the request");
+    console.error("[stripe/webhook] STRIPE_WEBHOOK_SECRET is not set. Refusing the request");
     return NextResponse.json({ message: "Webhooks are not configured" }, { status: 503 });
   }
 

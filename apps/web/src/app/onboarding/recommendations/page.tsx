@@ -98,7 +98,7 @@ export default async function RecommendationsPage() {
         {reason === "confident" &&
           "Matched on what you said you want to work on. Each card says why."}
         {reason === "few-matches" &&
-          "We found a few people worth a look, but not enough to call them a shortlist yet — so here is everyone."}
+          "We found a few people worth a look, but not enough to call them a shortlist yet, so here is everyone."}
         {reason === "no-answers" && (
           <>
             You skipped the questions about what you want to work on, so this is just

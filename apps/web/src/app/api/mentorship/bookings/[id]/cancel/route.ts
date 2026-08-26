@@ -87,7 +87,7 @@ export async function POST(
         refundedCents: 0,
         refundPending: true,
         message:
-          "The session is cancelled, but the refund did not go through. We are on it — it will be processed shortly.",
+          "The session is cancelled, but the refund did not go through. We are on it. It will be processed shortly.",
       });
     }
   } else if (booking.paymentIntentId && !wasPaid) {

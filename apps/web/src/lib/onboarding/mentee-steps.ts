@@ -195,7 +195,7 @@ export const MENTEE_STEPS: MenteeStep[] = [
     phase: "Interests",
     title: "What are you trying to get better at?",
     subtitle:
-      "The most important question here — mentors answer this exact list about what they teach.",
+      "The most important question here. Mentors answer this exact list about what they teach.",
     field: "skillsWanted",
     options: asOptions(SKILLS),
     max: 8,
@@ -217,7 +217,7 @@ export const MENTEE_STEPS: MenteeStep[] = [
     phase: "Goals",
     title: "What is holding you back right now?",
     subtitle:
-      "In your own words. Mentors read this before a session — it is often the thing that makes someone say yes.",
+      "In your own words. Mentors read this before a session. It is often the thing that makes someone say yes.",
     field: "biggestChallenge",
     optional: true,
   },

@@ -58,7 +58,7 @@ export function evaluateReadiness(input: ReadinessInput): Readiness {
       label: "Title",
       required: true,
       done: Boolean(input.headline?.trim()),
-      hint: "One line — your role or what you are known for.",
+      hint: "One line. Your role or what you are known for.",
     },
     {
       id: "location",
@@ -72,7 +72,7 @@ export function evaluateReadiness(input: ReadinessInput): Readiness {
       label: "Description",
       required: true,
       done: Boolean(input.bio?.trim()),
-      hint: "A short resume / about — who you are and your background.",
+      hint: "A short resume and about. Who you are and your background.",
     },
     {
       id: "offered",

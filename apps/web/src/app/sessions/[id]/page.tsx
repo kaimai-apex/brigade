@@ -216,7 +216,7 @@ export default async function SessionReceiptPage({
                 ) : (
                   <span className="text-[var(--mk-muted)]">
                     {isMentor
-                      ? "You have not added a meeting room yet — add one on your mentoring page and send it to them."
+                      ? "You have not added a meeting room yet. Add one on your mentoring page and send it to them."
                       : `${otherName} has not added a meeting link yet. They will send one before the session.`}
                   </span>
                 )}
@@ -258,7 +258,7 @@ export default async function SessionReceiptPage({
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[13px] text-[var(--mk-subtle)]">
               {booking.priceCents === 0
-                ? "Free session — cancel any time."
+                ? "Free session. Cancel any time."
                 : isMentor
                   ? "If you cancel, the session is refunded in full."
                   : `Free cancellation up to ${FREE_CANCELLATION_HOURS} hours before the session.`}

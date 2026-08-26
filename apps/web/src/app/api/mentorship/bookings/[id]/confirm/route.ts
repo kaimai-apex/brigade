@@ -28,7 +28,7 @@ export async function POST(
     return NextResponse.json(
       {
         message:
-          "Payments are switched on, so a session is confirmed when the payment settles — not by hand.",
+          "Payments are switched on, so a session is confirmed when the payment settles, not by hand.",
       },
       { status: 409 },
     );

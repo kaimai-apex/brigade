@@ -105,7 +105,7 @@ function htmlBody(input: MentorBookingEmail): string {
       <p style="margin:24px 0 0">
         <a href="${escapeAttr(sessionsUrl)}" style="display:inline-block;padding:12px 18px;background:${c.text};color:${c.background};text-decoration:none;border-radius:10px;font-size:14px;font-weight:600">View sessions</a>
       </p>
-      <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:${c.faint}">— Brigade</p>
+      <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:${c.faint}">Brigade</p>
     </div>
   </body>
 </html>`;

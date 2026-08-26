@@ -158,7 +158,7 @@ export function CopyLinkButton({ url }: { url: string }) {
           await navigator.clipboard.writeText(url);
           toast.success("Meeting link copied");
         } catch {
-          toast.error("Could not copy — select the link and copy it manually");
+          toast.error("Could not copy. Select the link and copy it manually.");
         }
       }}
       className="text-[14px] text-[var(--mk-muted)] underline underline-offset-4 hover:text-[var(--mk-text)]"

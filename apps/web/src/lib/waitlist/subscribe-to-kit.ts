@@ -37,7 +37,7 @@ export async function subscribeToKit(input: {
 
   if (!key) {
     console.error(
-      "[waitlist/kit] KIT_API_KEY missing — set V3 API Key in Vercel env and redeploy",
+      "[waitlist/kit] KIT_API_KEY missing. Set V3 API Key in Vercel env and redeploy",
     );
     return { ok: false, via: "skipped" };
   }

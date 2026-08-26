@@ -77,7 +77,7 @@ function BookCallInner() {
             onClick={() => void startCheckout()}
             className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[var(--mk-ink)] text-[15px] font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {busy ? "Redirecting…" : "Book a call — pay with Stripe"}
+            {busy ? "Redirecting…" : "Book a call, pay with Stripe"}
           </button>
         </div>
       </main>
