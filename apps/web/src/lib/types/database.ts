@@ -89,6 +89,14 @@ export type Profile = {
   website_url: string | null;
   linkedin_url: string | null;
   resume_url: string | null;
+  /** Long-form career narrative. `bio` stays the short directory-card summary. */
+  resume_text: string | null;
+  /**
+   * Mentor row status, when this person mentors here: 'active' | 'paused' |
+   * 'draft'. Null for the majority of members, who do not. Populated by the
+   * directory listing; absent on other reads.
+   */
+  mentor_status?: string | null;
   open_to_opportunities: boolean;
   available_private_events: boolean;
   available_contract_work: boolean;
@@ -116,9 +124,14 @@ export type Experience = {
   user_id: string;
   company_name: string;
   position_title: string;
+  location: string | null;
   start_date: string | null;
   end_date: string | null;
   description: string | null;
+  /** What the role actually involved — the part a resume is read for. */
+  highlights: string | null;
+  /** Restaurant, private household, yacht, events… */
+  employment_type: string | null;
   is_current: boolean;
   created_at: string;
 };

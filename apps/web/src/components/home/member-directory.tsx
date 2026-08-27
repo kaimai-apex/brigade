@@ -7,7 +7,7 @@ export function HomeMemberDirectory({ members }: { members: MentorListing[] }) {
 
   return (
     <section className="mk-shell py-12 md:py-16">
-      <h2 className="mk-rail-title">Members</h2>
+      <h2 className="mk-rail-title">Chefs already on this path</h2>
       <ul className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
         {members.map((member) => (
           <li key={member.userId}>

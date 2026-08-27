@@ -8,6 +8,9 @@ const monorepoRoot = path.join(appDir, "../..");
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
+  outputFileTracingIncludes: {
+    "/roadmap/download": ["./src/content/roadmap/private-chef-roadmap.svg"],
+  },
   async headers() {
     return [
       {

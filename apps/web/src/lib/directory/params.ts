@@ -83,6 +83,8 @@ export function mapDirectoryRow(row: Record<string, unknown>): Profile {
     available_emergency_staffing: Boolean(row.availableEmergencyStaffing),
     created_at: (row.createdAt as string) ?? "",
     onboarding_completed: true,
+    // 'active' | 'paused' | 'draft' | null — null when they do not mentor here.
+    mentor_status: (row.mentorStatus as string) ?? null,
   } as Profile;
 }
 

@@ -229,7 +229,7 @@ a('</svg>')
 
 svg = "\n".join(out)
 import pathlib
-p = pathlib.Path("apps/web/public/roadmap/private-chef-roadmap.svg")
+p = pathlib.Path("apps/web/src/content/roadmap/private-chef-roadmap.svg")
 p.parent.mkdir(parents=True, exist_ok=True)
 p.write_text(svg)
 print(f"wrote {p} — {W}x{TOTAL_H}, {len(svg)} bytes")

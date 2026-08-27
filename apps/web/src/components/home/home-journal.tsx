@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { ApplyButton } from "@/components/home/apply-button";
+import { LEARN_TOPICS } from "@/lib/accelerator";
 import {
   articlePath,
   listArticles,
@@ -54,7 +56,7 @@ function IndexRow({
   );
 }
 
-/** Homepage rail of Jordan's journal — every piece, no paywall. */
+/** Homepage rail of Jordan's journal — titles stay public; bodies sit behind the email wall. */
 export function HomeJournal() {
   const articles = listArticles();
 
@@ -66,7 +68,7 @@ export function HomeJournal() {
       <div className="mk-shell">
         <div className="mx-auto max-w-[820px] text-center">
           <p className="text-[12px] font-semibold tracking-[0.16em] text-[var(--brand-forest)]">
-            JOURNAL
+            LEARN
           </p>
           <h2
             className="mt-3 text-balance text-[var(--brand-ink)]"
@@ -78,16 +80,38 @@ export function HomeJournal() {
               letterSpacing: "-0.02em",
             }}
           >
-            Read our free resources.
+            How private cheffing works.
           </h2>
-          <p className="mx-auto mt-4 max-w-[36ch] text-[16px] leading-relaxed text-[var(--brand-ink-muted)] md:text-[18px]">
-            Eight notes from a chef who already runs a house. No paywall.
+          <p className="mx-auto mt-4 max-w-[40ch] text-[16px] leading-relaxed text-[var(--brand-ink-muted)] md:text-[18px]">
+            Free, self-guided notes from a chef who already runs a house. They
+            answer what you need to know. The cohort is for doing it.
           </p>
           <span
             aria-hidden
             className="mx-auto mt-8 block h-px w-16 bg-[var(--brand-gold)]"
           />
         </div>
+
+        <ul className="mx-auto mt-10 flex max-w-[820px] flex-wrap justify-center gap-2">
+          {LEARN_TOPICS.map((topic) =>
+            topic.href ? (
+              <li key={topic.label}>
+                <Link
+                  href={topic.href}
+                  className="inline-flex rounded-full bg-[var(--brand-paper-warm)] px-3 py-1.5 text-[13px] font-medium text-[var(--brand-ink)] transition hover:bg-[var(--brand-paper-warm)]/80"
+                >
+                  {topic.label}
+                </Link>
+              </li>
+            ) : (
+              <li key={topic.label}>
+                <span className="inline-flex rounded-full bg-[var(--brand-paper-warm)]/60 px-3 py-1.5 text-[13px] font-medium text-[var(--brand-ink-muted)]">
+                  {topic.label}
+                </span>
+              </li>
+            ),
+          )}
+        </ul>
 
         <ol className="mx-auto mt-10 max-w-[820px] rounded-[28px] bg-[var(--brand-paper-warm)] px-5 shadow-[0_1px_0_rgba(26,26,23,0.04)] md:mt-14 md:px-12">
           {articles.map((article) => (
@@ -112,6 +136,15 @@ export function HomeJournal() {
             See Jordan&apos;s roadmap
             <ArrowRight className="size-4" aria-hidden />
           </Link>
+        </div>
+
+        <div className="mx-auto mt-10 max-w-[820px] text-center">
+          <p className="text-[16px] text-[var(--brand-ink-muted)]">
+            When you know enough, do the work with people who already did it.
+          </p>
+          <div className="mt-5 flex justify-center">
+            <ApplyButton />
+          </div>
         </div>
       </div>
     </section>

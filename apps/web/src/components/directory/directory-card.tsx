@@ -13,6 +13,10 @@ import { resolveAvatarUrl } from '@/lib/avatars';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { SaveButton } from '@/components/directory/save-button';
+import {
+  MemberKindBadge,
+  memberKindFor,
+} from '@/components/profile/member-kind-badge';
 
 export function DirectoryCard({
   profile,
@@ -25,6 +29,7 @@ export function DirectoryCard({
 }) {
   const name = displayName(profile.first_name, profile.last_name);
   const location = formatLocation(profile.city, profile.state, profile.country);
+  const kind = memberKindFor(profile.mentor_status);
   const chips = (profile.expertise_areas ?? []).slice(0, 3);
   const extra = (profile.expertise_areas?.length ?? 0) - chips.length;
 
@@ -55,11 +60,14 @@ export function DirectoryCard({
             {getInitials(profile.first_name, profile.last_name)}
           </AvatarFallback>
         </Avatar>
-        {profile.open_to_opportunities && (
-          <span className="absolute left-2 top-2 rounded-full bg-forest px-2 py-0.5 text-[11px] font-semibold text-white">
-            Open to work
-          </span>
-        )}
+        <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
+          {kind === 'mentor' && <MemberKindBadge kind={kind} size="sm" />}
+          {profile.open_to_opportunities && (
+            <span className="rounded-full bg-forest px-2 py-0.5 text-[11px] font-semibold text-white">
+              Open to work
+            </span>
+          )}
+        </div>
         <div className="absolute right-2 top-2">
           <SaveButton userId={profile.id} name={name} initialSaved={saved} />
         </div>

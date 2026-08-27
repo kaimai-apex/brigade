@@ -65,15 +65,41 @@ export function getDefaultAvatar(seed?: string | null): string {
 }
 
 /**
+ * A same-origin image this app re-encoded itself.
+ *
+ * Two shapes are accepted:
+ *   /api/media/<uuid>.jpg        — current, database-backed (migration 019)
+ *   /uploads/<uuid>/<uuid>.jpg   — legacy filesystem writes
+ *
+ * The legacy shape stays recognised so existing local uploads keep rendering.
+ * It was never reachable on the deployed site, where the write failed outright,
+ * so there is no production data in that shape to migrate.
+ *
+ * Only `.jpg` passes: every uploaded image goes through sharp and comes out
+ * JPEG, so any other extension means the file skipped that pipeline (which is
+ * how a cover-upload-then-avatarUrl-swap would smuggle in a GIF or SVG).
+ *
+ * Defined here rather than imported from a shared module because this file is
+ * loaded directly by spec/avatar-image.ts under `node --experimental-strip-types`,
+ * which resolves relative imports only when they carry a ".ts" extension — and
+ * the app, bundled by Next, must not use those specifiers. lib/banners.ts keeps
+ * its own copy for the same reason.
+ */
+export function isStoredImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (trimmed.includes("..") || trimmed.includes("//")) return false;
+  return (
+    /^\/api\/media\/[0-9a-f-]{36}\.jpg$/i.test(trimmed) ||
+    /^\/uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg$/i.test(trimmed)
+  );
+}
+
+/**
  * Same-origin uploads only — never echo arbitrary http(s) URLs from profile
  * fields (stored XSS / tracking-pixel risk). Falls back to kitchen defaults.
  */
 export function isSafeAvatarUrl(url: string): boolean {
-  if (url.startsWith("/uploads/") && !url.includes("..") && !url.includes("//")) {
-    // Avatars are always re-encoded to JPEG. Do not accept GIF/SVG/PNG
-    // paths that skipped that pipeline (cover-upload then avatarUrl swap).
-    return /^\/uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg$/i.test(url);
-  }
+  if (isStoredImageUrl(url)) return true;
   if ((DEFAULT_AVATARS as readonly string[]).includes(url)) return true;
   return false;
 }

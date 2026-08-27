@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { resolveAvatarUrl } from '@/lib/avatars';
+import { DISCORD_INVITE_URL } from '@/lib/community';
 import { cn, displayName, getInitials } from '@/lib/utils';
 
 const SCROLL_THRESHOLD = 20;
@@ -20,7 +21,7 @@ const SCROLL_THRESHOLD = 20;
 /**
  * FilmUGC-style floating liquid-glass nav — fixed inset bar that stays
  * visible for the whole scroll, gaining a stronger glass fill after 20px.
- * Auth state only swaps the right-side CTAs (Log in / Sign up ↔ avatar menu);
+ * Auth state only swaps the right-side CTAs (Log in / Apply ↔ Apply + avatar);
  * the glass chrome never yields to AppNav on the marketing home.
  */
 export function MarketingHeader() {
@@ -56,20 +57,29 @@ export function MarketingHeader() {
               Journal
             </Link>
             <Link
-              href="/mentors"
+              href="/accelerator"
+              className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] sm:inline-flex"
+            >
+              Accelerator
+            </Link>
+            <a
+              href={DISCORD_INVITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] md:inline-flex"
             >
-              Find a mentor
-            </Link>
-            <Link
-              href={signedIn ? '/mentorship' : '/login?next=/mentorship/setup'}
-              className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] lg:inline-flex"
-            >
-              Become a mentor
-            </Link>
+              Discord
+            </a>
 
             {signedIn ? (
-              <DropdownMenu>
+              <>
+                <Link
+                  href="/apply"
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink)] px-4 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:px-5"
+                >
+                  Apply
+                </Link>
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
@@ -86,6 +96,7 @@ export function MarketingHeader() {
                 </DropdownMenuTrigger>
                 <AccountMenuItems name={name} onLogout={() => void logout()} />
               </DropdownMenu>
+              </>
             ) : (
               <>
                 <Link
@@ -95,10 +106,10 @@ export function MarketingHeader() {
                   Log in
                 </Link>
                 <Link
-                  href="/signup"
+                  href="/apply"
                   className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink)] px-4 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:px-5"
                 >
-                  Sign up
+                  Apply
                 </Link>
               </>
             )}

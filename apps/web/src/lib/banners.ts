@@ -64,12 +64,13 @@ export function getBannerById(id?: string | null): ProfileBanner {
   return PROFILE_BANNERS.find((b) => b.id === id || b.src === id) ?? DEFAULT_BANNER;
 }
 
+/** Mirrors isStoredImageUrl() in lib/avatars.ts — see the note there on why. */
 function isSafeUploadUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (trimmed.includes("..") || trimmed.includes("//")) return false;
   return (
-    url.startsWith("/uploads/") &&
-    !url.includes("..") &&
-    !url.includes("//") &&
-    /^\/uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg$/i.test(url)
+    /^\/api\/media\/[0-9a-f-]{36}\.jpg$/i.test(trimmed) ||
+    /^\/uploads\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.jpg$/i.test(trimmed)
   );
 }
 

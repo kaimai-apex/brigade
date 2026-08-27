@@ -11,36 +11,39 @@ type ValueCard = {
   href?: string;
 };
 
-// Value-first cards for private-chef mentorship — what you can actually do here.
+// Learn → Build → Launch, plus 1:1 as the rung above the cohort.
 const CARDS: ValueCard[] = [
   {
-    className: 'bg-forest text-paper',
-    title: ['Find a', 'Mentor'],
-    art: '/hero/hero-host.png',
-    blurb: 'Private chefs who already made the move.',
-    dot: 'var(--brand-forest)',
-  },
-  {
-    className: 'bg-rust text-paper',
-    title: ['Book a', 'Session'],
-    art: '/hero/chef-chef.png',
-    blurb: '1:1 time. Leave with a plan, not advice.',
-    dot: 'var(--brand-rust)',
-  },
-  {
     className: 'bg-gold text-ink',
-    title: ['Free', 'Resources'],
+    title: ['Learn', 'Free'],
     art: '/hero/hero-manager.png',
-    blurb: 'We help you with free guides, tips, and playbooks.',
+    blurb: 'Guides that answer what you need to know.',
     dot: 'var(--brand-gold)',
     href: '#free-resources',
   },
   {
+    className: 'bg-forest text-paper',
+    title: ['Build', 'Together'],
+    art: '/hero/hero-host.png',
+    blurb: 'Eight weeks. Coaches. Real assignments.',
+    dot: 'var(--brand-forest)',
+    href: '#accelerator',
+  },
+  {
+    className: 'bg-rust text-paper',
+    title: ['Launch', 'Clients'],
+    art: '/hero/chef-chef.png',
+    blurb: 'Leave with dinners on the calendar.',
+    dot: 'var(--brand-rust)',
+    href: '#accelerator',
+  },
+  {
     className: 'bg-cobalt text-paper',
-    title: ['Teach', 'What You Know'],
+    title: ['1:1', 'Help'],
     art: '/hero/chef-cook.png',
-    blurb: 'Set your price. Brigade handles the rest.',
+    blurb: 'A working private chef on your specific problem.',
     dot: 'var(--brand-cobalt)',
+    href: '/mentors',
   },
 ];
 
@@ -126,14 +129,14 @@ export function RoleDeck() {
         })}
       </div>
 
-      <div className="fan-dots" role="group" aria-label="What you can do on Brigade">
+      <div className="fan-dots" role="group" aria-label="Learn, build, and launch with Brigade">
         {CARDS.map((c, i) => (
           <button
             key={c.title.join(' ')}
             type="button"
             className="fan-dot"
             aria-current={i === active ? 'true' : undefined}
-            aria-label={`${c.title.join(' ')} — ${c.blurb}`}
+            aria-label={`${c.title.join(" ")}. ${c.blurb}`}
             data-active={i === active}
             style={{ '--dot': c.dot } as React.CSSProperties}
             onClick={() => select(i)}

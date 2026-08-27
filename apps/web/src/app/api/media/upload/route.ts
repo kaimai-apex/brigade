@@ -1,19 +1,35 @@
 import { NextResponse } from 'next/server';
-import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { getConnectProSession } from '@/lib/connectpro/server';
-import { AvatarImageError, processAvatarImage, processCoverImage } from '@/lib/server/avatar-image';
+import {
+  AvatarImageError,
+  processAvatarImage,
+  processCoverImage,
+  processGalleryImage,
+} from '@/lib/server/avatar-image';
+import { dbPutMedia, type MediaKind } from '@/lib/server/media-db';
 
-const ALLOWED_EXT = new Set(['pdf', 'doc', 'docx']);
+/**
+ * Accept one upload and hand back the URL it will be served from.
+ *
+ * Bytes go to the database (see lib/server/media-db.ts). They used to go to
+ * `public/uploads/` via fs.writeFile, which silently could not work on the
+ * deployed site — that is why profile photos never stuck.
+ */
+
+const DOC_EXT = new Set(['pdf', 'doc', 'docx']);
+const IMAGE_KINDS = new Set<MediaKind>(['avatar', 'cover', 'gallery']);
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+function isMediaKind(value: string): value is MediaKind {
+  return value === 'avatar' || value === 'cover' || value === 'gallery' || value === 'resume';
+}
 
 function claimedExt(filename: string): string | null {
   const raw = filename.includes('.') ? filename.split('.').pop()!.toLowerCase() : '';
-  if (!raw || !ALLOWED_EXT.has(raw) || raw.includes('/') || raw.includes('\\')) {
+  if (!raw || !DOC_EXT.has(raw) || raw.includes('/') || raw.includes('\\')) {
     return null;
   }
-  return raw === 'jpeg' ? 'jpg' : raw;
+  return raw;
 }
 
 /** Magic-byte sniff so a renamed .exe cannot pass as image/pdf. */
@@ -55,28 +71,13 @@ function sniffedExt(buf: Buffer): string | null {
   return null;
 }
 
-async function writePublicUpload(
-  userId: string,
-  filename: string,
-  data: Buffer,
-): Promise<{ url: string } | { error: string }> {
-  const uploadsRoot = path.resolve(process.cwd(), 'public', 'uploads');
-  const dir = path.resolve(uploadsRoot, userId);
-  if (!dir.startsWith(uploadsRoot + path.sep)) {
-    return { error: 'Invalid path' };
-  }
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, filename), data);
-  return { url: `/uploads/${userId}/${filename}` };
-}
-
 export async function POST(request: Request) {
   const session = await getConnectProSession();
   if (!session) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  // userId must be a UUID from verified JWT — never a path segment from a cookie.
+  // userId must be a UUID from the verified JWT, never a value from a cookie.
   if (!/^[0-9a-f-]{36}$/i.test(session.userId)) {
     return NextResponse.json({ message: 'Invalid session' }, { status: 401 });
   }
@@ -90,35 +91,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'File too large (max 10MB)' }, { status: 400 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
   const kind = String(formData.get('kind') ?? '');
-
-  if (kind === 'avatar' || kind === 'cover') {
-    try {
-      const jpeg =
-        kind === 'avatar'
-          ? await processAvatarImage(buffer)
-          : await processCoverImage(buffer);
-      const saved = await writePublicUpload(session.userId, `${randomUUID()}.jpg`, jpeg);
-      if ('error' in saved) {
-        return NextResponse.json({ message: saved.error }, { status: 400 });
-      }
-      return NextResponse.json({ url: saved.url });
-    } catch (err) {
-      const message =
-        err instanceof AvatarImageError
-          ? err.message
-          : 'Could not save photo.';
-      return NextResponse.json({ message }, { status: 400 });
-    }
-  }
-
-  if (kind !== 'resume') {
+  if (!isMediaKind(kind)) {
     return NextResponse.json({ message: 'Unsupported upload' }, { status: 400 });
   }
 
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  if (IMAGE_KINDS.has(kind)) {
+    try {
+      // Sharp decoding IS the type check here — the filename is not consulted.
+      const jpeg =
+        kind === 'avatar'
+          ? await processAvatarImage(buffer)
+          : kind === 'cover'
+            ? await processCoverImage(buffer)
+            : await processGalleryImage(buffer);
+
+      const saved = await dbPutMedia({
+        ownerUserId: session.userId,
+        kind,
+        extension: 'jpg',
+        bytes: jpeg,
+      });
+      return NextResponse.json({ url: saved.url, id: saved.id });
+    } catch (err) {
+      if (err instanceof AvatarImageError) {
+        return NextResponse.json({ message: err.message }, { status: 400 });
+      }
+      console.error('[media/upload] could not store image', err);
+      return NextResponse.json({ message: 'Could not save photo.' }, { status: 500 });
+    }
+  }
+
   const claimed = claimedExt(file.name);
-  if (!claimed || !['pdf', 'doc', 'docx'].includes(claimed)) {
+  if (!claimed) {
     return NextResponse.json(
       { message: 'Unsupported file type. Allowed: pdf, doc, docx' },
       { status: 400 },
@@ -141,13 +148,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'File contents do not match extension' }, { status: 400 });
   }
 
-  const saved = await writePublicUpload(
-    session.userId,
-    `${randomUUID()}.${sniffed}`,
-    buffer,
-  );
-  if ('error' in saved) {
-    return NextResponse.json({ message: saved.error }, { status: 400 });
+  try {
+    const saved = await dbPutMedia({
+      ownerUserId: session.userId,
+      kind: 'resume',
+      extension: sniffed,
+      bytes: buffer,
+    });
+    return NextResponse.json({ url: saved.url, id: saved.id });
+  } catch (err) {
+    console.error('[media/upload] could not store document', err);
+    return NextResponse.json({ message: 'Could not save file.' }, { status: 500 });
   }
-  return NextResponse.json({ url: saved.url });
 }

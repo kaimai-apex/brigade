@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { BrandLink } from '@/components/brand/brand-mark';
+import { DISCORD_INVITE_URL } from '@/lib/community';
 
 type PublicNavProps = {
   showAuth?: boolean;
@@ -19,25 +20,27 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
         {showAuth && (
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <Link
-              href="/mentors"
+              href="/accelerator"
               className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] sm:inline-flex"
             >
-              Find a mentor
+              Accelerator
             </Link>
-            <Link
-              href="/login?next=/mentorship/setup"
+            <a
+              href={DISCORD_INVITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] md:inline-flex"
             >
-              Become a mentor
-            </Link>
+              Discord
+            </a>
             <Link
               href="/login"
               className="mk-btn mk-btn-outline hidden sm:inline-flex"
             >
               Log in
             </Link>
-            <Link href="/signup" className="mk-btn mk-btn-dark">
-              Sign up
+            <Link href="/apply" className="mk-btn mk-btn-dark">
+              Apply
             </Link>
           </div>
         )}

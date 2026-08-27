@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getConnectProSession, isAdmin } from "@/lib/connectpro/server";
+import { getAdminPortalSession } from "@/lib/admin/access";
 
 /**
  * Diagnostic: which Kit account + form production is wired to.
@@ -18,8 +18,8 @@ function maskEmail(email: string | null | undefined): string | null {
 }
 
 export async function GET() {
-  const session = await getConnectProSession();
-  if (!isAdmin(session)) {
+  const session = await getAdminPortalSession();
+  if (!session) {
     return new NextResponse("Not found", { status: 404 });
   }
 

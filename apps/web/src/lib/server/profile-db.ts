@@ -1,6 +1,7 @@
 import { getPool } from "@connectpro/common";
 import type { DirectoryParams } from "@/lib/directory/params";
 import { ensureDirectorySchema } from "@/lib/server/ensure-directory-schema";
+import { ensureResumeSchema } from "@/lib/server/ensure-resume-schema";
 import { dbNotify } from "@/lib/server/notify-db";
 
 /**
@@ -34,7 +35,7 @@ const PROFILE_COLUMNS = `
   visible_in_directory, role, completeness, created_at, updated_at,
   preferred_name, pronouns, timezone, languages, experience_level, workplace_type,
   interest_industries, skills_wanted, goals, help_wanted, biggest_challenge,
-  preferred_session_minutes, preferred_mentor_experience
+  preferred_session_minutes, preferred_mentor_experience, resume_text
 `;
 
 /** Shape the web's mapProfile()/mapDirectoryRow() already expect (camelCase). */
@@ -52,6 +53,7 @@ function toCamel(row: Record<string, unknown>) {
     website: row.website,
     websiteUrl: row.website,
     resumeUrl: row.resume_url,
+    resumeText: row.resume_text,
     avatarUrl: row.avatar_url,
     profileImageUrl: row.avatar_url,
     coverUrl: row.cover_url,
@@ -178,8 +180,32 @@ export async function dbListDirectory(params: DirectoryParams = {}) {
     ),
   ]);
 
+  // Which of these people mentor here. Fetched as a second indexed lookup on
+  // the ids we just selected rather than a LEFT JOIN: the filter builder above
+  // writes unqualified column names, and mentorship.mentors shares half of them
+  // (user_id, headline, status, created_at), so a join makes the whole WHERE
+  // clause ambiguous.
+  const ids = rows.rows.map((row) => row.user_id as string);
+  const mentorStatus = new Map<string, string>();
+  if (ids.length > 0) {
+    const mentors = await pool()
+      .query(
+        `SELECT user_id, status FROM mentorship.mentors WHERE user_id = ANY($1::uuid[])`,
+        [ids],
+      )
+      // The directory must not 500 because the mentorship schema is missing —
+      // it predates it, and a member list is still useful without badges.
+      .catch(() => ({ rows: [] as { user_id: string; status: string }[] }));
+    for (const row of mentors.rows) {
+      mentorStatus.set(row.user_id, row.status);
+    }
+  }
+
   return {
-    data: rows.rows.map(toCamel),
+    data: rows.rows.map((row) => ({
+      ...toCamel(row),
+      mentorStatus: mentorStatus.get(row.user_id as string) ?? null,
+    })),
     total: total.rows[0]?.total ?? 0,
     limit,
     offset,
@@ -197,6 +223,7 @@ export async function dbListDirectory(params: DirectoryParams = {}) {
 
 export async function dbGetProfile(userId: string) {
   await ensureDirectorySchema();
+  await ensureResumeSchema();
   const result = await pool().query(
     `SELECT ${PROFILE_COLUMNS} FROM users.profiles
      WHERE user_id = $1 AND deleted_at IS NULL`,
@@ -207,7 +234,8 @@ export async function dbGetProfile(userId: string) {
   const [experience, education, portfolioLinks, workPhotos, skills] =
     await Promise.all([
       pool().query(
-        `SELECT id, company, position, location, start_date, end_date, description
+        `SELECT id, company, position, location, start_date, end_date, description,
+                highlights, employment_type
          FROM users.experience WHERE user_id = $1 ORDER BY start_date DESC NULLS LAST`,
         [userId],
       ),
@@ -242,6 +270,8 @@ export async function dbGetProfile(userId: string) {
       startDate: e.start_date,
       endDate: e.end_date,
       description: e.description,
+      highlights: e.highlights,
+      employmentType: e.employment_type,
     })),
     education: education.rows.map((e) => ({
       id: e.id,
@@ -267,6 +297,7 @@ export async function dbGetProfile(userId: string) {
 
 /** camelCase DTO key -> column. Mirrors user-service updateProfile. */
 const COLUMN_MAP: Record<string, string> = {
+  resumeText: "resume_text",
   firstName: "first_name",
   lastName: "last_name",
   headline: "headline",
@@ -315,6 +346,7 @@ export async function dbUpdateProfile(
   userId: string,
   patch: Record<string, unknown>,
 ) {
+  await ensureResumeSchema();
   const fields: string[] = [];
   const values: unknown[] = [];
 
@@ -340,23 +372,37 @@ export async function dbUpdateProfile(
   return dbGetProfile(userId);
 }
 
-export async function dbReplaceExperience(
-  userId: string,
-  items: { company: string; position: string; startDate?: string; endDate?: string; description?: string }[],
-) {
+export type ExperienceInput = {
+  company: string;
+  position: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  highlights?: string;
+  employmentType?: string;
+};
+
+export async function dbReplaceExperience(userId: string, items: ExperienceInput[]) {
+  await ensureResumeSchema();
   await pool().query("DELETE FROM users.experience WHERE user_id = $1", [userId]);
   for (const it of items) {
     if (!it.company) continue;
     await pool().query(
-      `INSERT INTO users.experience (user_id, company, position, start_date, end_date, description)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO users.experience
+         (user_id, company, position, location, start_date, end_date, description,
+          highlights, employment_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         userId,
         it.company,
         it.position || "Team Member",
+        it.location || null,
         it.startDate || null,
         it.endDate || null,
         it.description || null,
+        it.highlights || null,
+        it.employmentType || null,
       ],
     );
   }

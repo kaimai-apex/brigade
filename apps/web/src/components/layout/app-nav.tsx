@@ -6,9 +6,11 @@ import { useEffect, useState } from 'react';
 import {
   CalendarCheck,
   ChevronDown,
+  ClipboardList,
   Compass,
   LogOut,
   GraduationCap,
+  MessageCircle,
   Search,
   Settings,
   User,
@@ -27,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { resolveAvatarUrl } from '@/lib/avatars';
+import { DISCORD_INVITE_URL } from '@/lib/community';
 import { cn, displayName, getInitials } from '@/lib/utils';
 
 const NAV_ITEMS = [
@@ -79,6 +82,16 @@ export function AccountMenuItems({
       </DropdownMenuItem>
       {/* Teaching lives here rather than in the tab bar: most members are
           here to learn, and only the ones who mentor need the admin page. */}
+      <DropdownMenuItem asChild>
+        <Link href="/apply">
+          <ClipboardList className="size-4" /> Join the Next Brigade Cohort
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">
+          <MessageCircle className="size-4" /> Join Discord
+        </a>
+      </DropdownMenuItem>
       <DropdownMenuItem asChild>
         <Link href="/mentorship">
           <GraduationCap className="size-4" /> Your mentoring

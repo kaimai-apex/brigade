@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { DISCORD_INVITE_URL } from "@/lib/community";
 
 export function JournalShell({ children }: { children: React.ReactNode }) {
   return (
@@ -13,12 +14,20 @@ export function JournalShell({ children }: { children: React.ReactNode }) {
             <Link href="/journal" className="hover:text-[var(--brand-ink)]">
               Journal
             </Link>
-            <Link href="/mentors" className="hover:text-[var(--brand-ink)]">
-              Find a mentor
+            <Link href="/accelerator" className="hover:text-[var(--brand-ink)]">
+              Accelerator
             </Link>
-            <Link href="/book" className="hover:text-[var(--brand-ink)]">
-              Book a call
+            <Link href="/apply" className="hover:text-[var(--brand-ink)]">
+              Apply
             </Link>
+            <a
+              href={DISCORD_INVITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-[var(--brand-ink)]"
+            >
+              Discord
+            </a>
           </nav>
         </div>
         <p className="mx-auto mt-4 max-w-[960px] text-[12px] text-[var(--brand-ink-subtle)]">

@@ -30,3 +30,15 @@ export const EMAIL_COLORS = {
   muted: "#5e5e5d",
   faint: "#767675",
 } as const;
+
+/**
+ * Canvas matte for client-side image re-encoding.
+ *
+ * A <canvas> fillStyle is a JS string, not a CSS value, so it cannot be a
+ * custom property. JPEG has no alpha, and toBlob() composites transparent
+ * pixels onto black unless something is painted underneath — so a PNG with a
+ * transparent background would otherwise arrive inverted. Mirrors
+ * --brand-white, and matches the flatten() background the server re-encodes
+ * with in lib/server/avatar-image.ts.
+ */
+export const IMAGE_MATTE = "#ffffff";

@@ -1,29 +1,21 @@
-import Link from 'next/link';
+import { ApplyButton } from '@/components/home/apply-button';
+import { JoinDiscordButton } from '@/components/home/join-discord-button';
 
-/** Closing ink band — clear next steps, no invented social proof. */
+/** Closing ink band. The cohort is the ask. Discord is the community door. */
 export function FinalCta() {
   return (
     <section className="bg-[var(--mk-ink)] py-16 text-center text-[var(--brand-white)] md:py-20">
       <div className="mk-shell">
         <h2 className="mx-auto max-w-[18ch] text-balance text-[32px] font-semibold leading-tight md:text-[44px]">
-          Ready when you are
+          Ready to actually do this
         </h2>
         <p className="mx-auto mt-5 max-w-[40ch] text-[16px] text-[var(--brand-white)]/75">
-          Book a 30-minute call for CA$20 — or browse mentors when you&apos;re ready.
+          First cohort is small. Apply if you are a restaurant chef ready to
+          build the private chef business.
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/book"
-            className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--mk-surface)] px-6 text-sm font-semibold text-[var(--mk-ink)] hover:bg-[var(--mk-surface)]/90"
-          >
-            Book a call
-          </Link>
-          <Link
-            href="/mentors"
-            className="inline-flex h-11 items-center justify-center rounded-lg px-6 text-sm font-semibold text-[var(--brand-white)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)] hover:bg-[var(--mk-surface)]/10"
-          >
-            Find a mentor
-          </Link>
+          <ApplyButton light />
+          <JoinDiscordButton light />
         </div>
       </div>
     </section>

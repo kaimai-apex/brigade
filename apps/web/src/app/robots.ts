@@ -13,6 +13,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/demo",
           "/api/",
+          "/admin",
           "/directory",
           "/profile/",
           "/settings",

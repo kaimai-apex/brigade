@@ -2,9 +2,12 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { RoleDeck } from '@/components/landing/role-deck';
 import { HeroScrollHint } from '@/components/home/hero-scroll-hint';
+import { ApplyButton } from '@/components/home/apply-button';
+import { JoinDiscordButton } from '@/components/home/join-discord-button';
+import { POSITIONING } from '@/lib/accelerator';
 
 /**
- * Landing hero — one clear CTA into the mentor directory.
+ * Landing hero. Primary action is the Accelerator. Free guides are the on-ramp.
  */
 export function HomeHero() {
   return (
@@ -18,33 +21,28 @@ export function HomeHero() {
 
       <div className="relative z-10 w-full max-w-[900px] px-5 text-center">
         <h1 className="mk-serif-display text-balance text-[var(--brand-ink)]">
-          Build Your Next Chapter in Private Cheffing
+          Build Your Next Chapter as a Private Chef
         </h1>
 
         <p className="mx-auto mt-5 max-w-[36ch] text-[17px] leading-relaxed text-[var(--brand-ink-muted)] md:mt-6 md:max-w-[640px] md:text-[19px]">
-          Learn from chefs who&apos;ve made the transition through{" "}
+          {POSITIONING} Start with the{" "}
           <Link
             href="#free-resources"
             className="underline decoration-[var(--brand-ink)]/25 underline-offset-4 hover:decoration-[var(--brand-ink)]"
           >
-            free resources
+            free guides
           </Link>
-          ,{" "}
-          <Link
-            href="#free-resources"
-            className="underline decoration-[var(--brand-ink)]/25 underline-offset-4 hover:decoration-[var(--brand-ink)]"
-          >
-            practical guides
-          </Link>
-          , and 1:1 mentorship tailored to you.
+          . When you are ready to do the work, join the cohort.
         </p>
 
-        <div className="mx-auto mt-8 flex justify-center sm:mt-10">
+        <div className="mx-auto mt-8 flex flex-wrap items-center justify-center gap-3 sm:mt-10">
+          <ApplyButton>Join the Next Brigade Cohort</ApplyButton>
+          <JoinDiscordButton />
           <Link
-            href="/mentors"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--mk-ink)] px-6 text-[15px] font-semibold text-[var(--brand-white)] transition hover:scale-[1.02]"
+            href="#free-resources"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[var(--brand-ink)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5"
           >
-            Explore Brigade
+            Read the free guides
             <ArrowRight className="size-4" aria-hidden />
           </Link>
         </div>

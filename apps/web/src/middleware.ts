@@ -1,10 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  ADMIN_PORTAL_COOKIE,
+  readAdminPortalCookie,
+} from "@/lib/admin/session-cookie";
+import {
+  ROADMAP_DOWNLOAD_PATH,
+  ROADMAP_LEGACY_SVG_PATH,
+} from "@/lib/journal/roadmap";
+import {
+  RESOURCE_UNLOCK_COOKIE,
+  isValidResourceUnlockCookie,
+} from "@/lib/journal/unlock-cookie";
 
 /**
  * Access control, as an ALLOWLIST.
  *
- * Public: mentorship marketplace (the landing experience), waitlist, login,
- * and the APIs those surfaces need. Everything else needs a verified session.
+ * Public: landing, journal, accelerator, apply pitch, mentorship marketplace,
+ * waitlist, login, and the APIs those surfaces need. Everything else needs a
+ * verified session.
  */
 
 /** Exact public pages. */
@@ -17,6 +30,11 @@ const PUBLIC_PAGES = new Set([
   "/book",
   "/book/thanks",
   "/roadmap",
+  "/apply",
+  "/accelerator",
+  // Cookie-checked SVG. The route 404s without a valid unlock cookie or
+  // session; listing it here only skips the login redirect.
+  ROADMAP_DOWNLOAD_PATH,
 ]);
 
 /**
@@ -48,6 +66,7 @@ const PUBLIC_APIS = new Set([
   "/api/auth/status",
   // Platform Book-a-call Checkout (no login required).
   "/api/book-call",
+  "/api/journal/unlock",
 ]);
 
 function base64UrlToBytes(input: string): Uint8Array {
@@ -106,6 +125,22 @@ async function accessTokenIsValid(token: string, secret: string): Promise<boolea
   }
 }
 
+async function hasAdminPortal(request: NextRequest): Promise<boolean> {
+  const session = await readAdminPortalCookie(
+    request.cookies.get(ADMIN_PORTAL_COOKIE)?.value,
+    process.env.JWT_SECRET?.trim(),
+  );
+  return Boolean(session);
+}
+
+async function hasResourceUnlock(request: NextRequest): Promise<boolean> {
+  if (await hasVerifiedSession(request)) return true;
+  return isValidResourceUnlockCookie(
+    request.cookies.get(RESOURCE_UNLOCK_COOKIE)?.value,
+    process.env.JWT_SECRET?.trim(),
+  );
+}
+
 async function hasVerifiedSession(request: NextRequest): Promise<boolean> {
   const secret = process.env.JWT_SECRET?.trim();
   const access = request.cookies.get("connectpro_access_token")?.value;
@@ -154,12 +189,56 @@ function isPublicApi(pathname: string): boolean {
   ) {
     return true;
   }
+  // Reading a stored image. Public because mentor and journal pages are public
+  // pages and their photos have to render for a logged-out visitor. The route
+  // itself still gates non-public kinds (resumes) on being the owner, and
+  // /api/media/upload is an exact PUBLIC_APIS miss, so writes stay private.
+  if (pathname.startsWith("/api/media/") && pathname !== "/api/media/upload") {
+    return true;
+  }
   return false;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const authed = await hasVerifiedSession(request);
+
+  if (pathname === ROADMAP_LEGACY_SVG_PATH || pathname === ROADMAP_DOWNLOAD_PATH) {
+    if (!(await hasResourceUnlock(request))) {
+      if (pathname === ROADMAP_LEGACY_SVG_PATH) {
+        return NextResponse.redirect(new URL("/roadmap", request.url));
+      }
+      return new NextResponse("Not found", { status: 404 });
+    }
+    if (pathname === ROADMAP_LEGACY_SVG_PATH) {
+      const url = request.nextUrl.clone();
+      url.pathname = ROADMAP_DOWNLOAD_PATH;
+      return NextResponse.rewrite(url);
+    }
+    return NextResponse.next({ request });
+  }
+
+  if (pathname === "/admin/login") {
+    return NextResponse.next({ request });
+  }
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    if (await hasAdminPortal(request)) return NextResponse.next({ request });
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname === "/api/admin/login" || pathname === "/api/admin/logout") {
+    return NextResponse.next({ request });
+  }
+  if (
+    pathname.startsWith("/api/admin/") ||
+    pathname === "/api/waitlist/kit-status"
+  ) {
+    if (await hasAdminPortal(request)) return NextResponse.next({ request });
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   if (pathname.startsWith("/api/")) {
     if (isPublicApi(pathname) || authed) return NextResponse.next({ request });
@@ -184,6 +263,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/roadmap/private-chef-roadmap.svg",
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|hero/|uploads/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf)$).*)",
   ],
 };

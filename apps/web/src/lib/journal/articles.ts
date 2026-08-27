@@ -41,6 +41,15 @@ export function relatedArticles(article: JournalArticle): JournalArticle[] {
     .filter((a): a is JournalArticle => Boolean(a));
 }
 
+/** First couple of paragraphs, for the email gate preview. */
+export function previewArticle(article: JournalArticle): JournalArticle {
+  const preview = article.body.filter((block) => block.type === "p").slice(0, 2);
+  return {
+    ...article,
+    body: preview.length > 0 ? preview : article.body.slice(0, 1),
+  };
+}
+
 export function formatJournalDate(iso: string): string {
   const [year, month, day] = iso.split("-").map(Number);
   const months = [

@@ -2,7 +2,7 @@
   "name": "brigade",
   "version": "0.4.0",
   "private": true,
-  "description": "Brigade — mentorship for private chefs",
+  "description": "Brigade \u2014 mentorship for private chefs",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "turbo dev",
@@ -22,7 +22,8 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "db:migrate": "node scripts/migrate.mjs",
     "check:a11y": "node scripts/check-a11y.mjs",
-    "generate:countries": "node scripts/generate-country-codes.mjs"
+    "generate:countries": "node scripts/generate-country-codes.mjs",
+    "admin:grant": "node scripts/grant-admin.mjs"
   },
   "devDependencies": {
     "axe-core": "^4.10.2",

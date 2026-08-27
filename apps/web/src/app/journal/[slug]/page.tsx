@@ -2,21 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArticleBody } from "@/components/journal/article-body";
+import { JournalGate } from "@/components/journal/journal-gate";
 import { JournalShell } from "@/components/journal/journal-shell";
+import { CohortNudge } from "@/components/home/cohort-nudge";
+import { viewerHasResourceAccess } from "@/lib/journal/access";
 import {
   articlePath,
   formatJournalDate,
   getArticle,
   JOURNAL_AUTHOR_HREF,
-  listArticles,
+  previewArticle,
   relatedArticles,
 } from "@/lib/journal/articles";
 
 type Params = Promise<{ slug: string }>;
 
-export function generateStaticParams() {
-  return listArticles().map((a) => ({ slug: a.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -37,6 +38,8 @@ export default async function JournalPostPage({ params }: { params: Params }) {
   const article = getArticle(slug);
   if (!article) notFound();
   const related = relatedArticles(article);
+
+  const unlocked = await viewerHasResourceAccess();
 
   return (
     <JournalShell>
@@ -71,10 +74,14 @@ export default async function JournalPostPage({ params }: { params: Params }) {
         </div>
 
         <div className="mt-8">
-          <ArticleBody article={article} />
+          {unlocked ? (
+            <ArticleBody article={article} />
+          ) : (
+            <JournalGate article={article} preview={previewArticle(article)} />
+          )}
         </div>
 
-        {related.length > 0 && (
+        {unlocked && related.length > 0 ? (
           <section className="mt-12">
             <p className="text-[12px] font-medium tracking-[0.08em] text-[var(--brand-forest)]">
               MORE FROM JORDAN
@@ -105,7 +112,9 @@ export default async function JournalPostPage({ params }: { params: Params }) {
               </Link>
             </p>
           </section>
-        )}
+        ) : null}
+
+        <CohortNudge />
       </article>
     </JournalShell>
   );

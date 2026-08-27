@@ -4,13 +4,15 @@
  * Run: node --experimental-strip-types apps/web/spec/avatar-image.spec.ts
  */
 import sharp from "sharp";
-import { isSafeAvatarUrl } from "../src/lib/avatars.ts";
+import { isSafeAvatarUrl, isStoredImageUrl } from "../src/lib/avatars.ts";
 import { isSafeCoverUrl } from "../src/lib/banners.ts";
 import {
   processAvatarImage,
   processCoverImage,
+  processGalleryImage,
   AvatarImageError,
   AVATAR_OUTPUT_PX,
+  GALLERY_MAX_EDGE,
 } from "../src/lib/server/avatar-image.ts";
 
 let passed = 0;
@@ -63,6 +65,68 @@ check("avatar traversal rejected", !isSafeAvatarUrl("/uploads/../etc/passwd"));
 check("remote avatar rejected", !isSafeAvatarUrl("https://evil.example/x.jpg"));
 check("cover jpg ok", isSafeCoverUrl(`/uploads/${uid}/${file}.jpg`));
 check("cover gif rejected", !isSafeCoverUrl(`/uploads/${uid}/${file}.gif`));
+
+/* -- gallery images keep their aspect ratio, bounded on the long edge ------ */
+
+const tall = await sharp({
+  create: {
+    width: 900,
+    height: 2400,
+    channels: 3,
+    background: { r: 200, g: 120, b: 40 },
+  },
+})
+  .png()
+  .toBuffer();
+
+const gallery = await processGalleryImage(tall);
+const galleryMeta = await sharp(gallery).metadata();
+check("gallery is jpeg", galleryMeta.format === "jpeg", String(galleryMeta.format));
+check(
+  "gallery bounded on long edge",
+  galleryMeta.height === GALLERY_MAX_EDGE,
+  String(galleryMeta.height),
+);
+check(
+  "gallery keeps aspect ratio",
+  galleryMeta.width === 600,
+  `${galleryMeta.width}x${galleryMeta.height}`,
+);
+
+const small = await sharp({
+  create: { width: 320, height: 240, channels: 3, background: { r: 0, g: 0, b: 0 } },
+})
+  .png()
+  .toBuffer();
+const smallOut = await sharp(await processGalleryImage(small)).metadata();
+check("gallery does not upscale", smallOut.width === 320, String(smallOut.width));
+
+try {
+  await processGalleryImage(Buffer.from("not-an-image"));
+  check("gallery rejects garbage", false);
+} catch (err) {
+  check("gallery rejects garbage", err instanceof AvatarImageError);
+}
+
+/* -- database-backed media URLs -------------------------------------------- */
+
+check("media image url ok", isStoredImageUrl(`/api/media/${file}.jpg`));
+check("legacy upload url still ok", isStoredImageUrl(`/uploads/${uid}/${file}.jpg`));
+check("media png rejected", !isStoredImageUrl(`/api/media/${file}.png`));
+check("media svg rejected", !isStoredImageUrl(`/api/media/${file}.svg`));
+check(
+  "media traversal rejected",
+  !isStoredImageUrl("/api/media/../../etc/passwd.jpg"),
+);
+check(
+  "protocol-relative rejected",
+  !isStoredImageUrl("//evil.example/x.jpg"),
+);
+check("remote media rejected", !isStoredImageUrl("https://evil.example/x.jpg"));
+check("avatar accepts media url", isSafeAvatarUrl(`/api/media/${file}.jpg`));
+check("cover accepts media url", isSafeCoverUrl(`/api/media/${file}.jpg`));
+
+check("image rejects pdf", !isStoredImageUrl(`/api/media/${file}.pdf`));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exitCode = failed === 0 ? 0 : 1;

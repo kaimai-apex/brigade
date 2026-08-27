@@ -13,6 +13,10 @@ import { resolveAvatarUrl } from "@/lib/avatars";
 import { resolveBannerUrl } from "@/lib/banners";
 import { ServerAppPage } from "@/components/layout/server-app-page";
 import { ProfileAvatarEditor } from "@/components/profile/profile-avatar-editor";
+import {
+  MemberKindBadge,
+  memberKindFor,
+} from "@/components/profile/member-kind-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,8 +47,11 @@ export default async function ProfilePage({
    * member who mentors gets the action this product exists for; a member who
    * does not gets no button, which is honest.
    */
-  const mentor = isOwner ? null : await dbGetMentor(profile.id).catch(() => null);
-  const bookable = mentor?.status === "active" ? mentor : null;
+  // Fetched for owners too: "am I showing up as a mentor?" is a question the
+  // owner needs answered on their own profile, not only strangers.
+  const mentor = await dbGetMentor(profile.id).catch(() => null);
+  const kind = memberKindFor(mentor?.status);
+  const bookable = !isOwner && mentor?.status === "active" ? mentor : null;
   const bannerSrc = resolveBannerUrl(profile.cover_url, profile.id);
 
   const availability = [
@@ -132,9 +139,12 @@ export default async function ProfilePage({
             </div>
 
             <div className="mt-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-forest">
-                {profile.role}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold uppercase tracking-wide text-forest">
+                  {profile.role}
+                </p>
+                <MemberKindBadge kind={kind} size="sm" />
+              </div>
               <h1 className="mt-1 font-display text-[28px] font-bold leading-[1.15] tracking-tight md:text-4xl">
                 {displayName(profile.first_name, profile.last_name)}
               </h1>
@@ -183,8 +193,18 @@ export default async function ProfilePage({
           </Section>
         )}
 
+        {profile.resume_text && (
+          <Section title="Resume">
+            {/* Authored as prose in a textarea, so paragraph breaks are the only
+                structure it has — `whitespace-pre-line` is what preserves them. */}
+            <p className="whitespace-pre-line leading-relaxed text-ink/75">
+              {profile.resume_text}
+            </p>
+          </Section>
+        )}
+
         {profile.work_photos.length > 0 && (
-          <Section title="Work showcase">
+          <Section title={kind === "mentor" ? "Gallery" : "Work showcase"}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {profile.work_photos.map((photo) => (
                 <div
@@ -217,16 +237,25 @@ export default async function ProfilePage({
 
         {profile.experiences.length > 0 && (
           <Section title="Experience">
-            <ul className="space-y-4">
-              {profile.experiences.map((exp) => (
-                <li key={exp.id} className="border-l-2 border-sage pl-4">
-                  <p className="font-semibold">{exp.position_title}</p>
-                  <p className="text-ink/70">{exp.company_name}</p>
-                  {exp.description && (
-                    <p className="mt-1 text-sm text-ink/60">{exp.description}</p>
-                  )}
-                </li>
-              ))}
+            <ul className="space-y-5">
+              {profile.experiences.map((exp) => {
+                const dates = formatRoleDates(exp.start_date, exp.end_date);
+                const meta = [exp.employment_type, exp.location, dates]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <li key={exp.id} className="border-l-2 border-sage pl-4">
+                    <p className="font-semibold">{exp.position_title}</p>
+                    <p className="text-ink/70">{exp.company_name}</p>
+                    {meta && <p className="mt-0.5 text-sm text-ink/50">{meta}</p>}
+                    {(exp.highlights || exp.description) && (
+                      <p className="mt-1.5 whitespace-pre-line text-sm text-ink/65">
+                        {exp.highlights || exp.description}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </Section>
         )}
@@ -289,6 +318,32 @@ export default async function ProfilePage({
     </ServerAppPage>
   );
 }
+
+/**
+ * "Mar 2019 — Present" from two ISO days.
+ *
+ * Parsed by hand rather than via `new Date(...)`: a bare "2019-03-01" is read
+ * as UTC midnight, which in any negative-offset timezone renders as February.
+ */
+function formatRoleDates(start: string | null, end: string | null): string {
+  const label = (value: string | null) => {
+    if (!value) return null;
+    const match = /^(\d{4})-(\d{2})/.exec(value);
+    if (!match) return null;
+    const month = Number(match[2]);
+    if (month < 1 || month > 12) return match[1];
+    return `${MONTHS[month - 1]} ${match[1]}`;
+  };
+
+  const from = label(start);
+  if (!from) return end ? (label(end) ?? "") : "";
+  return `${from} — ${label(end) ?? "Present"}`;
+}
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 
 function Section({
   title,

@@ -8,16 +8,26 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { AppPage } from '@/components/layout/app-shell';
 import { BannerPicker } from '@/components/profile/banner-picker';
 import { FileUpload } from '@/components/profile/file-upload';
+import { GalleryEditor } from '@/components/profile/gallery-editor';
+import {
+  ExperienceEditor,
+  type ExperienceRow,
+} from '@/components/profile/experience-editor';
 import { api } from '@/lib/api/client';
 import { AVATAR_UPLOAD_ACCEPT } from '@/lib/avatars';
 import { getBannerById, isCustomCoverUrl, resolveBannerUrl } from '@/lib/banners';
 import { PROFESSIONAL_ROLES } from '@/lib/types/database';
+import { SKILLS } from '@/lib/onboarding/taxonomy';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+/** SKILLS is a flat string list; MultiSelect wants value/label pairs. */
+const SPECIALTY_OPTIONS = SKILLS.map((skill) => ({ value: skill, label: skill }));
+
 export default function EditProfilePage() {
   const { session } = useAuth();
   const router = useRouter();
@@ -38,6 +48,11 @@ export default function EditProfilePage() {
     avatarUrl: '',
   });
   const [visibleInDirectory, setVisibleInDirectory] = useState(true);
+  const [resumeText, setResumeText] = useState('');
+  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [yearsExperience, setYearsExperience] = useState('');
+  const [experience, setExperience] = useState<ExperienceRow[]>([]);
+  const [gallery, setGallery] = useState<string[]>([]);
 
   useEffect(() => {
     if (!session?.userId) return;
@@ -68,6 +83,33 @@ export default function EditProfilePage() {
         setVisibleInDirectory(
           (p.visibleInDirectory ?? p.visible_in_directory ?? true) !== false,
         );
+
+        setResumeText(String(p.resumeText ?? p.resume_text ?? ''));
+        setSpecialties((p.expertiseAreas ?? p.expertise_areas ?? []) as string[]);
+        const years = p.yearsExperience ?? p.years_experience;
+        setYearsExperience(years == null ? '' : String(years));
+
+        // The API returns dates as full ISO days; <input type="month"> wants
+        // YYYY-MM, so trim rather than round-trip through a Date (which would
+        // shift the month backwards for anyone west of UTC).
+        const toMonth = (value: unknown) =>
+          typeof value === 'string' && value.length >= 7 ? value.slice(0, 7) : '';
+        setExperience(
+          ((p.experience ?? []) as Record<string, unknown>[]).map((row) => ({
+            company: String(row.company ?? ''),
+            position: String(row.position ?? ''),
+            location: String(row.location ?? ''),
+            employmentType: String(row.employmentType ?? ''),
+            startDate: toMonth(row.startDate),
+            endDate: toMonth(row.endDate),
+            highlights: String(row.highlights ?? row.description ?? ''),
+          })),
+        );
+        setGallery(
+          ((p.workPhotos ?? []) as { imageUrl?: string }[])
+            .map((photo) => photo.imageUrl ?? '')
+            .filter(Boolean),
+        );
       })
       .catch(() => toast.error('Could not load profile'))
       .finally(() => setLoading(false));
@@ -94,6 +136,14 @@ export default function EditProfilePage() {
         avatarUrl: avatarFromForm || undefined,
         coverUrl: customCoverUrl || presetBannerId,
         visibleInDirectory,
+        resumeText,
+        expertiseAreas: specialties,
+        yearsExperience: yearsExperience === '' ? undefined : Number(yearsExperience),
+        // Rows with no employer are placeholders the member never filled in;
+        // the API drops them anyway, but sending them would echo empty cards
+        // straight back into the form on the next load.
+        experience: experience.filter((row) => row.company.trim()),
+        workPhotos: gallery,
       });
       toast.success('Profile updated');
       router.push('/profile/me');
@@ -248,6 +298,76 @@ export default function EditProfilePage() {
                 rows={4}
               />
             </div>
+          </Card>
+
+          <Card className="space-y-4 p-5">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-ink/50">
+              Specialties
+            </p>
+            <div>
+              <Label htmlFor="specialties">What you are known for</Label>
+              <MultiSelect
+                id="specialties"
+                values={specialties}
+                onChange={setSpecialties}
+                options={SPECIALTY_OPTIONS}
+                max={8}
+                placeholder="Choose up to 8"
+              />
+              <p className="mt-1.5 text-xs text-ink/55">
+                These are what members filter the directory by.
+              </p>
+            </div>
+            <div className="sm:max-w-[12rem]">
+              <Label htmlFor="yearsExperience">Years in the industry</Label>
+              <Input
+                id="yearsExperience"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={60}
+                value={yearsExperience}
+                onChange={(e) => setYearsExperience(e.target.value)}
+              />
+            </div>
+          </Card>
+
+          <Card className="space-y-4 p-5">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-ink/50">
+              Resume
+            </p>
+            <div>
+              <Label htmlFor="resumeText">Your full background</Label>
+              <Textarea
+                id="resumeText"
+                value={resumeText}
+                onChange={(e) => setResumeText(e.target.value)}
+                rows={10}
+                maxLength={20000}
+                placeholder="Where you trained, the kitchens you've run, the clients you cook for now, and what you're best at. Write it the way you'd tell it."
+              />
+              <p className="mt-1.5 text-xs text-ink/55">
+                {resumeText.length.toLocaleString()} / 20,000 characters
+              </p>
+            </div>
+          </Card>
+
+          <Card className="space-y-4 p-5">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-ink/50">
+              Where you&apos;ve worked
+            </p>
+            <ExperienceEditor value={experience} onChange={setExperience} />
+          </Card>
+
+          <Card className="space-y-4 p-5">
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-ink/50">
+              Gallery
+            </p>
+            <p className="text-sm text-ink/70">
+              Plated dishes, events, the kitchens you&apos;ve run. This is the
+              portfolio a client looks at before they book you.
+            </p>
+            <GalleryEditor value={gallery} onChange={setGallery} />
           </Card>
 
           <Card className="space-y-4 p-5">

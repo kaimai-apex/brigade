@@ -28,9 +28,9 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  title: "Brigade · Private Chef Mentorship",
+  title: "Brigade · Restaurant chefs to private chefs",
   description:
-    "Mentorship for chefs moving into private service. Learn from private chefs who have already done it.",
+    "Brigade helps restaurant chefs build a career in private cheffing. Free guides, an 8-week cohort, and 1:1 coaching when you need it.",
   icons: {
     icon: [
       {
@@ -48,9 +48,9 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "Brigade · Private Chef Mentorship",
+    title: "Brigade · Restaurant chefs to private chefs",
     description:
-      "Mentorship for chefs moving into private service. Learn from private chefs who have already done it.",
+      "Brigade helps restaurant chefs build a career in private cheffing. Free guides, an 8-week cohort, and 1:1 coaching when you need it.",
     images: [
       {
         url: "/brand/brigade-B-forest-transparent.png",
