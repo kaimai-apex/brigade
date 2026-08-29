@@ -161,7 +161,7 @@ export function LearnHub() {
         <p className="text-[16px] text-[var(--brand-ink-muted)]">
           When you know enough, do the work with people who already did it.
         </p>
-        <div className="mt-5 flex justify-center">
+        <div className="mx-auto mt-5 flex max-w-[22rem] justify-center sm:max-w-none">
           <ApplyButton>Join The Next Brigade Cohort</ApplyButton>
         </div>
       </div>

@@ -49,7 +49,7 @@ export function MarketingHeader() {
         <div className="brigade-glass-nav-inner">
           <BrandLink priority markSize={32} />
 
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
+          <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-2.5">
             <Link
               href={signedIn ? '/learn' : learnSignupHref()}
               className="rounded-lg px-2 py-2 text-[13px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] sm:px-3 sm:text-[14px]"
@@ -66,8 +66,14 @@ export function MarketingHeader() {
             {signedIn ? (
               <>
                 <Link
+                  href="/profile/me"
+                  className="rounded-lg px-2 py-2 text-[13px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] sm:px-3 sm:text-[14px]"
+                >
+                  Profile
+                </Link>
+                <Link
                   href="/apply"
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink)] px-4 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:px-5"
+                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[var(--mk-ink)] px-3 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:h-10 sm:px-5"
                 >
                   Apply
                 </Link>
@@ -76,9 +82,9 @@ export function MarketingHeader() {
                   <button
                     type="button"
                     aria-label="Account menu"
-                    className="inline-flex size-10 items-center justify-center rounded-full shadow-[inset_0_0_0_1px_rgba(26,26,23,0.12)] transition hover:bg-black/5"
+                    className="inline-flex size-9 items-center justify-center rounded-full shadow-[inset_0_0_0_1px_rgba(26,26,23,0.12)] transition hover:bg-black/5 sm:size-10"
                   >
-                    <Avatar className="size-8 border border-black/10">
+                    <Avatar className="size-7 border border-black/10 sm:size-8">
                       <AvatarImage src={avatarSrc} alt={name} className="object-cover" />
                       <AvatarFallback className="bg-black/5 text-[11px] font-semibold text-[var(--brand-ink)]">
                         {initials}
@@ -93,13 +99,13 @@ export function MarketingHeader() {
               <>
                 <Link
                   href="/login"
-                  className="hidden h-10 items-center rounded-xl px-4 text-[13px] font-semibold text-[var(--brand-ink)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5 sm:inline-flex"
+                  className="inline-flex h-9 items-center rounded-xl px-3 text-[13px] font-semibold text-[var(--brand-ink)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5 sm:h-10 sm:px-4"
                 >
                   Log in
                 </Link>
                 <Link
                   href="/apply"
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--mk-ink)] px-4 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:px-5"
+                  className="inline-flex h-9 items-center justify-center rounded-xl bg-[var(--mk-ink)] px-3 text-[13px] font-semibold text-[var(--brand-white)] transition hover:bg-[var(--mk-ink-hover)] sm:h-10 sm:px-5"
                 >
                   Apply
                 </Link>

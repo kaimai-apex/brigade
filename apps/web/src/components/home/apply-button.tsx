@@ -18,7 +18,7 @@ export function ApplyButton({
     <Link
       href="/apply"
       className={cn(
-        "inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition hover:scale-[1.02]",
+        "inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition hover:scale-[1.02] sm:w-auto",
         light
           ? "bg-[var(--mk-surface)] text-[var(--mk-ink)] hover:bg-[var(--mk-surface)]/90"
           : "bg-[var(--mk-ink)] text-[var(--brand-white)]",

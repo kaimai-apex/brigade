@@ -9,7 +9,7 @@ export function AcceleratorSection() {
   return (
     <section
       id="accelerator"
-      className="relative scroll-mt-[88px] bg-[var(--brand-cream)] py-20 md:scroll-mt-[100px] md:py-28"
+      className="relative scroll-mt-[72px] bg-[var(--brand-cream)] py-14 md:scroll-mt-[100px] md:py-28"
     >
       <div className="mk-shell">
         <div className="mx-auto max-w-[820px] text-center">
@@ -70,7 +70,7 @@ export function AcceleratorSection() {
           ))}
         </ul>
 
-        <div className="mt-10 flex justify-center">
+        <div className="mt-10 flex justify-center px-1">
           <ApplyButton />
         </div>
       </div>

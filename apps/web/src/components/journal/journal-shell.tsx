@@ -11,7 +11,7 @@ export function JournalShell({
   return (
     <div className="min-h-screen bg-[var(--brand-paper-warm)] text-[var(--brand-ink)]">
       <MarketingHeader />
-      <main className="px-5 pb-20 pt-[108px] md:pt-[120px]">{children}</main>
+      <main className="px-4 pb-24 pt-[88px] md:px-5 md:pt-[120px]">{children}</main>
       <SiteFooter signedIn={signedIn} />
     </div>
   );

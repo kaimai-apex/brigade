@@ -35,7 +35,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="adp-mk min-h-screen bg-white">
+    <div className="adp-mk min-h-screen overflow-x-hidden bg-white">
       <MarketingHeader />
       <HomeHero />
       <PathLadder learnHref={session ? "/learn" : undefined} />

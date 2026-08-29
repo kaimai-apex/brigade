@@ -11,7 +11,7 @@ import { POSITIONING } from '@/lib/accelerator';
  */
 export function HomeHero() {
   return (
-    <section className="relative flex flex-col items-center overflow-hidden bg-[var(--brand-paper-warm)] pb-24 pt-[100px] md:pb-28 md:pt-[108px] lg:min-h-[100svh]">
+    <section className="relative flex flex-col items-center overflow-hidden bg-[var(--brand-paper-warm)] pb-16 pt-[92px] md:pb-28 md:pt-[108px] lg:min-h-[100svh]">
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <span className="art-blob blob-cobalt opacity-90" />
         <span className="art-blob blob-forest opacity-90" />
@@ -24,7 +24,7 @@ export function HomeHero() {
           Build Your Next Chapter as a Private Chef
         </h1>
 
-        <p className="mx-auto mt-5 max-w-[36ch] text-[17px] leading-relaxed text-[var(--brand-ink-muted)] md:mt-6 md:max-w-[640px] md:text-[19px]">
+        <p className="mx-auto mt-4 max-w-[34ch] text-[16px] leading-relaxed text-[var(--brand-ink-muted)] md:mt-6 md:max-w-[640px] md:text-[19px]">
           {POSITIONING} Start with the{" "}
           <Link
             href={learnSignupHref()}
@@ -35,18 +35,18 @@ export function HomeHero() {
           . When you are ready to do the work, join the cohort.
         </p>
 
-        <div className="mx-auto mt-8 flex flex-wrap items-center justify-center gap-3 sm:mt-10">
+        <div className="mx-auto mt-7 flex w-full max-w-[22rem] flex-col items-stretch gap-2.5 sm:mt-10 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
           <ApplyButton>Join The Next Brigade Cohort</ApplyButton>
           <Link
             href={learnSignupHref()}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[var(--brand-ink)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[var(--brand-ink)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5 sm:w-auto"
           >
             Read The Free Guides
             <ArrowRight className="size-4" aria-hidden />
           </Link>
           <Link
             href={learnSignupHref("roadmap")}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[var(--brand-ink)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5"
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-[var(--brand-ink)] shadow-[inset_0_0_0_1px_rgba(26,26,23,0.18)] transition hover:bg-black/5 sm:w-auto"
           >
             Private Chef Roadmap
             <ArrowRight className="size-4" aria-hidden />
@@ -54,7 +54,7 @@ export function HomeHero() {
         </div>
       </div>
 
-      <div className="relative z-10 mt-10 w-full max-w-[640px] px-4 lg:mt-12">
+      <div className="relative z-10 mt-8 w-full max-w-[640px] px-4 lg:mt-12">
         <RoleDeck />
       </div>
 

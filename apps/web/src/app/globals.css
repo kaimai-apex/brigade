@@ -873,9 +873,9 @@
 /* Hero serif — ADPList Source Serif 4 display size */
 .adp-mk .mk-serif-display {
   font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  font-size: clamp(2.75rem, 7vw, 5.5rem);
+  font-size: clamp(2.15rem, 8.4vw, 5.5rem);
   font-weight: 470;
-  line-height: 1.06;
+  line-height: 1.08;
   letter-spacing: -0.015em;
 }
 @keyframes mk-marquee {
@@ -929,20 +929,21 @@
 .brigade-glass-nav-inner {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-height: 64px;
   padding: 12px 20px;
 }
 @media (max-width: 640px) {
   .brigade-glass-nav {
-    top: 12px;
-    left: 12px;
-    right: 12px;
+    top: 8px;
+    left: 8px;
+    right: 8px;
     border-radius: 14px;
   }
   .brigade-glass-nav-inner {
-    min-height: 56px;
-    padding: 10px 14px;
+    min-height: 52px;
+    gap: 4px;
+    padding: 8px 10px;
   }
 }
 @media (prefers-reduced-transparency: reduce) {

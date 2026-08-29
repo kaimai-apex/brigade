@@ -21,7 +21,7 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <Link
               href={learnSignupHref()}
-              className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] sm:inline-flex"
+              className="rounded-full px-3 py-2 text-[14px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] sm:px-4 sm:text-[15px]"
             >
               Learn
             </Link>
@@ -33,7 +33,7 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
             </Link>
             <Link
               href="/login"
-              className="mk-btn mk-btn-outline hidden sm:inline-flex"
+              className="mk-btn mk-btn-outline"
             >
               Log in
             </Link>
