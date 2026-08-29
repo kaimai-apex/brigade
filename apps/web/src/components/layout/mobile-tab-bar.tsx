@@ -2,27 +2,28 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarCheck, Compass, GraduationCap, User } from 'lucide-react';
+import { BookOpen, ClipboardList, Rocket, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TABS = [
   {
-    href: '/mentors',
-    label: 'Mentors',
-    icon: GraduationCap,
-    match: (p: string) => p.startsWith('/mentors'),
+    href: '/learn',
+    label: 'Learn',
+    icon: BookOpen,
+    match: (p: string) =>
+      p.startsWith('/learn') || p.startsWith('/journal') || p === '/roadmap',
   },
   {
-    href: '/directory',
-    label: 'Directory',
-    icon: Compass,
-    match: (p: string) => p.startsWith('/directory'),
+    href: '/accelerator',
+    label: 'Accelerator',
+    icon: Rocket,
+    match: (p: string) => p.startsWith('/accelerator'),
   },
   {
-    href: '/sessions',
-    label: 'Sessions',
-    icon: CalendarCheck,
-    match: (p: string) => p.startsWith('/sessions'),
+    href: '/apply',
+    label: 'Apply',
+    icon: ClipboardList,
+    match: (p: string) => p === '/apply',
   },
   {
     href: '/profile/me',
@@ -34,11 +35,7 @@ const TABS = [
 
 /**
  * Mobile-web-app bottom navigation (authenticated pages, < md only).
- * Top nav keeps search and account; primary destinations live here.
- *
- * Four tabs, down from five: Feed, Brigade and Messages went with the social
- * network, and Sessions replaced them because a booked call is the thing a
- * member actually comes back to check.
+ * Same destinations as the top nav: Learn, Accelerator, Apply, Profile.
  */
 export function MobileTabBar() {
   const pathname = usePathname();

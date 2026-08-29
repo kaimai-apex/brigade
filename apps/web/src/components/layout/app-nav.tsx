@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
+  BookOpen,
   CalendarCheck,
   ChevronDown,
   ClipboardList,
   Compass,
   LogOut,
-  GraduationCap,
-  MessageCircle,
+  Rocket,
   Search,
   Settings,
   User,
@@ -29,29 +29,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { resolveAvatarUrl } from '@/lib/avatars';
-import { DISCORD_INVITE_URL } from '@/lib/community';
 import { cn, displayName, getInitials } from '@/lib/utils';
 
 const NAV_ITEMS = [
   {
-    href: '/mentors',
-    label: 'Mentors',
-    icon: GraduationCap,
-    // /mentorship is the mentor's own admin page, not the browse, so it
-    // deliberately does not light this tab.
-    match: (p: string) => p.startsWith('/mentors'),
+    href: '/learn',
+    label: 'Learn',
+    icon: BookOpen,
+    match: (p: string) =>
+      p.startsWith('/learn') || p.startsWith('/journal') || p === '/roadmap',
   },
   {
-    href: '/directory',
-    label: 'Directory',
-    icon: Compass,
-    match: (p: string) => p.startsWith('/directory'),
-  },
-  {
-    href: '/sessions',
-    label: 'Sessions',
-    icon: CalendarCheck,
-    match: (p: string) => p.startsWith('/sessions'),
+    href: '/accelerator',
+    label: 'Accelerator',
+    icon: Rocket,
+    match: (p: string) => p.startsWith('/accelerator') || p === '/apply',
   },
 ] as const;
 
@@ -84,17 +76,17 @@ export function AccountMenuItems({
           here to learn, and only the ones who mentor need the admin page. */}
       <DropdownMenuItem asChild>
         <Link href="/apply">
-          <ClipboardList className="size-4" /> Join the Next Brigade Cohort
+          <ClipboardList className="size-4" /> Join The Next Brigade Cohort
         </Link>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
-        <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">
-          <MessageCircle className="size-4" /> Join Discord
-        </a>
+        <Link href="/sessions">
+          <CalendarCheck className="size-4" /> Your sessions
+        </Link>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
-        <Link href="/mentorship">
-          <GraduationCap className="size-4" /> Your mentoring
+        <Link href="/directory">
+          <Compass className="size-4" /> Directory
         </Link>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
@@ -146,7 +138,7 @@ export function AppNav({ user }: AppNavProps) {
       )}
     >
       <div className="mx-auto flex h-12 max-w-[1128px] items-center gap-2 px-3 sm:gap-3 sm:px-4">
-        <BrandLink href="/mentors" markSize={28} />
+        <BrandLink href="/" markSize={28} />
 
         <div className="hidden min-w-0 flex-1 sm:block sm:max-w-[220px]">
           <div className="relative">
@@ -186,6 +178,13 @@ export function AppNav({ user }: AppNavProps) {
               </Link>
             );
           })}
+
+          <Link
+            href="/apply"
+            className="relative flex min-h-[44px] items-center justify-center px-3 text-[13px] font-semibold text-ink"
+          >
+            Apply
+          </Link>
 
           {session && (
             <DropdownMenu>

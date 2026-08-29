@@ -4,9 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { WelcomeBanner } from '@/components/auth/welcome-banner';
 import { api } from '@/lib/api/client';
-import { AppNav } from '@/components/layout/app-nav';
-import { MobileTabBar } from '@/components/layout/mobile-tab-bar';
-import { PublicNav } from '@/components/layout/public-nav';
+import { MarketingHeader } from '@/components/layout/marketing-header';
 import { cn } from '@/lib/utils';
 
 function useCurrentUser(userId: string | undefined) {
@@ -58,23 +56,9 @@ type PageHeaderProps = {
   showAuth?: boolean;
 };
 
-/** Logged-in → AppNav; logged-out → PublicNav */
-export function PageHeader({ showAuth = true }: PageHeaderProps) {
-  const { session, loading } = useAuth();
-  const user = useCurrentUser(session?.userId);
-
-  // While cookies hydrate, show the public nav so SSR/first paint already has
-  // Log in / Book a call. Authed users swap to AppNav.
-  if (loading || !session) {
-    return <PublicNav showAuth={showAuth} />;
-  }
-
-  return (
-    <>
-      <AppNav user={user ?? undefined} />
-      <MobileTabBar />
-    </>
-  );
+/** Same header on every page: Learn, Accelerator, Log in / Apply. */
+export function PageHeader({ showAuth: _showAuth = true }: PageHeaderProps) {
+  return <MarketingHeader />;
 }
 
 type AppPageProps = {
@@ -100,6 +84,7 @@ export function AppPage({
       <Suspense fallback={null}>
         <WelcomeBanner />
       </Suspense>
+      <div className="pt-[88px]">
       <div
         className={cn(
           'mx-auto px-4 py-6',
@@ -108,6 +93,7 @@ export function AppPage({
         )}
       >
         {children}
+      </div>
       </div>
     </div>
   );

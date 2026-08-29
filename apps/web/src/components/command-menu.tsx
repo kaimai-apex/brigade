@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  BookOpen,
   Calendar,
+  ClipboardList,
   Compass,
-  GraduationCap,
+  Rocket,
   Search,
   Settings,
   User,
@@ -57,11 +59,12 @@ export function CommandMenu() {
   const trimmed = query.trim();
 
   const navIcons: Record<string, typeof Users> = {
-    Mentors: GraduationCap,
+    Learn: BookOpen,
+    Accelerator: Rocket,
+    Apply: ClipboardList,
     Directory: Compass,
-    Sessions: Calendar,
+    'Your sessions': Calendar,
     Profile: User,
-    'Your mentoring': Users,
     Settings: Settings,
   };
 
@@ -76,10 +79,10 @@ export function CommandMenu() {
       open={open}
       onOpenChange={setOpen}
       title="Command menu"
-      description="Search mentors and jump around Brigade"
+      description="Jump around Brigade"
     >
       <CommandInput
-        placeholder="Search mentors…"
+        placeholder="Go to…"
         value={query}
         onValueChange={setQuery}
       />
@@ -91,11 +94,11 @@ export function CommandMenu() {
               <CommandItem
                 value={`search ${trimmed}`}
                 onSelect={() =>
-                  go(`/mentors?q=${encodeURIComponent(trimmed)}`)
+                  go(`/directory?q=${encodeURIComponent(trimmed)}`)
                 }
               >
                 <Search />
-                Search mentors for “{trimmed}”
+                Search members for “{trimmed}”
               </CommandItem>
             </CommandGroup>
             <CommandSeparator />

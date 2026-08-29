@@ -327,7 +327,7 @@ export function DirectoryView({
             <p className="mx-auto mt-2 max-w-[40ch] text-body-md text-ink/65">
               {activeCount > 0 || params.q
                 ? 'Try a different location, role, or specialty — or clear your filters.'
-                : 'When people join Brigade, they show up here. Meanwhile, browse mentors who are taking sessions.'}
+                : 'When people join Brigade, they show up here.'}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               {(activeCount > 0 || params.q) && (
@@ -337,7 +337,7 @@ export function DirectoryView({
               )}
               {!(activeCount > 0 || params.q) && (
                 <Button asChild>
-                  <Link href="/mentors">Find a mentor</Link>
+                  <Link href="/learn">Open The Learning Hub</Link>
                 </Button>
               )}
             </div>

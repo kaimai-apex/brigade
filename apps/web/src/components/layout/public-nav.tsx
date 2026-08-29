@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { BrandLink } from '@/components/brand/brand-mark';
-import { DISCORD_INVITE_URL } from '@/lib/community';
+import { learnSignupHref } from '@/lib/learn';
 
 type PublicNavProps = {
   showAuth?: boolean;
 };
 
 /**
- * Marketplace header — B mark home link, clear next actions.
+ * Same destinations as MarketingHeader: Learn, Accelerator, Log in, Apply.
  */
 export function PublicNav({ showAuth = true }: PublicNavProps) {
   return (
@@ -20,19 +20,17 @@ export function PublicNav({ showAuth = true }: PublicNavProps) {
         {showAuth && (
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <Link
+              href={learnSignupHref()}
+              className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] sm:inline-flex"
+            >
+              Learn
+            </Link>
+            <Link
               href="/accelerator"
               className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] sm:inline-flex"
             >
               Accelerator
             </Link>
-            <a
-              href={DISCORD_INVITE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden rounded-full px-4 py-2 text-[15px] font-medium text-[var(--mk-muted)] hover:text-[var(--mk-text)] md:inline-flex"
-            >
-              Discord
-            </a>
             <Link
               href="/login"
               className="mk-btn mk-btn-outline hidden sm:inline-flex"

@@ -2,16 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArticleBody } from "@/components/journal/article-body";
-import { JournalGate } from "@/components/journal/journal-gate";
 import { JournalShell } from "@/components/journal/journal-shell";
 import { CohortNudge } from "@/components/home/cohort-nudge";
-import { viewerHasResourceAccess } from "@/lib/journal/access";
 import {
   articlePath,
   formatJournalDate,
   getArticle,
   JOURNAL_AUTHOR_HREF,
-  previewArticle,
   relatedArticles,
 } from "@/lib/journal/articles";
 
@@ -39,10 +36,8 @@ export default async function JournalPostPage({ params }: { params: Params }) {
   if (!article) notFound();
   const related = relatedArticles(article);
 
-  const unlocked = await viewerHasResourceAccess();
-
   return (
-    <JournalShell>
+    <JournalShell signedIn>
       <article className="mx-auto max-w-[680px]">
         <p className="text-[12px] font-medium tracking-[0.08em] text-[var(--brand-forest)]">
           {article.kicker}
@@ -74,14 +69,10 @@ export default async function JournalPostPage({ params }: { params: Params }) {
         </div>
 
         <div className="mt-8">
-          {unlocked ? (
-            <ArticleBody article={article} />
-          ) : (
-            <JournalGate article={article} preview={previewArticle(article)} />
-          )}
+          <ArticleBody article={article} />
         </div>
 
-        {unlocked && related.length > 0 ? (
+        {related.length > 0 ? (
           <section className="mt-12">
             <p className="text-[12px] font-medium tracking-[0.08em] text-[var(--brand-forest)]">
               MORE FROM JORDAN
@@ -105,7 +96,7 @@ export default async function JournalPostPage({ params }: { params: Params }) {
             </ul>
             <p className="mt-6">
               <Link
-                href="/journal"
+                href="/learn"
                 className="text-[14px] font-semibold text-[var(--brand-forest)]"
               >
                 ← All journal pieces

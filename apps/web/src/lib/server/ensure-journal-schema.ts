@@ -22,7 +22,20 @@ export function ensureJournalSchema() {
           AND table_name = 'journal_subscribers'
         LIMIT 1`,
     );
-    if (present.rows.length > 0) return;
+    if (present.rows.length > 0) {
+      try {
+        await pool.query(
+          "ALTER TABLE public.journal_subscribers ADD COLUMN IF NOT EXISTS phone TEXT",
+        );
+      } catch (error) {
+        if (!isPrivilegeError(error)) throw error;
+        console.warn(
+          "[ensure-journal-schema] skip phone column:",
+          error instanceof Error ? error.message : error,
+        );
+      }
+      return;
+    }
 
     try {
       await pool.query("CREATE EXTENSION IF NOT EXISTS citext");
@@ -31,6 +44,7 @@ export function ensureJournalSchema() {
           id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           email        CITEXT UNIQUE NOT NULL,
           article_slug TEXT,
+          phone        TEXT,
           created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
         )
       `);

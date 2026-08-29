@@ -263,6 +263,7 @@ export async function dbAdminRecentMembers(limit = 25): Promise<AdminMemberRow[]
 
 export type AdminJournalSubscriber = {
   email: string;
+  phone: string | null;
   articleSlug: string | null;
   createdAt: string;
 };
@@ -280,7 +281,7 @@ export async function dbListJournalSubscribers(
   const capped = Math.min(Math.max(limit, 1), 5000);
   try {
     const result = await getPool().query(
-      `SELECT email, article_slug, created_at
+      `SELECT email, phone, article_slug, created_at
          FROM public.journal_subscribers
         ORDER BY created_at DESC
         LIMIT $1`,
@@ -288,6 +289,7 @@ export async function dbListJournalSubscribers(
     );
     return result.rows.map((row) => ({
       email: String(row.email),
+      phone: (row.phone as string) ?? null,
       articleSlug: (row.article_slug as string) ?? null,
       createdAt: (row.created_at as Date).toISOString(),
     }));

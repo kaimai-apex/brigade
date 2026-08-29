@@ -261,7 +261,7 @@ export function ApplicationForm() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={submitting} className="min-w-[10rem]">
-          {submitting ? "Sending…" : "Send application"}
+          {submitting ? "Sending…" : "Send Application"}
         </Button>
         <p className="text-meta text-ink/55">
           Your answers save as you go. You can come back to this.

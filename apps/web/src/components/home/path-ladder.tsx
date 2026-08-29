@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LADDER } from "@/lib/accelerator";
 
 /** The three-beat story a visitor should be able to recite in 30 seconds. */
-export function PathLadder() {
+export function PathLadder({ learnHref }: { learnHref?: string }) {
   return (
     <section className="bg-[var(--brand-paper-warm)] pb-6 pt-4 md:pb-8">
       <div className="mk-shell">
@@ -10,7 +10,7 @@ export function PathLadder() {
           {LADDER.map((step, i) => (
             <li key={step.id}>
               <Link
-                href={step.href}
+                href={step.id === "learn" && learnHref ? learnHref : step.href}
                 className="block rounded-2xl bg-[var(--brand-cream)] px-5 py-6 transition hover:brightness-[0.98] md:px-6 md:py-7"
               >
                 <p className="text-[12px] font-semibold tracking-[0.16em] text-[var(--brand-forest)]">

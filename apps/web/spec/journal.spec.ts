@@ -15,6 +15,7 @@ import {
 } from "../src/lib/journal/articles.ts";
 import { JOURNAL_UNLOCK_COOKIE, normalizeJournalEmail } from "../src/lib/journal/email.ts";
 import { sanitizeResourceSlug } from "../src/lib/journal/resource-slug.ts";
+import { normalizePhone } from "../src/lib/journal/phone.ts";
 import {
   isValidResourceUnlockCookie,
   RESOURCE_UNLOCK_COOKIE,
@@ -28,10 +29,8 @@ assert.equal(featuredArticle().order, 1);
 assert.ok(getArticle("soft-skills"));
 assert.equal(getArticle("not-a-real-slug"), undefined);
 assert.equal(articlePath("how-to-network"), "/journal/how-to-network");
-assert.match(
-  JOURNAL_AUTHOR_HREF,
-  /^\/mentors\/[0-9a-f-]{36}$/,
-);
+assert.equal(JOURNAL_AUTHOR_HREF, "/learn");
+assert.equal(sanitizeResourceSlug("signup"), "signup");
 
 const house = featuredArticle();
 assert.ok(house.body.some((b) => b.type === "h2"));
@@ -46,6 +45,10 @@ assert.ok(preview.body.every((b) => b.type === "p"));
 assert.equal(normalizeJournalEmail("  Chef@Kitchen.COM "), "chef@kitchen.com");
 assert.equal(normalizeJournalEmail("nope"), null);
 assert.equal(normalizeJournalEmail(""), null);
+
+assert.equal(normalizePhone("555-123-4567"), "555-123-4567");
+assert.equal(normalizePhone("123"), null);
+assert.equal(normalizePhone(""), null);
 
 assert.equal(sanitizeResourceSlug("how-to-network"), "how-to-network");
 assert.equal(sanitizeResourceSlug("journal"), "journal");

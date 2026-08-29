@@ -120,8 +120,8 @@ export default function SessionsPage() {
           <p className="mx-auto mt-2 max-w-[36ch] text-[15px] text-[var(--mk-muted)]">
             Book time with a private chef who has already made the move you want next.
           </p>
-          <Link href="/mentors" className="mk-btn mk-btn-dark mt-6 inline-flex">
-            Find a mentor
+          <Link href="/learn" className="mk-btn mk-btn-dark mt-6 inline-flex">
+            Open The Learning Hub
           </Link>
         </div>
       ) : (

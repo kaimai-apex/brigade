@@ -14,7 +14,7 @@ export default function SignupPage() {
           <CardHeader>
             <CardTitle>Create your Brigade account</CardTitle>
             <CardDescription>
-              Tell us your name, confirm your email with a one-time code. No password.
+              Name, email, and phone. We&apos;ll send a one-time code. No password.
             </CardDescription>
           </CardHeader>
           <Suspense fallback={<p className="px-6 pb-6 text-sm text-ink/60">Loading…</p>}>

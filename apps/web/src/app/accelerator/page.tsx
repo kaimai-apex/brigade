@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AcceleratorSection } from "@/components/home/accelerator";
 import { FinalCta } from "@/components/home/final-cta";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { ACCELERATOR_NAME } from "@/lib/accelerator";
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function AcceleratorPage() {
         <AcceleratorSection />
       </div>
       <FinalCta />
+      <SiteFooter />
     </div>
   );
 }

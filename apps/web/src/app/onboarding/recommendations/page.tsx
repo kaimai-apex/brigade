@@ -157,8 +157,8 @@ export default async function RecommendationsPage() {
       )}
 
       <div className="mt-10 flex flex-wrap gap-3 border-t border-neutral-100 pt-6">
-        <Link href="/mentors" className="mk-btn mk-btn-dark">
-          Browse all mentors
+        <Link href="/learn" className="mk-btn mk-btn-dark">
+          Open The Learning Hub
         </Link>
         <Link href="/settings/profile" className="mk-btn">
           Finish your profile

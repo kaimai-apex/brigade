@@ -68,6 +68,7 @@ export default async function AdminPage() {
               <thead>
                 <tr className="border-b border-neutral-200 text-[11px] uppercase tracking-wide text-ink/50">
                   <th className="py-2 pr-4 font-semibold">Email</th>
+                  <th className="py-2 pr-4 font-semibold">Phone</th>
                   <th className="py-2 pr-4 font-semibold">Opened from</th>
                   <th className="py-2 font-semibold">When</th>
                 </tr>
@@ -82,6 +83,9 @@ export default async function AdminPage() {
                       >
                         {row.email}
                       </a>
+                    </td>
+                    <td className="py-2.5 pr-4 text-ink/70">
+                      {row.phone ?? "—"}
                     </td>
                     <td className="py-2.5 pr-4 text-ink/70">
                       {row.articleSlug ?? "—"}

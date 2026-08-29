@@ -1,6 +1,5 @@
 import { ApplyButton } from "@/components/home/apply-button";
 import {
-  ACCELERATOR_COACHES,
   ACCELERATOR_INCLUDES,
   ACCELERATOR_NAME,
   ACCELERATOR_WEEKS,
@@ -58,31 +57,6 @@ export function AcceleratorSection() {
             </li>
           ))}
         </ol>
-
-        <div className="mx-auto mt-14 max-w-[960px]">
-          <h3 className="text-center text-[12px] font-semibold tracking-[0.16em] text-[var(--brand-forest)]">
-            THE COACHES
-          </h3>
-          <p className="mx-auto mt-3 max-w-[40ch] text-center text-[16px] leading-relaxed text-[var(--brand-ink-muted)]">
-            Specialists inside the private-chef transition. Each one is there to
-            get you paying clients.
-          </p>
-          <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {ACCELERATOR_COACHES.map((coach) => (
-              <li
-                key={coach.role}
-                className="rounded-2xl bg-[var(--brand-paper-warm)] px-5 py-5 md:px-6"
-              >
-                <h4 className="text-[18px] font-semibold tracking-tight text-[var(--brand-ink)]">
-                  {coach.role}
-                </h4>
-                <p className="mt-1.5 text-[15px] leading-relaxed text-[var(--brand-ink-muted)]">
-                  {coach.does}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
 
         <ul className="mx-auto mt-12 max-w-[640px] space-y-2 text-[15px] text-[var(--brand-ink-muted)]">
           {ACCELERATOR_INCLUDES.map((item) => (

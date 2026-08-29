@@ -6,6 +6,8 @@ import {
 } from "@/lib/auth/connectpro-auth";
 import { signup as passwordSignup } from "@/lib/auth/auth-api";
 import { setConnectProCookies } from "@/lib/auth/session-cookies";
+import { normalizePhone } from "@/lib/journal/phone";
+import { saveJournalSubscriber } from "@/lib/journal/subscribers";
 
 function isAuthTokens(
   data: unknown,
@@ -33,12 +35,14 @@ export async function POST(request: Request) {
     password?: unknown;
     firstName?: unknown;
     lastName?: unknown;
+    phone?: unknown;
   };
 
   const email = typeof body.email === "string" ? body.email.trim() : "";
   const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
   const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
+  const phone = normalizePhone(body.phone);
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json(
@@ -81,6 +85,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!phone) {
+    return NextResponse.json(
+      { message: "Enter a valid phone number." },
+      { status: 400 },
+    );
+  }
+
   if (!isConnectProAuthConfigured()) {
     return NextResponse.json(
       { message: "Database is not configured on the server." },
@@ -100,6 +111,15 @@ export async function POST(request: Request) {
       lastName,
       ip,
     });
+    try {
+      await saveJournalSubscriber({
+        email,
+        articleSlug: "signup",
+        phone,
+      });
+    } catch (err) {
+      console.error("[signup] journal subscriber", err);
+    }
     return NextResponse.json(
       {
         ok: true,

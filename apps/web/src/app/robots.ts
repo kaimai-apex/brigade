@@ -1,15 +1,11 @@
 import type { MetadataRoute } from "next";
 
-/**
- * Mentorship marketplace is the public front door; waitlist and login are also
- * crawlable entry points. Everything else stays behind auth.
- */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/mentors", "/waitlist", "/login", "/signup"],
+        allow: ["/", "/accelerator", "/apply", "/waitlist", "/login", "/signup"],
         disallow: [
           "/demo",
           "/api/",
@@ -20,6 +16,10 @@ export default function robots(): MetadataRoute.Robots {
           "/onboarding",
           "/sessions",
           "/mentorship",
+          "/mentors",
+          "/learn",
+          "/journal",
+          "/roadmap",
         ],
       },
     ],

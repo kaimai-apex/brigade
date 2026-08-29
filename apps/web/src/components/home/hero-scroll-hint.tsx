@@ -15,12 +15,12 @@ export function HeroScrollHint() {
 
   return (
     <a
-      href="#free-resources"
+      href="#accelerator"
       className={`hero-scroll-hint ${away ? "is-away" : ""}`}
       aria-hidden={away || undefined}
       tabIndex={away ? -1 : 0}
     >
-      <span className="hero-scroll-hint-label">Eight free guides</span>
+      <span className="hero-scroll-hint-label">The Cohort</span>
       <span className="hero-scroll-hint-chevron" aria-hidden>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path

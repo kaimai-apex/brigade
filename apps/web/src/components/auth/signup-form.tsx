@@ -34,6 +34,7 @@ export function SignupForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<AuthErrorDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -61,7 +62,7 @@ export function SignupForm() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, firstName, lastName }),
+        body: JSON.stringify({ email, firstName, lastName, phone }),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -218,6 +219,20 @@ export function SignupForm() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              required
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+            />
             <p className="mt-2 text-sm text-ink/65">
               We&apos;ll create your account and email a six-digit code. No password.
             </p>
@@ -246,9 +261,9 @@ export function SignupForm() {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || !email || !firstName || !lastName}
+            disabled={loading || !email || !firstName || !lastName || !phone}
           >
-            {loading ? "Creating…" : "Create account"}
+            {loading ? "Creating…" : "Create Account"}
           </Button>
         </form>
 

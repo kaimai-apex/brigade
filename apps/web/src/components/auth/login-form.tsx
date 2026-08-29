@@ -123,7 +123,7 @@ export function LoginForm() {
 
         setSession({ userId: data.userId });
         const next = searchParams.get("next");
-        router.push(next && next.startsWith("/") ? next : "/mentors");
+        router.push(next && next.startsWith("/") ? next : "/learn");
         router.refresh();
       } catch (err) {
         setError(formatAuthError(err, "proxy"));
@@ -188,7 +188,7 @@ export function LoginForm() {
           )}
 
           <Button type="submit" className="w-full" disabled={loading || !email}>
-            {loading ? "Sending…" : "Email me a code"}
+            {loading ? "Sending…" : "Email Me a Code"}
           </Button>
         </form>
 
@@ -199,15 +199,8 @@ export function LoginForm() {
             className="font-semibold text-forest underline-offset-2 hover:underline"
           >
             Sign up
-          </Link>{" "}
-          — or{" "}
-          <Link
-            href="/mentors"
-            className="font-semibold text-forest underline-offset-2 hover:underline"
-          >
-            browse mentors
-          </Link>{" "}
-          first.
+          </Link>
+          .
         </p>
       </div>
     );

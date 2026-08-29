@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { resolveAvatarUrl } from '@/lib/avatars';
-import { DISCORD_INVITE_URL } from '@/lib/community';
+import { learnSignupHref } from '@/lib/learn';
 import { cn, displayName, getInitials } from '@/lib/utils';
 
 const SCROLL_THRESHOLD = 20;
@@ -51,10 +51,10 @@ export function MarketingHeader() {
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2.5">
             <Link
-              href="/journal"
+              href={signedIn ? '/learn' : learnSignupHref()}
               className="rounded-lg px-2 py-2 text-[13px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] sm:px-3 sm:text-[14px]"
             >
-              Journal
+              Learn
             </Link>
             <Link
               href="/accelerator"
@@ -62,14 +62,6 @@ export function MarketingHeader() {
             >
               Accelerator
             </Link>
-            <a
-              href={DISCORD_INVITE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden rounded-lg px-3 py-2 text-[14px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] md:inline-flex"
-            >
-              Discord
-            </a>
 
             {signedIn ? (
               <>

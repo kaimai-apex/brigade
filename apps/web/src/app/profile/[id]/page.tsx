@@ -180,7 +180,7 @@ export default async function ProfilePage({
                 </Button>
               ) : bookable ? (
                 <Button asChild className="mt-5 w-full sm:w-auto sm:min-w-[10rem]">
-                  <Link href={`/mentors/${profile.id}`}>Book a session</Link>
+                  <Link href="/learn">Open The Learning Hub</Link>
                 </Button>
               ) : null}
             </div>

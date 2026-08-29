@@ -11,7 +11,6 @@ type ValueCard = {
   href?: string;
 };
 
-// Learn → Build → Launch, plus 1:1 as the rung above the cohort.
 const CARDS: ValueCard[] = [
   {
     className: 'bg-gold text-ink',
@@ -19,7 +18,7 @@ const CARDS: ValueCard[] = [
     art: '/hero/hero-manager.png',
     blurb: 'Guides that answer what you need to know.',
     dot: 'var(--brand-gold)',
-    href: '#free-resources',
+    href: '/signup?next=%2Flearn',
   },
   {
     className: 'bg-forest text-paper',
@@ -36,14 +35,6 @@ const CARDS: ValueCard[] = [
     blurb: 'Leave with dinners on the calendar.',
     dot: 'var(--brand-rust)',
     href: '#accelerator',
-  },
-  {
-    className: 'bg-cobalt text-paper',
-    title: ['1:1', 'Help'],
-    art: '/hero/chef-cook.png',
-    blurb: 'A working private chef on your specific problem.',
-    dot: 'var(--brand-cobalt)',
-    href: '/mentors',
   },
 ];
 

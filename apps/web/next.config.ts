@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/roadmap/download": ["./src/content/roadmap/private-chef-roadmap.svg"],
   },
+  async redirects() {
+    return [
+      { source: "/journal", destination: "/learn", permanent: false },
+      { source: "/roadmap", destination: "/learn?focus=roadmap", permanent: false },
+      { source: "/mentors", destination: "/", permanent: false },
+      { source: "/mentors/:id", destination: "/", permanent: false },
+      { source: "/mentorship", destination: "/learn", permanent: false },
+      { source: "/mentorship/:path*", destination: "/learn", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

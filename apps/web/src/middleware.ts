@@ -11,13 +11,14 @@ import {
   RESOURCE_UNLOCK_COOKIE,
   isValidResourceUnlockCookie,
 } from "@/lib/journal/unlock-cookie";
+import { isLearnPath } from "@/lib/learn";
 
 /**
  * Access control, as an ALLOWLIST.
  *
- * Public: landing, journal, accelerator, apply pitch, mentorship marketplace,
- * waitlist, login, and the APIs those surfaces need. Everything else needs a
- * verified session.
+ * Public: landing, accelerator, apply pitch, waitlist, login, and the APIs
+ * those surfaces need. Learn / journal / roadmap require an account.
+ * Everything else needs a verified session.
  */
 
 /** Exact public pages. */
@@ -29,7 +30,6 @@ const PUBLIC_PAGES = new Set([
   "/demo",
   "/book",
   "/book/thanks",
-  "/roadmap",
   "/apply",
   "/accelerator",
   // Cookie-checked SVG. The route 404s without a valid unlock cookie or
@@ -173,8 +173,6 @@ function isPublicPage(pathname: string): boolean {
   if (isDevConsolePath(pathname)) return true;
   if (PUBLIC_PAGES.has(pathname)) return true;
   // Exact segment match — do not treat /mentorship as /mentors*.
-  if (pathname === "/mentors" || pathname.startsWith("/mentors/")) return true;
-  if (pathname === "/journal" || pathname.startsWith("/journal/")) return true;
   if (pathname.startsWith("/login/")) return true;
   return false;
 }
@@ -243,6 +241,14 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/api/")) {
     if (isPublicApi(pathname) || authed) return NextResponse.next({ request });
     return new NextResponse("Not found", { status: 404 });
+  }
+
+  if (isLearnPath(pathname) && !authed) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/signup";
+    const next = `${pathname}${request.nextUrl.search}`;
+    url.search = `?next=${encodeURIComponent(next)}`;
+    return NextResponse.redirect(url);
   }
 
   if (isPublicPage(pathname)) return NextResponse.next({ request });

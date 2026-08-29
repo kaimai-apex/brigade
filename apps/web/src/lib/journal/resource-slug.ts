@@ -1,6 +1,6 @@
 import data from "./articles-data.json" with { type: "json" };
 
-const EXTRA_SLUGS = ["journal", "roadmap"] as const;
+const EXTRA_SLUGS = ["journal", "roadmap", "signup"] as const;
 
 const allowed = new Set<string>([
   ...EXTRA_SLUGS,

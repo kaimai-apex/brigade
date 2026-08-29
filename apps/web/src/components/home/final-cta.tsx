@@ -1,7 +1,6 @@
 import { ApplyButton } from '@/components/home/apply-button';
-import { JoinDiscordButton } from '@/components/home/join-discord-button';
 
-/** Closing ink band. The cohort is the ask. Discord is the community door. */
+/** Closing ink band. The cohort is the ask. */
 export function FinalCta() {
   return (
     <section className="bg-[var(--mk-ink)] py-16 text-center text-[var(--brand-white)] md:py-20">
@@ -15,7 +14,6 @@ export function FinalCta() {
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <ApplyButton light />
-          <JoinDiscordButton light />
         </div>
       </div>
     </section>

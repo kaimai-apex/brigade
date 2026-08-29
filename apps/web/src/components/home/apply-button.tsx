@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const APPLY_CTA_LABEL = "Join the Next Brigade Cohort";
+export const APPLY_CTA_LABEL = "Join The Next Brigade Cohort";
 
 export function ApplyButton({
   className,

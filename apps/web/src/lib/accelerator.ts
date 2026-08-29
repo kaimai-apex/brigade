@@ -18,7 +18,7 @@ export const LADDER = [
     label: "Learn",
     product: "Free",
     promise: "How private cheffing works.",
-    href: "#free-resources",
+    href: "/signup?next=%2Flearn",
   },
   {
     id: "build",
@@ -108,7 +108,6 @@ export const ACCELERATOR_COACHES = [
 export const ACCELERATOR_INCLUDES = [
   "Curriculum built around the restaurant-to-private-chef transition",
   "Weekly group coaching",
-  "Specialist coaches from inside private cheffing",
   "Assignments and accountability",
   "Community of chefs making the same move",
   "Templates and resources you will actually use",
@@ -117,7 +116,7 @@ export const ACCELERATOR_INCLUDES = [
 
 /** Free topics. href only when a real page already exists. */
 export const LEARN_TOPICS: readonly { label: string; href?: string }[] = [
-  { label: "How to become a private chef", href: "/roadmap" },
+  { label: "How to become a private chef", href: "/learn?focus=roadmap" },
   { label: "Pricing", href: "/journal/expenses-reimbursement-and-pay" },
   { label: "Sales" },
   { label: "Finding clients", href: "/journal/how-to-build-a-client-list" },

@@ -29,16 +29,19 @@ export async function journalSubscriberExists(email: string): Promise<boolean> {
 export async function saveJournalSubscriber(input: {
   email: string;
   articleSlug?: string;
+  phone?: string | null;
 }): Promise<{ inserted: boolean }> {
   await ensureJournalSchema();
   const pool = getPool();
   const slug = sanitizeResourceSlug(input.articleSlug);
+  const phone = input.phone?.trim() || null;
   const result = await pool.query(
-    `INSERT INTO public.journal_subscribers (email, article_slug)
-     VALUES ($1, $2)
-     ON CONFLICT (email) DO NOTHING
+    `INSERT INTO public.journal_subscribers (email, article_slug, phone)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (email) DO UPDATE SET
+       phone = COALESCE(EXCLUDED.phone, public.journal_subscribers.phone)
      RETURNING id`,
-    [input.email, slug],
+    [input.email, slug, phone],
   );
   return { inserted: result.rowCount === 1 };
 }
