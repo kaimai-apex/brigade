@@ -125,7 +125,7 @@ export function RoleDeck() {
           <button
             key={c.title.join(' ')}
             type="button"
-            className="fan-dot"
+            className="fan-dot touch-compact"
             aria-current={i === active ? 'true' : undefined}
             aria-label={`${c.title.join(" ")}. ${c.blurb}`}
             data-active={i === active}
