@@ -10,6 +10,7 @@ import {
 import { isSafeAvatarUrl } from "@/lib/avatars";
 import { isSafeCoverUrl } from "@/lib/banners";
 import { PROFESSIONAL_ROLES } from "@/lib/types/database";
+import { isUuid } from "@/lib/utils";
 
 const ROLE_SET = new Set<string>(PROFESSIONAL_ROLES);
 
@@ -138,6 +139,9 @@ export async function GET(
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
+  if (!isUuid(id)) {
+    return NextResponse.json({ message: "Profile not found" }, { status: 404 });
+  }
   try {
     const profile = await dbGetProfile(id);
     if (!profile) {
@@ -151,7 +155,8 @@ export async function GET(
       return NextResponse.json({ message: "Profile not found" }, { status: 404 });
     }
     return NextResponse.json(profile);
-  } catch {
+  } catch (error) {
+    console.error("[api/users] GET failed", { id, error });
     return NextResponse.json({ message: "Could not load profile" }, { status: 500 });
   }
 }
@@ -166,6 +171,9 @@ export async function PUT(
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
+  if (!isUuid(id)) {
+    return NextResponse.json({ message: "Profile not found" }, { status: 404 });
+  }
   if (id !== session.userId) {
     return NextResponse.json(
       { message: "You can only edit your own profile" },
@@ -243,7 +251,8 @@ export async function PUT(
       return NextResponse.json(await dbGetProfile(id));
     }
     return NextResponse.json(updated);
-  } catch {
+  } catch (error) {
+    console.error("[api/users] PUT failed", { id, error });
     return NextResponse.json({ message: "Could not save profile" }, { status: 500 });
   }
 }

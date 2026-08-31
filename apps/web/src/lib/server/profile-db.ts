@@ -3,6 +3,7 @@ import type { DirectoryParams } from "@/lib/directory/params";
 import { ensureDirectorySchema } from "@/lib/server/ensure-directory-schema";
 import { ensureResumeSchema } from "@/lib/server/ensure-resume-schema";
 import { dbNotify } from "@/lib/server/notify-db";
+import { isUuid } from "@/lib/utils";
 
 /**
  * Direct-Postgres data layer for profiles, the member directory and connections.
@@ -35,8 +36,11 @@ const PROFILE_COLUMNS = `
   visible_in_directory, role, completeness, created_at, updated_at,
   preferred_name, pronouns, timezone, languages, experience_level, workplace_type,
   interest_industries, skills_wanted, goals, help_wanted, biggest_challenge,
-  preferred_session_minutes, preferred_mentor_experience, resume_text
+  preferred_session_minutes, preferred_mentor_experience
 `;
+
+/** Detail reads only — the directory list does not need a 20k-char resume. */
+const PROFILE_DETAIL_COLUMNS = `${PROFILE_COLUMNS}, resume_text`;
 
 /** Shape the web's mapProfile()/mapDirectoryRow() already expect (camelCase). */
 function toCamel(row: Record<string, unknown>) {
@@ -222,10 +226,13 @@ export async function dbListDirectory(params: DirectoryParams = {}) {
 /* ------------------------------------------------------------------ */
 
 export async function dbGetProfile(userId: string) {
+  // Guard before Postgres sees the value — a route param of "undefined" is a
+  // 22P02, not a clean miss. Same trap dbGetMentor already closes.
+  if (!isUuid(userId)) return null;
   await ensureDirectorySchema();
   await ensureResumeSchema();
   const result = await pool().query(
-    `SELECT ${PROFILE_COLUMNS} FROM users.profiles
+    `SELECT ${PROFILE_DETAIL_COLUMNS} FROM users.profiles
      WHERE user_id = $1 AND deleted_at IS NULL`,
     [userId],
   );
