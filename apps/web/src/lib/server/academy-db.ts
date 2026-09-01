@@ -225,7 +225,7 @@ export async function dbListApplications(params: {
   const where: string[] = [];
   const values: unknown[] = [];
   if (params.status === "open") {
-    values.push(OPEN_APPLICATION_STATUSES);
+    values.push([...OPEN_APPLICATION_STATUSES]);
     where.push(`a.status = ANY($${values.length}::text[])`);
   } else if (params.status) {
     values.push(params.status);

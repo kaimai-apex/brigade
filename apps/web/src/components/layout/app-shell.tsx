@@ -5,6 +5,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { WelcomeBanner } from '@/components/auth/welcome-banner';
 import { api } from '@/lib/api/client';
 import { MarketingHeader } from '@/components/layout/marketing-header';
+import { NAV_OFFSET_CLASS } from '@/lib/nav';
 import { cn } from '@/lib/utils';
 
 function useCurrentUser(userId: string | undefined) {
@@ -84,7 +85,7 @@ export function AppPage({
       <Suspense fallback={null}>
         <WelcomeBanner />
       </Suspense>
-      <div className="pt-[88px]">
+      <div className={NAV_OFFSET_CLASS}>
       <div
         className={cn(
           'mx-auto px-4 py-6',

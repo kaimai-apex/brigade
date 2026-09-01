@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { BrandLink } from "@/components/brand/brand-mark";
+import { MarketingHeader } from "@/components/layout/marketing-header";
 import { BOOK_A_CALL } from "@/lib/book-a-call";
 import { formatMoney } from "@/lib/mentorship/pricing";
+import { NAV_OFFSET_CLASS } from "@/lib/nav";
+import { cn } from "@/lib/utils";
 
 function BookCallInner() {
   const search = useSearchParams();
@@ -33,11 +35,9 @@ function BookCallInner() {
 
   return (
     <div className="min-h-dvh bg-[var(--brand-paper-warm)] text-[var(--brand-ink)]">
-      <header className="flex h-14 items-center border-b border-black/8 px-5">
-        <BrandLink markSize={28} />
-      </header>
+      <MarketingHeader />
 
-      <main className="mx-auto max-w-lg px-5 py-16 text-center">
+      <main className={cn("mx-auto max-w-lg px-5 pb-16 text-center", NAV_OFFSET_CLASS)}>
         <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-ink-muted)]">
           Book a call
         </p>

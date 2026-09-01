@@ -14,3 +14,7 @@ export const SECONDARY_NAV = [
   { href: "/directory", label: "Directory" },
   { href: "/settings/profile", label: "Settings" },
 ] as const;
+
+/** Space below the fixed glass nav. Keep in sync with `.brigade-glass-nav`. */
+export const NAV_OFFSET_CLASS = "pt-[92px] md:pt-[108px]";
+

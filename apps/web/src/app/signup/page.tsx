@@ -1,15 +1,20 @@
 import { SignupForm } from "@/components/auth/signup-form";
-import { BrandLink } from "@/components/brand/brand-mark";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MarketingHeader } from "@/components/layout/marketing-header";
+import { NAV_OFFSET_CLASS } from "@/lib/nav";
+import { cn } from "@/lib/utils";
 import { Suspense } from "react";
 
 export default function SignupPage() {
   return (
     <div className="min-h-dvh bg-[var(--brand-paper-warm)] text-ink">
-      <header className="flex h-12 items-center border-b border-[var(--brand-hairline)] bg-white/80 px-4 backdrop-blur-sm">
-        <BrandLink markSize={28} />
-      </header>
-      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-md items-center px-4 py-8">
+      <MarketingHeader />
+      <div
+        className={cn(
+          "mx-auto flex min-h-dvh max-w-md items-center px-4 pb-16",
+          NAV_OFFSET_CLASS,
+        )}
+      >
         <Card className="w-full border-[var(--brand-hairline)] shadow-none">
           <CardHeader>
             <CardTitle>Create your Brigade account</CardTitle>

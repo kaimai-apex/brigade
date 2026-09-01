@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AcceleratorSection } from "@/components/home/accelerator";
 import { FinalCta } from "@/components/home/final-cta";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { NAV_OFFSET_CLASS } from "@/lib/nav";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ACCELERATOR_NAME } from "@/lib/accelerator";
 
@@ -19,7 +20,7 @@ export default function AcceleratorPage() {
   return (
     <div className="adp-mk min-h-screen bg-white">
       <MarketingHeader />
-      <div className="pt-[72px]">
+      <div className={NAV_OFFSET_CLASS}>
         <AcceleratorSection />
       </div>
       <FinalCta />

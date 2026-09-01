@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { SiteHeader } from '@/components/layout/site-header';
+import { NAV_OFFSET_CLASS } from '@/lib/nav';
 
 type ServerAppPageProps = {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ export function ServerAppPage({
   return (
     <div className="min-h-screen bg-white text-ink">
       <SiteHeader showAuth={showAuth} />
+      <div className={NAV_OFFSET_CLASS}>
       <div
         className={cn(
           'mx-auto px-4 py-6',
@@ -26,6 +28,7 @@ export function ServerAppPage({
         )}
       >
         {children}
+      </div>
       </div>
     </div>
   );

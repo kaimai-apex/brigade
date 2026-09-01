@@ -6,8 +6,8 @@
     "dek": "I thought I would cook the food I decided to make. Then I was making chicken fingers.",
     "date": "2026-08-24",
     "minutes": 7,
-    "featured": true,
-    "order": 1,
+    "featured": false,
+    "order": 2,
     "related": [
       "soft-skills",
       "private-chef-vs-yacht-chef-vs-personal-chef"
@@ -183,8 +183,8 @@
     "dek": "Resume gets you the meeting. The hello keeps you in the room.",
     "date": "2026-08-22",
     "minutes": 7,
-    "featured": false,
-    "order": 2,
+    "featured": true,
+    "order": 1,
     "related": [
       "cooking-for-the-same-family",
       "how-to-network"

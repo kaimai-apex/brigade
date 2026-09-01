@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { resolveAvatarUrl } from '@/lib/avatars';
-import { learnSignupHref } from '@/lib/learn';
+import { learnHref } from '@/lib/learn';
 import { cn, displayName, getInitials } from '@/lib/utils';
 
 const SCROLL_THRESHOLD = 20;
@@ -51,7 +51,7 @@ export function MarketingHeader() {
 
           <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-2.5">
             <Link
-              href={signedIn ? '/learn' : learnSignupHref()}
+              href={learnHref(signedIn)}
               className="rounded-lg px-2 py-2 text-[13px] font-medium text-[var(--brand-ink)]/70 transition hover:bg-black/5 hover:text-[var(--brand-ink)] sm:px-3 sm:text-[14px]"
             >
               Learn

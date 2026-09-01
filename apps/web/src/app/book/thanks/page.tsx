@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { BrandLink } from "@/components/brand/brand-mark";
+import { MarketingHeader } from "@/components/layout/marketing-header";
+import { NAV_OFFSET_CLASS } from "@/lib/nav";
+import { cn } from "@/lib/utils";
 
 export default function BookThanksPage() {
   return (
     <div className="min-h-dvh bg-[var(--brand-paper-warm)] text-[var(--brand-ink)]">
-      <header className="flex h-14 items-center border-b border-black/8 px-5">
-        <BrandLink markSize={28} />
-      </header>
-      <main className="mx-auto max-w-lg px-5 py-20 text-center">
+      <MarketingHeader />
+      <main className={cn("mx-auto max-w-lg px-5 pb-20 text-center", NAV_OFFSET_CLASS)}>
         <h1 className="text-[36px] font-semibold leading-tight">You&apos;re booked in</h1>
         <p className="mx-auto mt-4 max-w-[40ch] text-[17px] leading-relaxed text-[var(--brand-ink-muted)]">
           Payment went through. Check your email for the Stripe receipt — we&apos;ll

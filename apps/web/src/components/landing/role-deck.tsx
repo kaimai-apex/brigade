@@ -18,7 +18,7 @@ const CARDS: ValueCard[] = [
     art: '/hero/hero-manager.png',
     blurb: 'Guides that answer what you need to know.',
     dot: 'var(--brand-gold)',
-    href: '/signup?next=%2Flearn',
+    href: '/journal/soft-skills',
   },
   {
     className: 'bg-forest text-paper',

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DISCORD_INVITE_URL } from "@/lib/community";
+import { learnHref } from "@/lib/learn";
 
 /** Footnotes for marketing pages. Discord lives here, not in the hero or nav. */
 export function SiteFooter({ signedIn = false }: { signedIn?: boolean }) {
@@ -9,7 +10,7 @@ export function SiteFooter({ signedIn = false }: { signedIn?: boolean }) {
         <p className="font-display text-[18px] font-bold tracking-tight">Brigade</p>
         <nav className="flex flex-col gap-2 text-[14px] text-[var(--brand-ink-muted)] sm:flex-row sm:flex-wrap sm:gap-x-5 sm:gap-y-2">
           <Link
-            href={signedIn ? "/learn" : "/signup?next=%2Flearn"}
+            href={learnHref(signedIn)}
             className="hover:text-[var(--brand-ink)]"
           >
             Learn

@@ -11,13 +11,14 @@ import {
   RESOURCE_UNLOCK_COOKIE,
   isValidResourceUnlockCookie,
 } from "@/lib/journal/unlock-cookie";
-import { isLearnPath } from "@/lib/learn";
+import { isLearnPath, isPublicResourcePath } from "@/lib/learn";
 
 /**
  * Access control, as an ALLOWLIST.
  *
- * Public: landing, accelerator, apply pitch, waitlist, login, and the APIs
- * those surfaces need. Learn / journal / roadmap require an account.
+ * Public: landing, accelerator, apply pitch, waitlist, login, the flagship
+ * journal piece, a roadmap preview, and the APIs those surfaces need.
+ * The rest of Learn / journal requires an account.
  * Everything else needs a verified session.
  */
 
@@ -244,6 +245,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isLearnPath(pathname) && !authed) {
+    if (isPublicResourcePath(pathname)) {
+      return NextResponse.next({ request });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/signup";
     const next = `${pathname}${request.nextUrl.search}`;
@@ -270,6 +274,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/roadmap/private-chef-roadmap.svg",
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|hero/|uploads/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|hero/|uploads/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|otf)$).*)",
   ],
 };

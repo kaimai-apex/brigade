@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { BrandLink } from "@/components/brand/brand-mark";
+import { MarketingHeader } from "@/components/layout/marketing-header";
 import { WaitlistForm } from "@/components/waitlist/waitlist-form";
+import { NAV_OFFSET_CLASS } from "@/lib/nav";
+import { cn } from "@/lib/utils";
 
 const WAITLIST_POINTS = [
   "Build relationships with people you trust.",
@@ -13,23 +14,18 @@ const WAITLIST_POINTS = [
 ];
 
 export default function WaitlistPage() {
-  const router = useRouter();
   const [joined, setJoined] = useState(false);
 
   return (
     <div className="flex min-h-dvh flex-col bg-gold text-ink">
-      <header className="flex h-12 shrink-0 items-center gap-3 px-4 pt-[env(safe-area-inset-top)]">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="-ml-2 min-h-11 rounded-md px-3 text-sm font-semibold text-ink/80 hover:bg-ink/5 hover:text-ink"
-        >
-          ← Back
-        </button>
-        <BrandLink markSize={28} mark="ink" />
-      </header>
+      <MarketingHeader />
 
-      <main className="flex flex-1 items-center justify-center px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-16">
+      <main
+        className={cn(
+          "flex flex-1 items-center justify-center px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-6",
+          NAV_OFFSET_CLASS,
+        )}
+      >
         <div className="w-full max-w-xl text-center">
           {!joined && (
             <>

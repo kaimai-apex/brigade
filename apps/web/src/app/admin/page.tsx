@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { CopyEmails } from "@/components/admin/admin-actions";
@@ -37,7 +38,7 @@ export default async function AdminPage() {
   ]);
 
   return (
-    <AdminShell email={session.email}>
+    <AdminShell email={session.email} section="emails">
       <p className="text-[12px] font-semibold tracking-[0.08em] text-[var(--brand-forest)]">
         ADMIN
       </p>
@@ -53,6 +54,29 @@ export default async function AdminPage() {
         <Stat label="Journal · 7 days" value={overview.journal.newLast7} />
         <Stat label="Waitlist" value={overview.waitlist.total} />
         <Stat label="Waitlist · 7 days" value={overview.waitlist.newLast7} />
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatLink
+          href="/admin/applications"
+          label="Applications"
+          value={overview.applications.total}
+        />
+        <StatLink
+          href="/admin/applications?status=open"
+          label="Open applications"
+          value={overview.applications.open}
+        />
+        <StatLink
+          href="/admin/applications?status=accepted"
+          label="Accepted"
+          value={overview.applications.accepted}
+        />
+        <StatLink
+          href="/admin/applications"
+          label="Applications · 7 days"
+          value={overview.applications.newLast7}
+        />
       </div>
 
       <section className="mt-8 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
@@ -150,5 +174,27 @@ function Stat({ label, value }: { label: string; value: number }) {
       </p>
       <p className="mt-1.5 text-[12px] leading-tight text-ink/60">{label}</p>
     </div>
+  );
+}
+
+function StatLink({
+  href,
+  label,
+  value,
+}: {
+  href: string;
+  label: string;
+  value: number;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm transition hover:border-[var(--brand-forest)]/40 hover:bg-[var(--brand-cream)]/50"
+    >
+      <p className="font-display text-[22px] font-bold leading-none tracking-tight">
+        {value.toLocaleString()}
+      </p>
+      <p className="mt-1.5 text-[12px] leading-tight text-ink/60">{label}</p>
+    </Link>
   );
 }

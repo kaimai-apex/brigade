@@ -1,11 +1,21 @@
 import type { MetadataRoute } from "next";
+import { FLAGSHIP_ARTICLE_PATH, ROADMAP_PATH } from "@/lib/learn";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/accelerator", "/apply", "/waitlist", "/login", "/signup"],
+        allow: [
+          "/",
+          "/accelerator",
+          "/apply",
+          "/waitlist",
+          "/login",
+          "/signup",
+          FLAGSHIP_ARTICLE_PATH,
+          ROADMAP_PATH,
+        ],
         disallow: [
           "/demo",
           "/api/",
@@ -19,7 +29,6 @@ export default function robots(): MetadataRoute.Robots {
           "/mentors",
           "/learn",
           "/journal",
-          "/roadmap",
         ],
       },
     ],

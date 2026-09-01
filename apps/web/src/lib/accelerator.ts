@@ -18,7 +18,7 @@ export const LADDER = [
     label: "Learn",
     product: "Free",
     promise: "How private cheffing works.",
-    href: "/signup?next=%2Flearn",
+    href: "/journal/soft-skills",
   },
   {
     id: "build",

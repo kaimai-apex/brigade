@@ -49,13 +49,21 @@ export default async function AdminApplicationsPage({
   const { status } = await searchParams;
   const active = TABS.find((tab) => tab.key === status)?.key ?? "open";
 
-  const [applications, counts] = await Promise.all([
-    dbListApplications({
-      status: active === "all" ? undefined : (active as ApplicationStatus | "open"),
-      limit: 200,
-    }),
-    dbApplicationCounts(),
-  ]);
+  let applications: Awaited<ReturnType<typeof dbListApplications>> = [];
+  let counts: Awaited<ReturnType<typeof dbApplicationCounts>> = {};
+  let loadError = false;
+  try {
+    [applications, counts] = await Promise.all([
+      dbListApplications({
+        status: active === "all" ? undefined : (active as ApplicationStatus | "open"),
+        limit: 200,
+      }),
+      dbApplicationCounts(),
+    ]);
+  } catch (error) {
+    console.error("[admin/applications] list failed", error);
+    loadError = true;
+  }
 
   const openCount =
     (counts.submitted ?? 0) +
@@ -64,7 +72,7 @@ export default async function AdminApplicationsPage({
     (counts.draft ?? 0);
 
   return (
-    <AdminShell email={session.email}>
+    <AdminShell email={session.email} section="applications">
       <div className="mx-auto w-full max-w-5xl">
         <div className="mb-5">
           <Link
@@ -103,7 +111,12 @@ export default async function AdminApplicationsPage({
           })}
         </div>
 
-        {applications.length === 0 ? (
+        {loadError ? (
+          <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center text-sm text-ink/60">
+            Could not load applications. Refresh, or check that the academy
+            schema is on this database.
+          </div>
+        ) : applications.length === 0 ? (
           <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center text-sm text-ink/60">
             Nothing here yet.
           </div>

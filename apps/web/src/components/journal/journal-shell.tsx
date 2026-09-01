@@ -1,5 +1,7 @@
 import { MarketingHeader } from "@/components/layout/marketing-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { NAV_OFFSET_CLASS } from "@/lib/nav";
+import { cn } from "@/lib/utils";
 
 export function JournalShell({
   children,
@@ -11,7 +13,7 @@ export function JournalShell({
   return (
     <div className="min-h-screen bg-[var(--brand-paper-warm)] text-[var(--brand-ink)]">
       <MarketingHeader />
-      <main className="px-4 pb-24 pt-[88px] md:px-5 md:pt-[120px]">{children}</main>
+      <main className={cn("px-4 pb-24 md:px-5", NAV_OFFSET_CLASS)}>{children}</main>
       <SiteFooter signedIn={signedIn} />
     </div>
   );

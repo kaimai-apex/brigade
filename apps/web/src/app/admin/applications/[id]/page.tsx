@@ -47,7 +47,7 @@ export default async function AdminApplicationPage({
   ].filter(Boolean) as { label: string; url: string }[];
 
   return (
-    <AdminShell email={session.email}>
+    <AdminShell email={session.email} section="applications">
       <div className="mx-auto w-full max-w-5xl">
         <Link
           href="/admin/applications"
