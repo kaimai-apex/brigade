@@ -29,7 +29,7 @@ function StepCard({
       <p className="mt-1.5 text-[15.5px] leading-relaxed text-[var(--brand-ink-muted)]">
         {body}
       </p>
-      <div className="mt-3 rounded-xl bg-[#e8ecdd] px-4 py-3.5">
+      <div className="mt-3 rounded-xl bg-[var(--brand-sage-pale)] px-4 py-3.5">
         <p className="text-[11px] font-bold tracking-[0.14em] text-[var(--brand-forest)]">
           GRADUATE WHEN
         </p>
