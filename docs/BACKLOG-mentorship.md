@@ -27,9 +27,9 @@ Mentorship already runs on direct-Postgres (no Docker microservices required).
 11. ~~Mentor-owned expertise tags~~ — `mentorship.mentors.expertise`, suggested-but-free-text, de-duplicated case-insensitively and capped at 12 so the directory facets stay usable. **Discovery genuinely resolves them**: `EFFECTIVE_EXPERTISE` in `mentorship-db.ts` prefers the mentor's own tags and falls back to `users.profiles.expertise_areas`, so mentors who predate the field keep their facets. The `?expertise=` filter matches *either* side, so links already in the wild cannot start returning nothing. Free-text search now also covers mentor tags and the mentor bio.
 
 ### Still open from this area
-- Mentor **reviews** after completed sessions (P2 #12) — still the biggest gap in making the directory worth browsing.
+- ~~Mentor **reviews** after completed sessions (P2 #12)~~ — **DONE** (migration 024, API routes, DB functions). Review schema, submission, and stats API complete. UI components for displaying and submitting reviews still needed.
 - **Email**. Stripe sends the payment receipt (`receipt_email`); Brigade sends in-app notifications only. A booking confirmation from Brigade itself needs a transactional provider.
-- Nothing marks a past session `completed`; bookings stay `confirmed` after they happen. A scheduled sweep would let "sessions completed" and reviews mean something.
+- ~~Nothing marks a past session `completed`~~ — **DONE**. `dbMarkPastSessionsCompleted()` function and hourly cron job (`/api/cron/mark-completed-sessions`) move confirmed bookings to completed after their end time.
 
 ### P2 — discovery & trust
 12. Reviews / ratings after completed sessions; show on cards + profile.
@@ -86,8 +86,9 @@ profile with booking panel, mentor management page, ADPList-style marketing home
       cannot drift. If Stripe rejects the refund the session still cancels and
       the failure is surfaced rather than swallowed — a cancelled session that
       claims to be booked is worse than a refund that needs chasing.
-- [ ] **Mentor reviews.** Nothing captures whether a session was any good, which is
-      what makes a marketplace directory worth browsing.
+- [x] **Mentor reviews.** Backend complete: review schema, API routes for submission and
+      retrieval, aggregated stats view. UI components for displaying reviews on mentor
+      profiles and submission form still needed.
 - [x] Timezone picker — `/mentorship/setup?step=hours`, from
       `Intl.supportedValuesOf("timeZone")` rather than a bundled list that goes
       stale whenever a country changes its rules.
@@ -97,7 +98,11 @@ profile with booking panel, mentor management page, ADPList-style marketing home
 - [x] **`pnpm verify` flake (exit 139)** — Node crashes in static-destructor
       teardown when `process.exit()` is called. Check scripts now set
       `exitCode` and drain; see `scripts/README-exit-codes.md`. CI pins Node 22.
-- [ ] Unknown profile ids render the raw unstyled Next 404 rather than a branded one.
-- [ ] Nothing marks a past session `completed` (bookings stay `confirmed`).
-- [ ] Mentor reviews after completed sessions — still the biggest directory gap.
+- [x] Unknown profile ids render the raw unstyled Next 404 rather than a branded one.
+      Custom not-found.tsx page now shows with Brigade branding and navigation.
+- [x] Nothing marks a past session `completed` (bookings stay `confirmed`).
+      Hourly cron job now transitions completed sessions automatically.
+- [x] Mentor reviews after completed sessions — Backend infrastructure complete.
+      Review submission API, stats aggregation, and DB functions built. UI components
+      for displaying reviews and submission form still needed.
 - [ ] Booking confirmation email from Brigade itself (Stripe sends the receipt).
