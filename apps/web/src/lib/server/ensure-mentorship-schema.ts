@@ -371,6 +371,71 @@ export function ensureMentorshipSchema() {
     `,
       "idx_webhook_events_received",
     );
+
+    // Migration 024 — reviews
+    await tryDdl(
+      pool,
+      `
+      CREATE TABLE IF NOT EXISTS mentorship.reviews (
+        id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        booking_id        UUID        NOT NULL UNIQUE REFERENCES mentorship.bookings (id) ON DELETE CASCADE,
+        mentor_user_id    UUID        NOT NULL REFERENCES mentorship.mentors (user_id) ON DELETE CASCADE,
+        mentee_user_id    UUID        NOT NULL,
+        
+        rating            SMALLINT    NOT NULL,
+        comment           TEXT,
+        visible           BOOLEAN     NOT NULL DEFAULT true,
+        
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+        
+        CONSTRAINT reviews_rating_check CHECK (rating BETWEEN 1 AND 5),
+        CONSTRAINT reviews_not_self CHECK (mentor_user_id <> mentee_user_id)
+      )
+    `,
+      "table reviews",
+    );
+    await tryDdl(
+      pool,
+      `
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_booking ON mentorship.reviews (booking_id)
+    `,
+      "idx_reviews_booking",
+    );
+    await tryDdl(
+      pool,
+      `
+      CREATE INDEX IF NOT EXISTS idx_reviews_mentor ON mentorship.reviews (mentor_user_id, created_at DESC)
+        WHERE visible = true
+    `,
+      "idx_reviews_mentor",
+    );
+    await tryDdl(
+      pool,
+      `
+      CREATE INDEX IF NOT EXISTS idx_reviews_mentee ON mentorship.reviews (mentee_user_id, created_at DESC)
+    `,
+      "idx_reviews_mentee",
+    );
+    await tryDdl(
+      pool,
+      `
+      CREATE OR REPLACE VIEW mentorship.mentor_review_stats AS
+      SELECT 
+        mentor_user_id,
+        COUNT(*)::INT AS review_count,
+        AVG(rating)::NUMERIC(3,2) AS avg_rating,
+        COUNT(CASE WHEN rating = 5 THEN 1 END)::INT AS five_star_count,
+        COUNT(CASE WHEN rating = 4 THEN 1 END)::INT AS four_star_count,
+        COUNT(CASE WHEN rating = 3 THEN 1 END)::INT AS three_star_count,
+        COUNT(CASE WHEN rating = 2 THEN 1 END)::INT AS two_star_count,
+        COUNT(CASE WHEN rating = 1 THEN 1 END)::INT AS one_star_count
+      FROM mentorship.reviews
+      WHERE visible = true
+      GROUP BY mentor_user_id
+    `,
+      "view mentor_review_stats",
+    );
   })();
 
   // A failed attempt shouldn't be cached — the next request should retry.

@@ -1140,6 +1140,165 @@ export async function dbMarkPastSessionsCompleted(): Promise<number> {
   return res.rowCount ?? 0;
 }
 
+// ---------------------------------------------------------------------------
+// Reviews
+// ---------------------------------------------------------------------------
+
+export interface Review {
+  id: string;
+  bookingId: string;
+  mentorUserId: string;
+  menteeUserId: string;
+  rating: number;
+  comment: string | null;
+  visible: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewStats {
+  reviewCount: number;
+  avgRating: number;
+  fiveStarCount: number;
+  fourStarCount: number;
+  threeStarCount: number;
+  twoStarCount: number;
+  oneStarCount: number;
+}
+
+function mapReview(row: Record<string, unknown>): Review {
+  return {
+    id: row.id as string,
+    bookingId: row.booking_id as string,
+    mentorUserId: row.mentor_user_id as string,
+    menteeUserId: row.mentee_user_id as string,
+    rating: Number(row.rating),
+    comment: (row.comment as string) ?? null,
+    visible: Boolean(row.visible),
+    createdAt: new Date(row.created_at as string).toISOString(),
+    updatedAt: new Date(row.updated_at as string).toISOString(),
+  };
+}
+
+/**
+ * Submit a review for a completed session.
+ *
+ * @returns The created review, or null if the booking doesn't exist, isn't
+ * completed, or the user isn't the mentee.
+ */
+export async function dbCreateReview(input: {
+  bookingId: string;
+  menteeUserId: string;
+  rating: number;
+  comment: string | null;
+}): Promise<Review | null> {
+  await ensureMentorshipSchema();
+
+  if (input.rating < 1 || input.rating > 5) {
+    throw new Error("Rating must be between 1 and 5");
+  }
+
+  const res = await pool().query(
+    `INSERT INTO mentorship.reviews (booking_id, mentor_user_id, mentee_user_id, rating, comment)
+     SELECT $1, mentor_user_id, mentee_user_id, $3, $4
+     FROM mentorship.bookings
+     WHERE id = $1
+       AND mentee_user_id = $2
+       AND status = 'completed'
+     ON CONFLICT (booking_id) DO UPDATE
+       SET rating = EXCLUDED.rating,
+           comment = EXCLUDED.comment,
+           updated_at = now()
+     RETURNING *`,
+    [input.bookingId, input.menteeUserId, input.rating, input.comment],
+  );
+
+  return res.rows[0] ? mapReview(res.rows[0]) : null;
+}
+
+/**
+ * Get all visible reviews for a mentor.
+ */
+export async function dbGetMentorReviews(mentorUserId: string): Promise<Review[]> {
+  await ensureMentorshipSchema();
+
+  const res = await pool().query(
+    `SELECT * FROM mentorship.reviews
+     WHERE mentor_user_id = $1 AND visible = true
+     ORDER BY created_at DESC`,
+    [mentorUserId],
+  );
+
+  return res.rows.map(mapReview);
+}
+
+/**
+ * Get review stats for a mentor.
+ */
+export async function dbGetMentorReviewStats(mentorUserId: string): Promise<ReviewStats | null> {
+  await ensureMentorshipSchema();
+
+  const res = await pool().query(
+    `SELECT * FROM mentorship.mentor_review_stats WHERE mentor_user_id = $1`,
+    [mentorUserId],
+  );
+
+  if (!res.rows[0]) return null;
+
+  const row = res.rows[0];
+  return {
+    reviewCount: Number(row.review_count),
+    avgRating: Number(row.avg_rating),
+    fiveStarCount: Number(row.five_star_count),
+    fourStarCount: Number(row.four_star_count),
+    threeStarCount: Number(row.three_star_count),
+    twoStarCount: Number(row.two_star_count),
+    oneStarCount: Number(row.one_star_count),
+  };
+}
+
+/**
+ * Check if a user can review a booking.
+ */
+export async function dbCanReviewBooking(
+  bookingId: string,
+  userId: string,
+): Promise<{ canReview: boolean; reason?: string }> {
+  await ensureMentorshipSchema();
+
+  const res = await pool().query(
+    `SELECT 
+       b.status,
+       b.mentee_user_id,
+       b.ends_at,
+       r.id AS review_id
+     FROM mentorship.bookings b
+     LEFT JOIN mentorship.reviews r ON r.booking_id = b.id
+     WHERE b.id = $1`,
+    [bookingId],
+  );
+
+  if (!res.rows[0]) {
+    return { canReview: false, reason: "Booking not found" };
+  }
+
+  const booking = res.rows[0];
+
+  if (booking.mentee_user_id !== userId) {
+    return { canReview: false, reason: "You are not the mentee for this booking" };
+  }
+
+  if (booking.status !== "completed") {
+    return { canReview: false, reason: "Session must be completed before reviewing" };
+  }
+
+  if (booking.review_id) {
+    return { canReview: false, reason: "You have already reviewed this session" };
+  }
+
+  return { canReview: true };
+}
+
 /**
  * Find a booking from the PaymentIntent that paid for it.
  *
