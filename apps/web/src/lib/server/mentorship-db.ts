@@ -1117,6 +1117,30 @@ export async function dbConfirmFreeBooking(bookingId: string): Promise<Booking |
 }
 
 /**
+ * Mark past sessions as completed.
+ *
+ * Called periodically to move confirmed bookings that have ended into the
+ * completed state. This enables reviews, completion counts, and accurate
+ * "sessions completed" metrics in the directory.
+ *
+ * @returns Number of bookings marked as completed
+ */
+export async function dbMarkPastSessionsCompleted(): Promise<number> {
+  await ensureMentorshipSchema();
+  
+  const res = await pool().query(
+    `UPDATE mentorship.bookings
+        SET status = 'completed',
+            updated_at = now()
+      WHERE status = 'confirmed'
+        AND ends_at < now()
+    RETURNING id`,
+  );
+  
+  return res.rowCount ?? 0;
+}
+
+/**
  * Find a booking from the PaymentIntent that paid for it.
  *
  * How refund events are matched. A Stripe Charge does NOT inherit its

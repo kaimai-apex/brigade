@@ -1,6 +1,8 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @connectpro/common build && pnpm --filter @connectpro/web build"
+  "crons": [
+    {
+      "path": "/api/cron/mark-completed-sessions",
+      "schedule": "0 * * * *"
+    }
+  ]
 }
