@@ -106,6 +106,6 @@ export const SETUP_STEPS = [{ slug: "profile", label: "Your profile" }] as const
 
 export type SetupSlug = (typeof SETUP_STEPS)[number]["slug"];
 
-export function stepIndex(_slug: string): number {
+export function stepIndex(): number {
   return 0;
 }

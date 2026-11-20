@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useAuth } from '@/components/auth/auth-provider';
 import { WelcomeBanner } from '@/components/auth/welcome-banner';
 import { api } from '@/lib/api/client';
 import { MarketingHeader } from '@/components/layout/marketing-header';
@@ -58,7 +57,7 @@ type PageHeaderProps = {
 };
 
 /** Same header on every page: Learn, Accelerator, Log in / Apply. */
-export function PageHeader({ showAuth: _showAuth = true }: PageHeaderProps) {
+export function PageHeader(_props: PageHeaderProps) {
   return <MarketingHeader />;
 }
 
